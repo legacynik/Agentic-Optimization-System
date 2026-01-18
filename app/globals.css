@@ -1,0 +1,181 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Updated Doom 64 color palette with higher contrast for better readability */
+:root {
+  --background: oklch(0.92 0.01 80);
+  --foreground: oklch(0.12 0.02 30);
+  --card: oklch(0.96 0.005 80);
+  --card-foreground: oklch(0.12 0.02 30);
+  --popover: oklch(0.96 0.005 80);
+  --popover-foreground: oklch(0.12 0.02 30);
+  --primary: oklch(0.45 0.28 25);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.55 0.24 45);
+  --secondary-foreground: oklch(0.99 0 0);
+  --muted: oklch(0.85 0.01 80);
+  --muted-foreground: oklch(0.4 0.02 30);
+  --accent: oklch(0.65 0.3 145);
+  --accent-foreground: oklch(0.05 0 0);
+  --destructive: oklch(0.5 0.28 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.65 0.01 80);
+  --input: oklch(0.65 0.01 80);
+  --ring: oklch(0.45 0.28 25);
+  --chart-1: oklch(0.45 0.28 25);
+  --chart-2: oklch(0.55 0.24 45);
+  --chart-3: oklch(0.65 0.3 145);
+  --chart-4: oklch(0.5 0.28 25);
+  --chart-5: oklch(0.42 0.18 35);
+  --radius: 0px;
+  --sidebar: oklch(0.88 0.01 80);
+  --sidebar-foreground: oklch(0.12 0.02 30);
+  --sidebar-primary: oklch(0.45 0.28 25);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.65 0.3 145);
+  --sidebar-accent-foreground: oklch(0.05 0 0);
+  --sidebar-border: oklch(0.65 0.01 80);
+  --sidebar-ring: oklch(0.45 0.28 25);
+  --shadow-x: 0px;
+  --shadow-y: 2px;
+  --shadow-blur: 4px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.4;
+  --shadow-color: #000000;
+}
+
+/* Dark mode with high contrast Doom 64 colors */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f0f0f0;
+  --card: #1a1a1a;
+  --card-foreground: #f0f0f0;
+  --popover: #1a1a1a;
+  --popover-foreground: #f0f0f0;
+  --primary: #cc0000;
+  --primary-foreground: #ffffff;
+  --secondary: #ff6600;
+  --secondary-foreground: #ffffff;
+  --muted: #2a2a2a;
+  --muted-foreground: #a0a0a0;
+  --accent: #00ff00;
+  --accent-foreground: #000000;
+  --destructive: #ff3300;
+  --destructive-foreground: #ffffff;
+  --border: #3a3a3a;
+  --input: #3a3a3a;
+  --ring: #cc0000;
+  --chart-1: #cc0000;
+  --chart-2: #ff6600;
+  --chart-3: #00ff00;
+  --chart-4: #ff3300;
+  --chart-5: #ffaa00;
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #f0f0f0;
+  --sidebar-primary: #cc0000;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #00ff00;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #3a3a3a;
+  --sidebar-ring: #cc0000;
+  --shadow-x: 0px;
+  --shadow-y: 0px;
+  --shadow-blur: 6px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.6;
+  --shadow-color: #000000;
+}
+
+/* Configure Doom 64 fonts in Tailwind theme */
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-roboto-mono), monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --shadow-2xs: var(--shadow-x) var(--shadow-y)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  --shadow-xs: var(--shadow-x) var(--shadow-y) var(--shadow-blur) var(--shadow-spread)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  --shadow-sm: var(--shadow-x) var(--shadow-y) calc(var(--shadow-blur) * 1.5) var(--shadow-spread)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  --shadow-md: calc(var(--shadow-x) * 2) calc(var(--shadow-y) * 2) calc(var(--shadow-blur) * 3)
+    calc(var(--shadow-spread) - 1px)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  --shadow-lg: calc(var(--shadow-x) * 4) calc(var(--shadow-y) * 4) calc(var(--shadow-blur) * 5)
+    calc(var(--shadow-spread) - 3px)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  --shadow-xl: calc(var(--shadow-x) * 6) calc(var(--shadow-y) * 6) calc(var(--shadow-blur) * 7)
+    calc(var(--shadow-spread) - 5px)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  --shadow-2xl: calc(var(--shadow-x) * 8) calc(var(--shadow-y) * 8) calc(max(0px, var(--shadow-blur) * 9 - 8px))
+    calc(var(--shadow-spread) - 12px)
+    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 250%), transparent);
+  --shadow: var(--shadow-md);
+  --color-shadow-color: var(--shadow-color);
+  --shadow-opacity: var(--shadow-opacity);
+  --shadow-spread: var(--shadow-spread);
+  --shadow-blur: var(--shadow-blur);
+  --shadow-y: var(--shadow-y);
+  --shadow-x: var(--shadow-x);
+}
+
+/* Base styles with Doom 64 typography */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  /* Headings use Teko font for bold, industrial Doom 64 look */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-teko), sans-serif;
+    @apply font-bold tracking-wider uppercase;
+  }
+  /* Increase base font size for better readability */
+  body {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+}
