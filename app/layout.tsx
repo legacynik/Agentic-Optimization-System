@@ -1,16 +1,19 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Teko, Inter, Roboto_Mono } from "next/font/google"
+import { Inter, Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
 import { Providers } from "@/components/providers"
-
-const teko = Teko({
-  weight: ["300", "400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-teko",
-})
+import { AppSidebar } from "@/components/app-sidebar"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,9 +26,8 @@ const robotoMono = Roboto_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "AI Agent Dashboard - Doom 64 Edition",
-  description: "Conversation explorer with Doom 64 aesthetic",
-  generator: "v0.app",
+  title: "AI Agent Testing Dashboard",
+  description: "Analytics dashboard for AI agent conversation testing",
 }
 
 export default function RootLayout({
@@ -34,10 +36,30 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`dark ${teko.variable} ${inter.variable} ${robotoMono.variable}`}>
+    <html lang="en" className={`dark ${inter.variable} ${robotoMono.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <Providers>
-          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="mr-2 h-4" />
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>AI Agent Testing Dashboard</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </BreadcrumbList>
+                </Breadcrumb>
+              </header>
+              <main className="flex-1 overflow-auto">
+                <Suspense fallback={<div className="flex items-center justify-center h-64">Loading...</div>}>
+                  {children}
+                </Suspense>
+              </main>
+            </SidebarInset>
+          </SidebarProvider>
           <Analytics />
         </Providers>
       </body>
