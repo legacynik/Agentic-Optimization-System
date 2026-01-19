@@ -4,6 +4,30 @@ Log di tutte le modifiche applicate ai workflow n8n.
 
 ---
 
+## [2026-01-19] - MODIFICATIONS-REQUIRED.md v2.4 Lean Update
+
+### Further Simplified (v2.4 LEAN)
+- **Section 0b: KILL SWITCH** - Check Abort ottimizzato da 4+ a **2 punti**
+  - Check #1: Prima di LLM call
+  - Check #2: Dopo LLM call
+  - Rationale: Bilancio reattività/semplicità (95% coverage)
+- **Section 1.1: Webhook Input** - mode `full_cycle` rimosso
+  - Solo `single` | `full_cycle_with_review`
+  - tool_scenario_id confermato VARCHAR (non UUID)
+- **Section 1.3: Get Personas** - Query ultra-semplificata
+  - Rimosso UNION, override_config, version-specific binding
+  - Join diretto personas ↔ prompt_personas
+- **Section 1.4: Create test_run** - Rimosso cycle_state
+  - Aggiunto llm_config JSONB per tracking
+- **validation_status** - Ridotto a 2 stati ('pending', 'validated')
+
+### Notes v2.4
+- Sincronizzato con PRD v2.4 Lean
+- Ulteriore ~15% semplificazione rispetto a v2.3
+- Recovery manuale per MVP (no cycle_state auto-recovery)
+
+---
+
 ## [2026-01-19] - MODIFICATIONS-REQUIRED.md v2.3 Lean Update
 
 ### Simplified (v2.3 LEAN)

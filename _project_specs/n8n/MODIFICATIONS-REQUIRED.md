@@ -2,8 +2,15 @@
 
 Documento con tutte le modifiche da applicare ai workflow n8n per integrare il sistema v2.
 
-> ⚠️ **v2.3 LEAN**: Questo documento è stato semplificato per MVP single-user.
+> ⚠️ **v2.4 LEAN**: Ultra-semplificato per MVP single-user.
 > Per versione enterprise (HMAC, nonce, Upstash), vedi `ROADMAP-enterprise-features.md` nel PRD.
+>
+> **Changelog v2.4:**
+> - Rimosso mode `full_cycle` (solo `single` | `full_cycle_with_review`)
+> - tool_scenario_id ora VARCHAR (non UUID)
+> - Check Abort ottimizzato a 2 punti (inizio loop + dopo LLM)
+> - Semplificata query personas (no override_config)
+> - validation_status ridotto a 2 stati ('pending', 'validated')
 
 ---
 
@@ -98,23 +105,28 @@ return {
 };
 ```
 
-### 0b.2 Posizionamento nel Workflow
+### 0b.2 Posizionamento nel Workflow (v2.4 OPTIMIZED - solo 2 check)
+
+> **v2.4**: Ridotto da 4+ a 2 check points per semplicità.
 
 ```
-[Webhook] → [Check Abort] → [Get Personas] → [Check Abort] → [Loop]
-                                                                ↓
-                                                      [Check Abort]
-                                                                ↓
-                                                       [Battle Agent]
-                                                                ↓
-                                                      [Check Abort]
-                                                                ↓
-                                                       [Save Result]
-                                                                ↓
-                                                      [Check Abort]
-                                                                ↓
-                                                      [Continue Loop]
+[Webhook] → [Get Personas] → [Loop]
+                               ↓
+                     [Check Abort #1] ← (PRIMA di LLM call)
+                               ↓
+                      [Battle Agent]
+                               ↓
+                     [Check Abort #2] ← (DOPO LLM call)
+                               ↓
+                      [Save Result]
+                               ↓
+                     [Continue Loop]
 ```
+
+**Rationale**:
+- Check #1: Intercetta abort prima dell'operazione costosa
+- Check #2: Intercetta abort dopo LLM call (~30s), evita save inutile
+- 2 check coprono 95% degli scenari, bilancio tra reattività e semplicità
 
 ### 0b.3 Abort Handler
 
@@ -136,16 +148,16 @@ ELSE:
 **Webhook attuale**: `5877058c-19fd-4f26-add4-66b3526c4a96`
 **Priorità**: P0
 
-### 1.1 Webhook Input Schema
+### 1.1 Webhook Input Schema (v2.4 UPDATED)
 
 Il webhook deve accettare questo payload completo:
 
 ```json
 {
   "prompt_version_id": "uuid-del-prompt",
-  "mode": "single",                          // "single" | "full_cycle" | "full_cycle_with_review"
-  "max_iterations": 3,                       // solo per full_cycle modes
-  "tool_scenario_id": "uuid-scenario",       // riferimento a tool_mock_scenarios
+  "mode": "single",                          // "single" | "full_cycle_with_review" (v2.4: rimosso "full_cycle")
+  "max_iterations": 3,                       // solo per full_cycle_with_review
+  "tool_scenario_id": "happy_path",          // v2.4: VARCHAR string ID (non UUID!)
   "tool_mocks_override": {                   // opzionale, override inline
     "check_calendar": {
       "success": true,
@@ -158,9 +170,9 @@ Il webhook deve accettare questo payload completo:
 
 **Validazione richiesta**:
 - `prompt_version_id`: REQUIRED, UUID format
-- `mode`: REQUIRED, enum check
+- `mode`: REQUIRED, enum check (`single` | `full_cycle_with_review`)
 - `max_iterations`: DEFAULT 1 se non fornito
-- `tool_scenario_id`: OPTIONAL, se NULL usa scenario con `is_default=true`
+- `tool_scenario_id`: OPTIONAL VARCHAR, valori: 'happy_path' | 'calendar_full' | 'booking_fails' | 'partial_availability'
 
 **Status**: [ ] Da implementare
 
@@ -193,78 +205,48 @@ WHERE id = {{ $json.prompt_version_id }}::uuid
 
 ---
 
-### 1.3 Get Personas - Filtrare per Prompt (AUDIT FIX)
+### 1.3 Get Personas - Filtrare per Prompt (v2.4 SIMPLIFIED)
 
 **Attuale**: `SELECT * FROM personas` (prende TUTTE)
 **Target**: JOIN con `prompt_personas` per filtrare + **validation_status check**
 
-> ⚠️ **AUDIT FIX CRITICO**: Aggiunto filtro `validation_status = 'validated'` per evitare che personas non validate entrino nei test.
+> ⚠️ **AUDIT FIX CRITICO**: Filtro `validation_status = 'validated'` obbligatorio.
+> **v2.4**: Query semplificata - rimosso override_config e version-specific binding.
 
-**Query nuova** (ottimizzata con UNION):
+**Query nuova** (v2.4 semplificata):
 ```sql
--- CTE per personas generiche (non version-specific)
-WITH general_personas AS (
-  SELECT
-    p.id,
-    p.personaid,
-    p.name,
-    p.personaprompt,
-    p.category,
-    p.validation_status,
-    pp.priority,
-    pp.override_config,
-    1 as source_priority  -- Lower priority than version-specific
-  FROM personas p
-  JOIN prompt_personas pp ON p.id = pp.persona_id
-  WHERE pp.prompt_name = {{ $json.prompt_name }}
-    AND pp.prompt_version_id IS NULL  -- Generic association
-    AND pp.is_active = true
-    AND p.validation_status = 'validated'  -- ⚠️ CRITICAL: Solo personas validate
-),
--- CTE per personas version-specific
-version_personas AS (
-  SELECT
-    p.id,
-    p.personaid,
-    p.name,
-    p.personaprompt,
-    p.category,
-    p.validation_status,
-    pp.priority,
-    pp.override_config,
-    0 as source_priority  -- Higher priority (version-specific wins)
-  FROM personas p
-  JOIN prompt_personas pp ON p.id = pp.persona_id
-  WHERE pp.prompt_name = {{ $json.prompt_name }}
-    AND pp.prompt_version_id = {{ $json.prompt_version_id }}::uuid
-    AND pp.is_active = true
-    AND p.validation_status = 'validated'  -- ⚠️ CRITICAL: Solo personas validate
-)
--- Merge con deduplication (version-specific wins)
-SELECT DISTINCT ON (id)
-  id, personaid, name, personaprompt, category, validation_status, priority, override_config
-FROM (
-  SELECT * FROM general_personas
-  UNION ALL
-  SELECT * FROM version_personas
-) combined
-ORDER BY id, source_priority, priority
+SELECT
+  p.id,
+  p.personaid,
+  p.name,
+  p.personaprompt,
+  p.category,
+  p.difficulty,
+  pp.priority
+FROM personas p
+JOIN prompt_personas pp ON p.id = pp.persona_id
+WHERE pp.prompt_name = {{ $json.prompt_name }}
+  AND pp.is_active = true
+  AND p.validation_status = 'validated'  -- ⚠️ CRITICAL: Solo personas validate
+ORDER BY pp.priority, p.category
 ```
 
 **Note**:
 - Serve prima estrarre `prompt_name` dal record di `prompt_versions`
 - Se `prompt_personas` è vuota per quel prompt, il test non avrà personas (comportamento corretto)
-- **UNION invece di OR** per performance (evita full table scan)
-- `validation_status = 'validated'` esclude personas pending/rejected/needs_revision
+- `validation_status = 'validated'` esclude personas non validate
+- v2.4: Solo 2 stati ('pending', 'validated') - se fallisce → elimina e ricrea
 
 **Status**: [ ] Da implementare
 
 ---
 
-### 1.4 Create test_run - Usare Nuova Tabella
+### 1.4 Create test_run - Usare Nuova Tabella (v2.4 UPDATED)
 
 **Attuale**: Insert in `testruns` (legacy, text IDs)
 **Target**: Insert in `test_runs` (nuova, UUID)
+
+> **v2.4**: Rimosso `cycle_state` (recovery manuale per MVP).
 
 **Insert nuova**:
 ```sql
@@ -277,7 +259,7 @@ INSERT INTO test_runs (
   current_iteration,
   tool_scenario_id,
   test_config,
-  cycle_state,
+  llm_config,
   status
 ) VALUES (
   {{ 'RUN-' + $now.format('YYYYMMDD-HHmmss') }},
@@ -286,19 +268,12 @@ INSERT INTO test_runs (
   {{ $json.mode || 'single' }},
   {{ $json.max_iterations || 1 }},
   1,
-  {{ $json.tool_scenario_id ? "'" + $json.tool_scenario_id + "'::uuid" : 'NULL' }},
+  {{ $json.tool_scenario_id ? "'" + $json.tool_scenario_id + "'" : 'NULL' }},  -- v2.4: VARCHAR not UUID
   {{ $json.tool_mocks_override ? JSON.stringify({tool_mocks_override: $json.tool_mocks_override}) : '{}' }}::jsonb,
-  '{"current_step": "test_runner", "completed_steps": []}'::jsonb,
+  {{ JSON.stringify({battleLlm: $json.battleLlm || 'gpt-4.1-mini', evaluatorLlm: $json.evaluatorLlm || 'claude-sonnet-4'}) }}::jsonb,
   'running'
 )
 RETURNING id, test_run_code
-```
-
-**Dopo insert, aggiorna cycle_state**:
-```sql
-UPDATE test_runs
-SET cycle_state = jsonb_set(cycle_state, '{step_started_at}', to_jsonb(NOW()::text))
-WHERE id = {{ $json.test_run_id }}::uuid
 ```
 
 **Status**: [ ] Da implementare

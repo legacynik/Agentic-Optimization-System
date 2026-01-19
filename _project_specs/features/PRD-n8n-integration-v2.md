@@ -1,12 +1,23 @@
 # PRD: n8n Integration v2 - Full Cycle Testing System
 
-**Version**: 2.3 Lean
+**Version**: 2.4 Lean
 **Author**: Claude + User
 **Date**: 2026-01-19
 **Status**: Ready for Implementation (MVP Single-User)
 
-> ⚠️ **v2.3 LEAN**: Questa versione rimuove over-engineering per MVP single-user.
-> Features enterprise spostate in `ROADMAP-enterprise-features.md`.
+> ⚠️ **v2.4 LEAN**: Versione ultra-semplificata per MVP single-user.
+> Enterprise features in `ROADMAP-enterprise-features.md`.
+>
+> **Changelog v2.4 da v2.3:**
+> - Rimosso FK `tool_scenario_id` → VARCHAR con CHECK constraint
+> - Rimosso `full_cycle` mode → solo `single` | `full_cycle_with_review`
+> - Rimosso `/api/tool-scenarios` endpoints → scenari hardcoded
+> - Rimosso `cycle_state` JSONB → recovery manuale per MVP
+> - Semplificato `prompt_personas` → no override_config
+> - Ridotto `validation_status` → solo 'pending' | 'validated'
+> - Semplificato LLM config → selezione senza costi realtime
+> - Aggiunto n8n Implementation Notes section
+> - Ottimizzato Check Abort → 2 punti invece di 4+
 
 ---
 
@@ -25,10 +36,11 @@ Sistema di testing per AI agents che integra dashboard Next.js con workflow n8n.
 - **SI** Kill Switch per fermare test in corso
 - **SI** Cost Estimation prima di lanciare test
 
-### Modalità Test
+### Modalità Test (v2.4 Simplified)
 - **Single Test**: Test → Evaluate → STOP
 - **Full Cycle with Review**: Test → Evaluate → Analyze → **Human Review** → Optimize → Loop
-- ~~Full Cycle Auto~~: **RIMOSSO** (vedi `ROADMAP-enterprise-features.md`)
+
+> ~~Full Cycle Auto~~: **RIMOSSO** in v2.3 (vedi `ROADMAP-enterprise-features.md`)
 
 ### Human-in-the-Loop (OBBLIGATORIO)
 - **Note Umane**: Aggiungere note analizzando conversations
@@ -218,7 +230,7 @@ battle_results (nuova)
 │                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
 │  │  1. TEST RUNNER WORKFLOW                                           │ │
-│  │     [Webhook] ← { prompt_version_id, mode: "single"|"full_cycle" } │ │
+│  │     [Webhook] ← { prompt_version_id, mode: "single"|"full_cycle_with_review" } │ │
 │  │         ↓                                                          │ │
 │  │     [Get prompt from prompt_versions]                              │ │
 │  │         ↓                                                          │ │
@@ -244,7 +256,7 @@ battle_results (nuova)
 │  │     [Update test_run aggregates]                                   │ │
 │  │         ↓                                                          │ │
 │  │     IF mode="single" → STOP                                        │ │
-│  │     IF mode="full_cycle" → [Trigger Analyzer with test_run_id]     │ │
+│  │     IF mode="full_cycle_with_review" → [Trigger Analyzer]          │ │
 │  └────────────────────────────────────────────────────────────────────┘ │
 │                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────┐ │
@@ -313,7 +325,7 @@ Conversations Explorer UI
 
 **Nessuna duplicazione**: `n8n_chat_histories` è la fonte, `battle_results` contiene la copia strutturata finale.
 
-### 3.4 Test Modes
+### 3.4 Test Modes (v2.4 Simplified)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -323,20 +335,25 @@ Conversations Explorer UI
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  FULL CYCLE MODE (con max_iterations)                           │
+│  FULL CYCLE WITH REVIEW MODE (con max_iterations)               │
+│  ⚠️ HUMAN REVIEW OBBLIGATORIO prima di ogni iterazione         │
 │                                                                  │
 │  ┌─────────┐    ┌───────────┐    ┌──────────┐    ┌───────────┐ │
-│  │  Test   │───►│ Evaluator │───►│ Analyzer │───►│ Optimizer │ │
-│  │ Runner  │    │           │    │          │    │           │ │
+│  │  Test   │───►│ Evaluator │───►│ Analyzer │───►│  HUMAN    │ │
+│  │ Runner  │    │           │    │          │    │  REVIEW   │ │
 │  └─────────┘    └───────────┘    └──────────┘    └─────┬─────┘ │
 │       ▲                                                │        │
+│       │                                          [APPROVE]      │
 │       │                                                │        │
-│       │         IF iteration < max_iterations          │        │
-│       └────────────────────────────────────────────────┘        │
+│       │    ┌───────────┐                               │        │
+│       └────│ Optimizer │◄──────────────────────────────┘        │
+│            └───────────┘                                        │
 │                                                                  │
-│  STOP when: iteration >= max_iterations OR human_stop           │
+│  STOP when: iteration >= max_iterations OR human_stop/reject    │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+> **v2.4**: Rimosso `full_cycle` (auto loop). Solo `full_cycle_with_review` disponibile.
 
 ### 3.5 Human-in-the-Loop Integration
 
@@ -365,7 +382,7 @@ Conversations Explorer UI
 │  3. Feedback salvato in personas.feedback_notes (JSONB array)   │
 │  4. Personas Validator considera feedback nel re-test           │
 │  5. Persona migliorata iterativamente (max 3 tentativi)         │
-│  6. Se ancora failed → validation_status = 'needs_human_review' │
+│  6. Se ancora failed → elimina e ricrea (MVP: no 'needs_human_review') │
 │                                                                  │
 │  API: POST /api/personas/:id/feedback                           │
 │  Body: { "note": "...", "from_battle_result_id": "uuid" }       │
@@ -476,50 +493,26 @@ interface RetryPolicy {
 }
 ```
 
-### 4.2 prompt_personas (NEW - Junction with Override)
+### 4.2 prompt_personas (NEW - Simple Junction)
 
-Relazione many-to-many tra prompt_versions e personas con supporto per override.
+> **v2.4 SIMPLIFIED**: Rimosso override_config e version-specific binding.
+> Se serve config diversa per una versione → crea una nuova persona.
 
 ```sql
 CREATE TABLE prompt_personas (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-
-  -- Riferimenti: uso prompt_name per consistenza tra versioni
+  -- Chiave composita semplice
   persona_id UUID NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
-  prompt_name VARCHAR(255) NOT NULL, -- Es: "qual-audit-sa" (non version!)
+  prompt_name VARCHAR(255) NOT NULL, -- Es: "qual-audit-sa"
 
-  -- Opzionale: override per specifica versione
-  prompt_version_id UUID REFERENCES prompt_versions(id) ON DELETE CASCADE,
-  -- NULL = vale per tutte le versioni di quel prompt_name
-
-  -- Override configurazione persona per questo prompt
-  override_config JSONB,
-  -- Es: { "difficulty_override": "hard", "behaviors_add": ["menziona competitor X"] }
-
-  priority INTEGER DEFAULT 0, -- Ordine nei test
   is_active BOOLEAN DEFAULT true,
+  priority INTEGER DEFAULT 0,  -- Ordine nei test
+  created_at TIMESTAMPTZ DEFAULT NOW(),
 
-  created_at TIMESTAMPTZ DEFAULT NOW()
-
-  -- NOTE: Constraint UNIQUE con magic UUID rimosso per evitare ambiguità
-  -- Usare partial unique indexes invece (vedi sotto)
+  PRIMARY KEY (persona_id, prompt_name)
 );
-
--- Partial unique indexes: più robusti del COALESCE con magic UUID
--- Index per personas associate a specifica versione
-CREATE UNIQUE INDEX idx_unique_prompt_personas_versioned
-  ON prompt_personas(persona_id, prompt_name, prompt_version_id)
-  WHERE prompt_version_id IS NOT NULL;
-
--- Index per personas associate a tutte le versioni (general)
-CREATE UNIQUE INDEX idx_unique_prompt_personas_general
-  ON prompt_personas(persona_id, prompt_name)
-  WHERE prompt_version_id IS NULL;
 
 -- Indexes per query
 CREATE INDEX idx_prompt_personas_prompt_name ON prompt_personas(prompt_name);
-CREATE INDEX idx_prompt_personas_persona ON prompt_personas(persona_id);
-CREATE INDEX idx_prompt_personas_version ON prompt_personas(prompt_version_id) WHERE prompt_version_id IS NOT NULL;
 
 -- RLS
 ALTER TABLE prompt_personas ENABLE ROW LEVEL SECURITY;
@@ -528,58 +521,25 @@ CREATE POLICY "Allow all for now" ON prompt_personas FOR ALL USING (true);
 
 ### 4.3 Query Personas per Test Run
 
-```sql
--- Get personas for a specific prompt (with overrides applied)
--- AUDIT FIX: Filtra solo personas validate + usa UNION per performance
+> **v2.4 SIMPLIFIED**: Query diretta senza UNION, override_config rimosso.
 
--- Query ottimizzata: UNION invece di OR per migliore utilizzo indici
-WITH general_personas AS (
-  -- Personas associate a tutte le versioni di questo prompt
-  SELECT
-    p.id,
-    p.personaid,
-    p.name,
-    p.personaprompt,
-    p.category,
-    COALESCE(pp.override_config->>'difficulty_override', 'medium') as effective_difficulty,
-    pp.override_config,
-    pp.priority,
-    1 as source_priority  -- Version-specific ha priorità
-  FROM personas p
-  JOIN prompt_personas pp ON p.id = pp.persona_id
-  WHERE pp.prompt_name = :prompt_name
-    AND pp.prompt_version_id IS NULL
-    AND pp.is_active = true
-    AND p.validation_status = 'validated'  -- ⚠️ CRITICAL: solo validate!
-),
-version_personas AS (
-  -- Personas associate a questa specifica versione
-  SELECT
-    p.id,
-    p.personaid,
-    p.name,
-    p.personaprompt,
-    p.category,
-    COALESCE(pp.override_config->>'difficulty_override', 'medium') as effective_difficulty,
-    pp.override_config,
-    pp.priority,
-    0 as source_priority
-  FROM personas p
-  JOIN prompt_personas pp ON p.id = pp.persona_id
-  WHERE pp.prompt_name = :prompt_name
-    AND pp.prompt_version_id = :prompt_version_id
-    AND pp.is_active = true
-    AND p.validation_status = 'validated'  -- ⚠️ CRITICAL: solo validate!
-)
-SELECT DISTINCT ON (id)
-  id, personaid, name, personaprompt, category,
-  effective_difficulty, override_config, priority
-FROM (
-  SELECT * FROM general_personas
-  UNION ALL
-  SELECT * FROM version_personas
-) combined
-ORDER BY id, source_priority, priority, category
+```sql
+-- Get personas for a specific prompt
+-- AUDIT FIX: Filtra solo personas validate (validation_status = 'validated')
+SELECT
+  p.id,
+  p.personaid,
+  p.name,
+  p.personaprompt,
+  p.category,
+  p.difficulty,  -- Usa difficulty della persona direttamente
+  pp.priority
+FROM personas p
+JOIN prompt_personas pp ON p.id = pp.persona_id
+WHERE pp.prompt_name = :prompt_name
+  AND pp.is_active = true
+  AND p.validation_status = 'validated'  -- ⚠️ CRITICAL: solo validate!
+ORDER BY pp.priority, p.category
 LIMIT :limit OFFSET :offset;  -- Default: LIMIT 100 OFFSET 0
 ```
 
@@ -732,9 +692,9 @@ if (tool_mocks_override) {
 Aggiunte alla tabella test_runs per supportare test modes e tool mocking.
 
 ```sql
--- Aggiungi colonne per test modes
-ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS mode VARCHAR(20) DEFAULT 'single'
-  CHECK (mode IN ('single', 'full_cycle', 'full_cycle_with_review'));
+-- Aggiungi colonne per test modes (v2.4: rimosso 'full_cycle')
+ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS mode VARCHAR(30) DEFAULT 'single'
+  CHECK (mode IN ('single', 'full_cycle_with_review'));
 ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS max_iterations INTEGER DEFAULT 1;
 ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS current_iteration INTEGER DEFAULT 1;
 
@@ -747,30 +707,17 @@ ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS stopped_reason VARCHAR(50);
 ALTER TABLE test_runs ADD CONSTRAINT valid_stopped_reason
   CHECK (stopped_reason IN ('max_iterations_reached', 'human_stop', 'target_score_reached', 'error') OR stopped_reason IS NULL);
 
--- Riferimento a tool mock scenario con ON DELETE SET NULL
-ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS tool_scenario_id UUID;
-ALTER TABLE test_runs ADD CONSTRAINT fk_tool_scenario
-  FOREIGN KEY (tool_scenario_id) REFERENCES tool_mock_scenarios(id) ON DELETE SET NULL;
+-- Riferimento a tool mock scenario (VARCHAR - scenari hardcoded, no FK)
+-- v2.4: Rimosso FK a tool_mock_scenarios (tabella eliminata, scenari hardcoded)
+ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS tool_scenario_id VARCHAR(50);
+ALTER TABLE test_runs ADD CONSTRAINT valid_tool_scenario
+  CHECK (tool_scenario_id IN ('happy_path', 'calendar_full', 'booking_fails', 'partial_availability') OR tool_scenario_id IS NULL);
 
 -- Heartbeat per stale run detection (ARCHITECT FIX)
 ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS last_heartbeat_at TIMESTAMPTZ DEFAULT NOW();
 
--- Cycle state per recovery (se workflow fallisce a metà)
-ALTER TABLE test_runs ADD COLUMN IF NOT EXISTS cycle_state JSONB DEFAULT '{}';
-
--- JSONB validation constraint
-ALTER TABLE test_runs ADD CONSTRAINT valid_cycle_state
-  CHECK (jsonb_typeof(cycle_state) = 'object');
-/*
-Formato cycle_state:
-{
-  "current_step": "evaluator",     -- test_runner | evaluator | analyzer | optimizer
-  "step_started_at": "timestamp",
-  "retries": 0,
-  "last_error": null,
-  "completed_steps": ["test_runner"]
-}
-*/
+-- v2.4: RIMOSSO cycle_state - per single-user MVP, se fallisce si rilancia manualmente
+-- Enterprise feature: vedi ROADMAP-enterprise-features.md per recovery automatico
 
 -- Estendi test_config per includere override tool mocks inline
 -- test_config JSONB può contenere:
@@ -805,9 +752,9 @@ INSERT INTO workflow_configs (workflow_type, webhook_url, config) VALUES
 │  TEST LAUNCHER (Dashboard)                                       │
 │                                                                  │
 │  [Select Prompt Version]                                         │
-│  [Select Test Mode: Single / Full Cycle]                        │
+│  [Select Test Mode: Single / Full Cycle with Review]            │
 │  [Select Tool Scenario: happy_path ▼]  ← dropdown               │
-│  [Max Iterations: 3] (se full_cycle)                            │
+│  [Max Iterations: 3] (se full_cycle_with_review)                │
 │                                                                  │
 │  [▶ START TEST]                                                  │
 └──────────────────────────┬──────────────────────────────────────┘
@@ -854,11 +801,16 @@ INSERT INTO workflow_configs (workflow_type, webhook_url, config) VALUES
 
 Aggiunte alla tabella personas per validation e feedback.
 
+> **v2.4 SIMPLIFIED**: Solo 2 stati di validazione: `pending` e `validated`.
+> Se una persona fallisce validazione → eliminala e ricreala.
+
 ```sql
--- Stato validazione persona (dopo creazione da AI)
+-- Stato validazione persona (v2.4: solo 2 stati)
 ALTER TABLE personas ADD COLUMN IF NOT EXISTS validation_status VARCHAR(50)
   DEFAULT 'pending'
-  CHECK (validation_status IN ('pending', 'validating', 'validated', 'failed', 'needs_human_review'));
+  CHECK (validation_status IN ('pending', 'validated'));
+-- NOTE: 'validating', 'failed', 'needs_human_review' rimossi in v2.4
+-- Se fallisce → DELETE e ricrea. Più semplice per MVP single-user.
 
 -- Note feedback umane sulla persona (JSONB array validation)
 ALTER TABLE personas ADD COLUMN IF NOT EXISTS feedback_notes JSONB DEFAULT '[]';
@@ -876,8 +828,7 @@ Formato:
 ]
 */
 
--- Timestamp per trigger re-validation quando feedback aggiunto (ARCHITECT FIX)
-ALTER TABLE personas ADD COLUMN IF NOT EXISTS feedback_updated_at TIMESTAMPTZ;
+-- v2.4: Rimosso feedback_updated_at timestamp (gestito in app code)
 
 -- Prompt usato per validare la persona (con ON DELETE SET NULL)
 ALTER TABLE personas ADD COLUMN IF NOT EXISTS validation_prompt_id UUID;
@@ -888,25 +839,9 @@ ALTER TABLE personas ADD CONSTRAINT fk_validation_prompt
 CREATE INDEX IF NOT EXISTS idx_personas_validation_status ON personas(validation_status)
   WHERE validation_status != 'validated';
 
--- Trigger per aggiornare feedback_updated_at quando feedback_notes cambia
-CREATE OR REPLACE FUNCTION update_feedback_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF OLD.feedback_notes IS DISTINCT FROM NEW.feedback_notes THEN
-    NEW.feedback_updated_at := NOW();
-    -- Opzionale: reset validation_status per trigger re-validation
-    IF NEW.validation_status = 'validated' THEN
-      NEW.validation_status := 'needs_human_review';
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_update_feedback_timestamp
-  BEFORE UPDATE ON personas
-  FOR EACH ROW
-  EXECUTE FUNCTION update_feedback_timestamp();
+-- v2.4: Rimosso trigger update_feedback_timestamp (overkill per MVP)
+-- La gestione feedback_notes è semplice: INSERT/UPDATE diretto
+-- Se serve trigger futuro → vedi ROADMAP-enterprise-features.md
 ```
 
 ### 4.10 prompt_personas Validation
@@ -1070,30 +1005,24 @@ DELETE /api/personas/:id                // Delete persona
 POST   /api/personas/:id/feedback       // Add feedback note
 POST   /api/personas/generate           // Trigger personas generator
 
-// Prompt Personas (junction)
+// Prompt Personas (junction) - v2.4: no override_config
 GET    /api/prompt-personas/:prompt_name          // Get personas for prompt
 POST   /api/prompt-personas                        // Associate persona to prompt
-PUT    /api/prompt-personas/:id                    // Update override_config
-DELETE /api/prompt-personas/:id                    // Remove association
+DELETE /api/prompt-personas/:persona_id/:prompt_name  // Remove association
 
 // Battle Notes
 GET    /api/battle-notes/:battle_result_id        // Get notes for battle
 POST   /api/battle-notes                          // Add note
 DELETE /api/battle-notes/:id                      // Delete note
 
-// Tool Mock Scenarios
-GET    /api/tool-scenarios                        // List scenarios
-POST   /api/tool-scenarios                        // Create scenario
-PUT    /api/tool-scenarios/:id                    // Update scenario
-DELETE /api/tool-scenarios/:id                    // Delete scenario
+// Tool Mock Scenarios - v2.4: RIMOSSO (scenari hardcoded in lib/tool-scenarios.ts)
+// Usa import { TOOL_SCENARIOS } from '@/lib/tool-scenarios' nel frontend
 
 // n8n Webhooks (receive callbacks)
 POST   /api/n8n/webhook                           // Generic callback handler
 
-// Error Handling & Recovery (AUDIT FIX)
-GET    /api/test-runs/:id/errors                  // Get workflow errors with stack traces
-POST   /api/test-runs/:id/retry                   // Retry from cycle_state.current_step
-POST   /api/test-runs/:id/resume                  // Resume after manual fix
+// Error Handling - v2.4: Simplified (no auto-recovery)
+GET    /api/test-runs/:id/errors                  // Get workflow errors
 ```
 
 ### 4.14 API Contracts (AUDIT FIX: Frontend richiede schemas)
@@ -1108,10 +1037,10 @@ POST   /api/test-runs/:id/resume                  // Resume after manual fix
 // POST /api/test-runs - Create & trigger test
 interface CreateTestRunRequest {
   prompt_version_id: string;  // UUID, required
-  mode: 'single' | 'full_cycle' | 'full_cycle_with_review';
-  tool_scenario_id?: string;  // UUID, optional
+  mode: 'single' | 'full_cycle_with_review';  // v2.4: rimosso 'full_cycle'
+  tool_scenario_id?: string;  // String ID (e.g., 'happy_path'), optional
   tool_mocks_override?: Record<string, ToolMockConfig>;  // Optional inline override
-  max_iterations?: number;  // Default: 1 for single, 5 for full_cycle
+  max_iterations?: number;  // Default: 1 for single, 5 for full_cycle_with_review
 }
 
 interface CreateTestRunResponse {
@@ -1128,27 +1057,20 @@ interface GetTestRunResponse {
   id: string;
   test_run_code: string;
   prompt_version_id: string;
-  mode: 'single' | 'full_cycle' | 'full_cycle_with_review';
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'awaiting_review';
+  mode: 'single' | 'full_cycle_with_review';  // v2.4: rimosso 'full_cycle'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'awaiting_review';  // v2.4: aggiunto 'aborted'
   current_iteration: number;
   max_iterations: number;
   overall_score?: number;
   success_count: number;
   failure_count: number;
   timeout_count: number;
-  cycle_state: CycleState;
+  // v2.4: cycle_state RIMOSSO (recovery manuale per MVP)
   last_heartbeat_at: string;  // ISO 8601
   started_at: string;
   completed_at?: string;
+  stopped_reason?: 'max_iterations_reached' | 'human_stop' | 'target_score_reached' | 'error';  // v2.4: esplicitato
   battle_results: BattleResultSummary[];
-}
-
-interface CycleState {
-  current_step: 'test_runner' | 'evaluator' | 'analyzer' | 'optimizer' | 'awaiting_review';
-  step_started_at?: string;
-  retries: number;
-  last_error?: string;
-  completed_steps: string[];
 }
 
 interface BattleResultSummary {
@@ -1745,20 +1667,27 @@ if (result.rows[0]?.status === 'aborted') {
 return { abort: false };
 ```
 
-**Posizionamento in n8n**:
+**Posizionamento in n8n (v2.4 OPTIMIZED - solo 2 check)**:
+
+> ⚠️ **v2.4**: Ridotto da 4+ a 2 check points per semplicità.
+> Check 1: All'inizio del loop (prima di ogni iterazione)
+> Check 2: Dopo la chiamata LLM (operazione più lunga, ~30s)
+
 ```
-[Start] → [Check Abort] → [Loop Personas]
-                              ↓
-                    [Check Abort] → [Execute Battle] → [Check Abort] → [Save Result]
-                                                                           ↓
-                                                              [Check Abort] → [Continue Loop]
+[Start] → [Loop Personas]
+               ↓
+     [Check Abort] → [Execute Battle (LLM call)] → [Check Abort] → [Save] → [Continue]
 ```
+
+**Rationale**: Un check a inizio loop + uno dopo LLM call copre il 95% dei casi.
+Chiamate LLM sono l'operazione più lunga (~30s), quindi il check post-LLM è critico.
 
 ---
 
-## 10. Cost Estimation (v2.3 NEW)
+## 10. LLM Configuration & Cost Estimation (v2.4 Simplified)
 
-> Stima costi PRIMA di lanciare test per evitare sorprese sul budget API.
+> **v2.4**: LLM selection mantenuto, cost estimation UI **DEFERRED** a Phase 8.
+> Per MVP: selezione LLM funziona, costi calcolati a posteriori analizzando usage.
 
 ### 10.1 LLM Configuration
 
@@ -1909,59 +1838,45 @@ export function estimateTestCost(config: {
 }
 ```
 
-### 10.4 UI Warning
+### 10.4 UI Cost Warning (DEFERRED to Phase 8)
 
-**Prima di "Run Test"**:
+> **v2.4**: Cost estimation UI deferred. Per MVP, focus su LLM selection.
+> La formula in 10.3 può essere usata per calcoli manuali o implementata in Phase 8.
+
+**Per MVP**: Solo LLM selection dropdowns, senza real-time cost display.
+
 ```typescript
+// Test Launcher - MVP version (no cost estimate)
 function TestLauncherForm() {
-  const [estimate, setEstimate] = useState<CostEstimate | null>(null);
-
-  useEffect(() => {
-    const est = estimateTestCost({
-      personaCount: selectedPersonas.length,
-      avgTurnsPerBattle: 8,
-      iterations: mode === 'single' ? 1 : maxIterations,
-      mode,
-      battleLlm: battleAgentLlm,
-      evaluatorLlm: evaluatorLlm,
-      analyzerLlm: mode === 'full_cycle_with_review' ? analyzerLlm : undefined
-    });
-    setEstimate(est);
-  }, [selectedPersonas, mode, maxIterations, battleAgentLlm, evaluatorLlm]);
-
   return (
     <form>
-      {/* ... form fields ... */}
+      {/* LLM Selection */}
+      <Select value={battleLlm} onValueChange={setBattleLlm}>
+        <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini (Recommended)</SelectItem>
+        <SelectItem value="gpt-5-mini">GPT-5 Mini</SelectItem>
+      </Select>
 
-      {estimate && (
-        <Alert variant={estimate.totalUsd > 5 ? 'warning' : 'info'}>
-          <DollarSign className="h-4 w-4" />
-          <AlertTitle>Estimated Cost: ${estimate.totalUsd}</AlertTitle>
-          <AlertDescription>
-            Battles: ${estimate.breakdown.battles} |
-            Evaluations: ${estimate.breakdown.evaluations}
-            {estimate.breakdown.analysis && ` | Analysis: $${estimate.breakdown.analysis}`}
-          </AlertDescription>
-        </Alert>
-      )}
+      <Select value={evaluatorLlm} onValueChange={setEvaluatorLlm}>
+        <SelectItem value="claude-sonnet-4">Claude Sonnet 4 (Recommended)</SelectItem>
+        <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+      </Select>
 
-      <Button type="submit">
-        Run Test (~${estimate?.totalUsd || '?'})
-      </Button>
+      <Button type="submit">Run Test</Button>
     </form>
   );
 }
 ```
 
-### 10.5 Post-Test Tracking (Optional)
+### 10.5 LLM Config Storage
 
-Salvare costo stimato in `test_runs` per tracking:
+Salvare configurazione LLM usata in `test_runs`:
 
 ```sql
-ALTER TABLE test_runs ADD COLUMN estimated_cost_usd DECIMAL(10,4);
 ALTER TABLE test_runs ADD COLUMN llm_config JSONB;
 -- llm_config: { battleLlm: 'gpt-4.1-mini', evaluatorLlm: 'claude-sonnet-4', ... }
 ```
+
+> **Phase 8**: Aggiungere `estimated_cost_usd` e real-time cost UI.
 
 ---
 
@@ -1973,8 +1888,79 @@ ALTER TABLE test_runs ADD COLUMN llm_config JSONB;
 - [ ] Personas filtrate correttamente per prompt
 - [ ] Settings configurabili senza deploy
 - [ ] **Kill switch funzionante** (v2.3)
-- [ ] **Cost estimate visibile prima di run** (v2.3)
+- [ ] ~~Cost estimate visibile prima di run~~ → **DEFERRED to Phase 8** (v2.4)
 - [ ] Full cycle with review funzionante
+- [ ] **LLM selection funzionante** (v2.4)
+
+---
+
+## 11a. n8n Implementation Notes (v2.4 NEW)
+
+> ⚠️ **CRITICAL**: Questa sezione documenta l'effort nascosto per implementare n8n callbacks.
+
+### 11a.1 Callback Implementation Effort
+
+**Per OGNI workflow n8n**, devi aggiungere manualmente:
+
+| Task | Tempo stimato | Note |
+|------|---------------|------|
+| HTTP Request node per callback | 10 min | A fine workflow |
+| Header `x-n8n-secret` | 5 min | Per autenticazione |
+| Payload N8nCallbackPayload | 10 min | Struttura corretta |
+| Error handling con callback | 15 min | Per notificare fallimenti |
+| **TOTALE per workflow** | **~40 min** | |
+
+### 11a.2 HTTP Request Node Template
+
+**Aggiungi questo alla fine di OGNI workflow n8n**:
+
+```
+Node Type: HTTP Request
+Method: POST
+URL: {{ $env.DASHBOARD_CALLBACK_URL }}/api/n8n/webhook
+
+Headers:
+- Content-Type: application/json
+- x-n8n-secret: {{ $env.N8N_SECRET }}
+
+Body (JSON):
+{
+  "workflow_type": "test_runner",  // Cambia per workflow
+  "test_run_id": "{{ $json.test_run_id }}",
+  "status": "completed",
+  "result": {
+    "battles_completed": {{ $json.battles.length }},
+    "overall_score": {{ $json.average_score }}
+  }
+}
+```
+
+### 11a.3 Progress Callbacks (Optional but Recommended)
+
+Per test lunghi, aggiungi callback progress dentro il Loop:
+
+```
+// Dopo ogni iterazione del loop
+{
+  "workflow_type": "test_runner",
+  "test_run_id": "{{ $json.test_run_id }}",
+  "status": "progress",
+  "progress": {
+    "current": {{ $itemIndex + 1 }},
+    "total": {{ $items.length }},
+    "current_persona": "{{ $json.persona_name }}"
+  }
+}
+```
+
+### 11a.4 Environment Variables Required in n8n
+
+```
+DASHBOARD_CALLBACK_URL=https://your-dashboard.vercel.app
+N8N_SECRET=your-secret-from-env-local
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_KEY=your-service-key
+```
 
 ---
 
@@ -2222,16 +2208,24 @@ function DataComponent({ data, isLoading, error }) {
 }
 ```
 
-### 10.8 Validation Status Badges
+### 10.8 Validation Status Badges (v2.4 Simplified)
 
-**Tutti gli stati da supportare in PersonaWorkshop**:
+**Solo 2 stati da supportare in PersonaWorkshop**:
 ```tsx
+// v2.4: Ridotto da 5 a 2 stati
 const validationStatusBadges = {
-  pending: <Badge variant="secondary">Pending</Badge>,
-  validating: <Badge variant="outline"><Spinner size="sm" /> Validating...</Badge>,
+  pending: <Badge variant="secondary">Pending Validation</Badge>,
   validated: <Badge variant="success">✓ Validated</Badge>,
+};
+
+// Test Run Status Badges (include 'aborted')
+const testRunStatusBadges = {
+  pending: <Badge variant="secondary">Pending</Badge>,
+  running: <Badge variant="outline"><Spinner size="sm" /> Running...</Badge>,
+  completed: <Badge variant="success">✓ Completed</Badge>,
   failed: <Badge variant="destructive">✗ Failed</Badge>,
-  needs_human_review: <Badge variant="warning">⚠️ Needs Review</Badge>,
+  aborted: <Badge variant="warning">⚠️ Aborted</Badge>,  // v2.4 NEW
+  awaiting_review: <Badge variant="outline">👁 Awaiting Review</Badge>,
 };
 ```
 
@@ -2377,9 +2371,9 @@ Prima di considerare ogni Phase completa:
 **Phase 4 E2E Tests**:
 - [ ] Test: dashboard → API → n8n webhook → callback → status update → results visible
 
-**Phase 5 Cost Estimation Tests**:
-- [ ] Test: cost estimate visibile prima di "Run Test"
-- [ ] Test: estimate cambia con LLM selection
+**Phase 5 LLM Selection Tests** (v2.4: Cost UI deferred):
+- [ ] Test: LLM selection dropdown funziona
+- [ ] Test: LLM config salvato in test_runs.llm_config
 
 ---
 
@@ -2472,3 +2466,18 @@ Prima di considerare ogni Phase completa:
   - **IMPL**: Phase 7 rinominata "Assisted Optimization" (human review required)
   - **MANUAL**: Lista semplificata (solo 3 task CRITICAL invece di 4)
   - **SAVINGS**: ~40% tempo sviluppo stimato
+- **v2.4 Lean** (2026-01-19) - Ultra-semplificazione post-audit:
+  - **FIX CRITICO**: Rimosso FK `tool_scenario_id` → VARCHAR con CHECK constraint
+  - **FIX CRITICO**: Rimosso `full_cycle` mode → solo `single` | `full_cycle_with_review`
+  - **FIX CRITICO**: Rimosso `/api/tool-scenarios` endpoints (scenari hardcoded)
+  - **FIX CRITICO**: Aggiunto stato `aborted` a UI badges
+  - **SCHEMA**: Semplificato `prompt_personas` (rimosso `override_config`)
+  - **SCHEMA**: Ridotto `validation_status` da 5 a 2 stati ('pending', 'validated')
+  - **SCHEMA**: Rimosso `cycle_state` JSONB (recovery manuale per MVP)
+  - **SCHEMA**: Rimosso trigger `update_feedback_timestamp` (overkill)
+  - **API**: Rimosso endpoint `/api/test-runs/:id/retry` (no auto-recovery)
+  - **UI**: LLM selection mantenuto, Cost estimation UI deferred a Phase 8
+  - **UI**: Semplificato validation status badges (solo 2 stati)
+  - **N8N**: Ottimizzato Check Abort da 4+ a 2 punti
+  - **DOCS**: Aggiunta sezione 11a n8n Implementation Notes (~40min/workflow)
+  - **SAVINGS**: Ulteriore ~15% semplificazione rispetto a v2.3
