@@ -1,0 +1,1341 @@
+{
+  "name": "Test Battle Agent v1.0",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "personasid"
+            },
+            {
+              "name": "agentPrompt"
+            },
+            {
+              "name": "personasPrompt"
+            },
+            {
+              "name": "TestRunID"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        -32
+      ],
+      "id": "1061f347-450b-4c7b-a7a3-bf64ad8b46a9",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Inizia salutando se non hai memoria o continua la conversazione.\nStai facendo una chiamata, porta avanti la conversazione con output solo conversazionali.",
+        "options": {
+          "systemMessage": "={{ $('When Executed by Another Workflow').item.json.agentPrompt }}",
+          "returnIntermediateSteps": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1328,
+        -16
+      ],
+      "id": "2ef287ce-bde4-4543-99b0-51d7f0bb0a5c",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        176
+      ],
+      "id": "829387de-3765-4c29-a251-4c5fc3ab362f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "xpYZwRyZjASctgwp",
+          "name": "OpenAi def"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        800,
+        -32
+      ],
+      "id": "bcd13fc6-725b-4207-9265-c3928101b34d",
+      "name": "Loop Over Items",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        784
+      ],
+      "id": "3ead9421-3a45-41cd-af3b-0549f19667f2",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "xpYZwRyZjASctgwp",
+          "name": "OpenAi def"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.convID }}",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1440,
+        176
+      ],
+      "id": "63739408-552c-43f7-8cac-d0c7a7419dd6",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Questo crea 10 \"giri\" per il nostro loop\n// (per un massimo di 20 turni di parola totali)\nreturn Array(30).fill({}).map((_, i) => ({ json: { loop_index: i } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -32
+      ],
+      "id": "c46f46fa-31ae-413a-ac90-1bd73b4b2e22",
+      "name": "Code",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "turns",
+          "mode": "list",
+          "cachedResultName": "turns"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "conversationid": "={{ $('Edit Fields1').item.json.convID }}",
+            "turnnumber": "={{ $('Edit Fields1').item.json.turnNumber_Agent }}",
+            "speaker": "Agent",
+            "utterance": "={{ $json.output }}",
+            "intermediatesteps_json": "={{ { \"steps\": $json.intermediateSteps } }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "turnid",
+              "displayName": "turnid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "turnnumber",
+              "displayName": "turnnumber",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "speaker",
+              "displayName": "speaker",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "utterance",
+              "displayName": "utterance",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "intermediatesteps_json",
+              "displayName": "intermediatesteps_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1904,
+        112
+      ],
+      "id": "90cbe814-36a8-47d4-b40c-d20121256765",
+      "name": "Registra Turn Agente",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "de5637cf-7005-4288-9971-2ced56c12809",
+              "name": "convID",
+              "value": "={{ $('Insert rows in a table').item.json.conversationid }}",
+              "type": "string"
+            },
+            {
+              "id": "4b48f458-0970-4d93-bd7e-f495158befd8",
+              "name": "turnNumber_Agent",
+              "value": "={{ $('Code').item.json.loop_index * 2 +1 }}",
+              "type": "string"
+            },
+            {
+              "id": "617ddbf4-d135-4573-a8da-e6041fffa3dc",
+              "name": "turnNumber_Persona",
+              "value": "={{ $('Code').item.json.loop_index * 2 +2 }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1072,
+        -16
+      ],
+      "id": "ef19ecb9-cddf-43d5-a338-15dd7c6ce81a",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversations",
+          "mode": "list",
+          "cachedResultName": "conversations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "personaid": "={{ $json.personasid }}",
+            "testrunid": "={{ $json.TestRunID }}",
+            "outcome": "Running"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "testrunid",
+              "displayName": "testrunid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "personaid",
+              "displayName": "personaid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "evaluationscore",
+              "displayName": "evaluationscore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "evaluationsummary",
+              "displayName": "evaluationsummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "evaluatorversion",
+              "displayName": "evaluatorversion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "totalturns",
+              "displayName": "totalturns",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "human_notes",
+              "displayName": "human_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        304,
+        -32
+      ],
+      "id": "6b9cdd03-340a-4dc4-ac9a-b1af1c5eed15",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4dd2fe09-c365-45c3-b17b-3f4d1348fb71",
+              "leftValue": "={{$('AI Agent').item.json.output.toLowerCase().includes('end_call') || $('AI Agent').item.json.output.toLowerCase().includes('arrivederci') || $('AI Agent').item.json.output.toLowerCase().includes('buona giornata')}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1168,
+        528
+      ],
+      "id": "76b1374e-b99e-4834-8bc2-98c19c32aa79",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('AI Agent').item.json.output }}",
+        "options": {
+          "systemMessage": "={{ $('When Executed by Another Workflow').item.json.personasPrompt }}",
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        608
+      ],
+      "id": "0a60c42a-ec9c-4d4a-abb9-53418fb7bbc3",
+      "name": "AI Persona",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Edit Fields1').item.json.convID }}",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1488,
+        784
+      ],
+      "id": "174979b0-a205-4e46-bf8e-72af78b2c39f",
+      "name": "Postgres Chat Memory1",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "turns",
+          "mode": "list",
+          "cachedResultName": "turns"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "conversationid": "={{ $('Edit Fields1').item.json.convID }}",
+            "turnnumber": "={{ $('Edit Fields1').item.json.turnNumber_Persona }}",
+            "speaker": "Persona",
+            "utterance": "={{ $json.output }}",
+            "intermediatesteps_json": "={{ { \"steps\": $json.intermediateSteps } }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "turnid",
+              "displayName": "turnid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "turnnumber",
+              "displayName": "turnnumber",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "speaker",
+              "displayName": "speaker",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "utterance",
+              "displayName": "utterance",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "intermediatesteps_json",
+              "displayName": "intermediatesteps_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1840,
+        688
+      ],
+      "id": "0a6a4bf6-41f8-4c82-90b5-73a3e9411ef0",
+      "name": "Registra Turn Persona",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a76eda15-5dab-4c92-8cd0-1c29c0751143",
+              "leftValue": "={{ \n  $('AI Persona').item.json.output.includes('CHIAMATA_TERMINATA_PERSONA') ||\n  $('AI Persona').item.json.output.toLowerCase().includes('devo andare') ||\n  $('AI Persona').item.json.output.toLowerCase().includes('la saluto')\n}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2112,
+        752
+      ],
+      "id": "bdb338a1-3b10-4227-ab31-cd5af29bec80",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversations",
+          "mode": "list",
+          "cachedResultName": "conversations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "conversationid": "={{ $json.conversationid }}",
+            "totalturns": "={{ $json.turnid }}",
+            "outcome": "Timeout"
+          },
+          "matchingColumns": [
+            "conversationid"
+          ],
+          "schema": [
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "testrunid",
+              "displayName": "testrunid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "personaid",
+              "displayName": "personaid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "evaluationscore",
+              "displayName": "evaluationscore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "evaluationsummary",
+              "displayName": "evaluationsummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "evaluatorversion",
+              "displayName": "evaluatorversion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "totalturns",
+              "displayName": "totalturns",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1136,
+        -240
+      ],
+      "id": "a4e0f61e-e7f8-4da6-b4c1-7cc325b0e138",
+      "name": "end for timeout",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversations",
+          "mode": "list",
+          "cachedResultName": "conversations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "conversationid": "={{ $json.conversationid }}",
+            "totalturns": "={{ $('Edit Fields1').item.json.turnNumber_Agent }}",
+            "outcome": "Success"
+          },
+          "matchingColumns": [
+            "conversationid"
+          ],
+          "schema": [
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "testrunid",
+              "displayName": "testrunid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "personaid",
+              "displayName": "personaid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "evaluationscore",
+              "displayName": "evaluationscore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "evaluationsummary",
+              "displayName": "evaluationsummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "evaluatorversion",
+              "displayName": "evaluatorversion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "totalturns",
+              "displayName": "totalturns",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2304,
+        512
+      ],
+      "id": "65f5cf7f-229c-472c-b524-f461d9c20946",
+      "name": "end for success",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversations",
+          "mode": "list",
+          "cachedResultName": "conversations"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "conversationid": "={{ $('Edit Fields1').item.json.convID }}",
+            "totalturns": "={{ $json.turnNumber_Persona }}",
+            "outcome": "Error"
+          },
+          "matchingColumns": [
+            "conversationid"
+          ],
+          "schema": [
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "testrunid",
+              "displayName": "testrunid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "personaid",
+              "displayName": "personaid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "evaluationscore",
+              "displayName": "evaluationscore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "evaluationsummary",
+              "displayName": "evaluationsummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "evaluatorversion",
+              "displayName": "evaluatorversion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "totalturns",
+              "displayName": "totalturns",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1904,
+        384
+      ],
+      "id": "ffc4771b-08f4-4342-9a3a-1df6d7573e36",
+      "name": "end for error",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        1232
+      ],
+      "id": "0a0699c1-eb71-433a-a18c-f8e9c35120d3",
+      "name": "When clicking ‘Execute workflow’",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a3a2dad-5812-41d1-bd21-cd386d9a9405",
+              "name": "TestRunID",
+              "value": "TEST-1759313111866-qual-sa-audit-v2.1",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        1232
+      ],
+      "id": "ee20fd80-f198-4abf-9c72-d79f0e45366f",
+      "name": "Set testrun to delete"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM evaluationcriteria \nWHERE conversationid IN (SELECT conversationid FROM conversations WHERE testrunid = $1);\n\nDELETE FROM turns \nWHERE conversationid IN (SELECT conversationid FROM conversations WHERE testrunid = $1);\n\nDELETE FROM n8n_chat_histories \nWHERE session_id IN (SELECT conversationid::text FROM conversations WHERE testrunid = $1);\n\nDELETE FROM conversations WHERE testrunid = $1;\n\nDELETE FROM testruns WHERE testrunid = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.TestRunID }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        592,
+        1232
+      ],
+      "id": "5bd84f29-9426-4e86-b398-0fe21f58ad95",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## clean test run",
+        "height": 288,
+        "width": 736
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        96,
+        1104
+      ],
+      "typeVersion": 1,
+      "id": "b7c7ce86-b382-41be-ac6a-e3795a225f2a",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Registra Turn Agente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "end for error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "end for timeout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Persona",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registra Turn Agente": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "end for success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Persona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Persona": {
+      "main": [
+        [
+          {
+            "node": "Registra Turn Persona",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "end for error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Persona",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registra Turn Persona": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "end for success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set testrun to delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set testrun to delete": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7495899f-d2ed-4c76-80fd-256801eb7e9a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "693a9707919b451b8c97e835206063eef0106f092a0a276a07eea4a6a000686d"
+  },
+  "id": "Z35cpvwXt7Xy4Mgi",
+  "tags": [
+    {
+      "updatedAt": "2026-01-08T15:17:14.294Z",
+      "createdAt": "2026-01-08T15:17:14.294Z",
+      "id": "YvO2mLjuL3uCwsiO",
+      "name": "Battle Test"
+    },
+    {
+      "updatedAt": "2025-07-17T11:50:23.320Z",
+      "createdAt": "2025-07-17T11:50:23.320Z",
+      "id": "t4KfBvOmInkqq7qh",
+      "name": "sempre attivo"
+    },
+    {
+      "updatedAt": "2025-06-23T14:51:51.523Z",
+      "createdAt": "2025-06-23T14:51:51.523Z",
+      "id": "zfsOop3rTlyj4Me8",
+      "name": "Voice agents"
+    }
+  ]
+}

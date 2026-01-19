@@ -1,0 +1,434 @@
+{
+  "name": "Test RUNNER Battle",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        464,
+        -256
+      ],
+      "id": "87dd7257-8203-4e0c-b491-9d1d1f9399eb",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1312,
+        0
+      ],
+      "id": "63c3a1eb-a9b8-4ba4-a7c3-78406bde8d69",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Z35cpvwXt7Xy4Mgi",
+          "mode": "list",
+          "cachedResultName": "Test Battle Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "personasid": "={{ $json.personaid }}",
+            "personasPrompt": "={{ $json.personaprompt }}",
+            "TestRunID": "={{ $('Set Test Run').item.json.TestRunID }}",
+            "agentPrompt": "={{ $('Set Test Run').item.json.agentPrompt }}\t"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "personasid",
+              "displayName": "personasid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "agentPrompt",
+              "displayName": "agentPrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "personasPrompt",
+              "displayName": "personasPrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "TestRunID",
+              "displayName": "TestRunID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "f243d86f-a707-4cea-bd74-62a4df4474c9",
+      "name": "Execute Workflow"
+    },
+    {
+      "parameters": {
+        "content": "Nel nodo **Get Prompt** \nInserisci nel filtro la PromptVersion che vuoi testare\n",
+        "height": 80,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        976,
+        -400
+      ],
+      "typeVersion": 1,
+      "id": "095eac69-6810-4fef-bc1e-85cb7a233488",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Su Execute Workflow seleziona il Test Agent con la versione che vuoi testare",
+        "height": 80,
+        "width": 208,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1744,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "4608ec4c-dcfe-4f77-bafb-e6d69608cf41",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "306f495d-df4f-428d-b982-4c6b775c1ca9",
+              "name": "TestRunID",
+              "value": "={{ $json.promptversionid }}-{{ 'TEST-' + $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "94c18703-6dd5-40fb-a534-46f249c6e135",
+              "name": "agentPrompt",
+              "value": "={{ $json.prompttext }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        -256
+      ],
+      "id": "60eb4a03-8078-426b-9336-30795c8d33db",
+      "name": "Set Test Run"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "testruns",
+          "mode": "list",
+          "cachedResultName": "testruns"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "testrunid": "={{ $json.TestRunID }}",
+            "agentversion": "v1",
+            "promptversionid": "={{ $('Get Prompt Testing').item.json.promptversionid }}",
+            "notes": "test v2"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "testrunid",
+              "displayName": "testrunid",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "agentversion",
+              "displayName": "agentversion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "promptversionid",
+              "displayName": "promptversionid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        752,
+        0
+      ],
+      "id": "485dd86a-b6a3-4fba-b728-a52e0555997d",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "prompts",
+          "mode": "list",
+          "cachedResultName": "prompts"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "promptversionid",
+              "value": "qual-audit-new-v3.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        -256
+      ],
+      "id": "f27993ef-af24-4df1-aa24-5446cd88cbad",
+      "name": "Get Prompt Testing",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "personas",
+          "mode": "list",
+          "cachedResultName": "personas"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "9de72b67-fac6-4205-8269-ae59fcd9202a",
+      "name": "Select rows from a table",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Prompt Testing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Execute Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Test Run": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Select rows from a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prompt Testing": {
+      "main": [
+        [
+          {
+            "node": "Set Test Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fea351a3-9098-42dc-bf42-c92cac4be32f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "693a9707919b451b8c97e835206063eef0106f092a0a276a07eea4a6a000686d"
+  },
+  "id": "XmpBhcUxsRpxAYPN",
+  "tags": [
+    {
+      "updatedAt": "2026-01-08T15:17:14.294Z",
+      "createdAt": "2026-01-08T15:17:14.294Z",
+      "id": "YvO2mLjuL3uCwsiO",
+      "name": "Battle Test"
+    },
+    {
+      "updatedAt": "2025-07-17T11:50:23.320Z",
+      "createdAt": "2025-07-17T11:50:23.320Z",
+      "id": "t4KfBvOmInkqq7qh",
+      "name": "sempre attivo"
+    },
+    {
+      "updatedAt": "2025-06-23T14:51:51.523Z",
+      "createdAt": "2025-06-23T14:51:51.523Z",
+      "id": "zfsOop3rTlyj4Me8",
+      "name": "Voice agents"
+    }
+  ]
+}
