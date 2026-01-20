@@ -54,6 +54,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 import { TestRunStatusMonitor } from "@/components/test-run-status-monitor"
 import { useTestRuns, TestRunStatus } from "@/hooks/use-test-run-status"
@@ -152,6 +153,7 @@ export default function TestLauncherPage() {
   const [toolScenario, setToolScenario] = useState<ToolScenarioId>("happy_path")
   const [loading, setLoading] = useState(false)
   const [activeTestRunId, setActiveTestRunId] = useState<string | null>(null)
+  const [launchError, setLaunchError] = useState<string | null>(null)
 
   // Fetch test runs history
   const { data: testRuns, isLoading: isLoadingRuns } = useTestRuns({ limit: 20 })
@@ -167,6 +169,7 @@ export default function TestLauncherPage() {
     if (!selectedPrompt) return
 
     setLoading(true)
+    setLaunchError(null) // Clear any previous errors
     console.log("[TestLauncher] Launching test for prompt:", selectedPrompt)
 
     try {
@@ -198,6 +201,7 @@ export default function TestLauncherPage() {
       setActiveTestRunId(data.test_run_id || data.id || data.test_run_code)
     } catch (error) {
       console.error("[TestLauncher] Failed to launch test:", error)
+      setLaunchError(error instanceof Error ? error.message : "Failed to launch test")
     } finally {
       setLoading(false)
     }
@@ -394,19 +398,30 @@ export default function TestLauncherPage() {
                   </div>
                 )}
 
-                <div className="flex justify-end">
-                  <Button
-                    size="lg"
-                    onClick={handleLaunchTest}
-                    disabled={!selectedPrompt || loading || !!activeTestRunId}
-                  >
-                    {loading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Play className="mr-2 h-4 w-4" />
-                    )}
-                    Launch Test
-                  </Button>
+                <div className="space-y-4">
+                  {/* Error Alert */}
+                  {launchError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{launchError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Launch Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      size="lg"
+                      onClick={handleLaunchTest}
+                      disabled={!selectedPrompt || loading || !!activeTestRunId}
+                    >
+                      {loading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Play className="mr-2 h-4 w-4" />
+                      )}
+                      Launch Test
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

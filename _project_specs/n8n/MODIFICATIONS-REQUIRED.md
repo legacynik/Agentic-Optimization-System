@@ -684,6 +684,80 @@ AI Agent Node
 
 ---
 
+## 4b. Manual Test Trigger Configuration (v2.4 NEW)
+
+**Priorità**: P1
+**Da fare**: Per permettere test manuali direttamente da n8n
+
+### 4b.1 Problema
+
+Il trigger manuale attuale non gestisce:
+- mode (single/full_cycle_with_review)
+- tool_scenario_id (per mock)
+- max_iterations
+
+### 4b.2 Soluzione: Nodo "Manual Test Config"
+
+Aggiungere un Code Node tra Manual Trigger e il flow principale:
+
+```javascript
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURAZIONE TEST MANUALE - Modifica questi valori prima di eseguire
+// ═══════════════════════════════════════════════════════════════
+
+const config = {
+  // OBBLIGATORIO: UUID del prompt da testare
+  prompt_version_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+
+  // OPZIONALE: Modalità test
+  // - "single": Un solo ciclo di test (default)
+  // - "full_cycle_with_review": Ciclo completo con review umana
+  mode: "single",
+
+  // OPZIONALE: Numero massimo iterazioni (solo per full_cycle_with_review)
+  max_iterations: 1,
+
+  // OPZIONALE: Scenario di mock per i tool
+  // - "happy_path": Calendario disponibile, booking OK
+  // - "calendar_full": Nessuno slot disponibile
+  // - "booking_fails": Errore durante prenotazione
+  // - "partial_availability": Solo alcuni slot liberi
+  // - null: Nessun mock (usa tool reali)
+  tool_scenario_id: "happy_path"
+};
+
+// ═══════════════════════════════════════════════════════════════
+// NON MODIFICARE SOTTO QUESTA LINEA
+// ═══════════════════════════════════════════════════════════════
+
+// Valida UUID
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+if (!uuidRegex.test(config.prompt_version_id)) {
+  throw new Error('prompt_version_id non valido. Inserisci un UUID valido.');
+}
+
+return { json: config };
+```
+
+### 4b.3 Flow Aggiornato
+
+```
+[Manual Trigger] → [Manual Test Config] ─┐
+                                         ├→ [Validate Input] → [resto flow...]
+[Webhook] ───────────────────────────────┘
+```
+
+### 4b.4 Connessioni
+
+1. Rimuovere connessione: Manual Trigger → Get Prompt Testing (vecchia)
+2. Aggiungere: Manual Trigger → Manual Test Config
+3. Aggiungere: Manual Test Config → Validate Input
+4. Mantenere: Webhook → Validate Input
+
+**Status**: [ ] Da implementare
+
+---
+
 ## 5. Checklist Modifiche (v2.3 Lean)
 
 > ⚠️ **v2.3 LEAN**: Checklist semplificata. NO HMAC, NO Upstash.
