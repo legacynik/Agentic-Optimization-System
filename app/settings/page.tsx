@@ -63,20 +63,32 @@ export default function SettingsPage() {
     fetchConfigs()
   }, [])
 
+  /**
+   * Fetches workflow configurations from /api/settings
+   * Merges API response with default configs to ensure all workflow types are shown
+   * FIX BUG-003: API returns {data: [...]} wrapper, must access data.data
+   */
   async function fetchConfigs() {
     try {
+      console.log("[Settings] Fetching workflow configs...")
       const res = await fetch("/api/settings")
       if (res.ok) {
-        const data = await res.json()
+        const responseJson = await res.json()
+        // FIX BUG-003: API returns {data: [...]} wrapper
+        const configsArray = responseJson.data || responseJson
+        console.log("[Settings] Loaded configs:", configsArray.length)
+
         // Merge with defaults to show all workflow types
         const merged = defaultConfigs.map((defaultConfig) => {
-          const existing = data.find((c: WorkflowConfig) => c.workflow_type === defaultConfig.workflow_type)
+          const existing = configsArray.find((c: WorkflowConfig) => c.workflow_type === defaultConfig.workflow_type)
           return existing || { ...defaultConfig, id: "", last_tested_at: null, test_status: "never_tested" }
         })
         setConfigs(merged as WorkflowConfig[])
+      } else {
+        console.error("[Settings] API returned error:", res.status)
       }
     } catch (error) {
-      console.error("Failed to fetch configs:", error)
+      console.error("[Settings] Failed to fetch configs:", error)
       setConfigs(defaultConfigs.map((c) => ({ ...c, id: "", last_tested_at: null, test_status: "never_tested" }) as WorkflowConfig))
     } finally {
       setLoading(false)

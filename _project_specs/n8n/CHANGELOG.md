@@ -92,23 +92,74 @@ Log di tutte le modifiche applicate ai workflow n8n.
 
 ---
 
+## [2026-01-19] - v2.4 LEAN Implementation via MCP
+
+### Test RUNNER Battle (XmpBhcUxsRpxAYPN) - IMPLEMENTED ✅
+- [x] **Validate Input node** - Added webhook input validation
+  - UUID format validation for prompt_version_id
+  - Mode enum validation (`single` | `full_cycle_with_review`)
+  - max_iterations validation (1-10)
+  - tool_scenario_id VARCHAR support
+- [x] **Get Prompt Testing** - Updated to query `prompt_versions` table
+  - Now uses validated input from Validate Input node
+  - Query: `SELECT id, prompt_name, version, content, status FROM prompt_versions WHERE id = :prompt_version_id::uuid`
+- [x] **Get Validated Personas** - JOIN with prompt_personas + validation_status filter
+  - Query includes `p.validation_status = 'validated'` filter (AUDIT FIX)
+  - JOIN on prompt_personas for prompt-specific personas
+- [x] **Set Test Run** - New field structure
+  - test_run_code, prompt_version_id, prompt_name, mode, tool_scenario_id, max_iterations
+- [x] **Create Test Run** - Now inserts into `test_runs` table
+  - Full v2.4 schema: test_run_code, prompt_version_id, mode, max_iterations, tool_scenario_id, llm_config, status
+- [x] **Check Abort Before Loop** - Kill Switch Point #1
+  - Queries test_runs for abort_requested or status='aborted'
+  - Updates heartbeat timestamp
+- [x] **Execute Workflow** - Updated to pass new v2 fields
+  - persona_id, test_run_code, test_run_id, tool_scenario_id
+- [x] **Run Evaluator** - Now passes test_run_id and test_run_code
+
+### Battles Evaluator (202JEX5zm3VlrUT8) - IMPLEMENTED ✅
+- [x] **Extract Test Run Info node** - Added for input extraction
+- [x] **Get Pending Evaluations** - CRITICAL AUDIT FIX
+  - Added test_run_code filter to prevent race conditions
+  - Backward compatible: evaluates all if no test_run provided
+
+### Personas Generator v2.0 (HltftwB9Bm8LNQsO) - CREATED ✅
+- [x] **Webhook Trigger** - Path: `/generate-personas`
+- [x] **Validate Input** - UUID validation, count validation (1-20)
+- [x] **Get Prompt Content** - Fetches from prompt_versions
+- [x] **AI Persona Generator** - Claude Sonnet 4.5 via OpenRouter
+  - Italian authentic personalities
+  - Difficulty mix support
+  - Category-based generation
+- [x] **Parse Generated Personas** - Structured JSON parsing
+- [x] **Loop + Insert** - Personas and prompt_personas associations
+- [x] **Respond to Webhook** - JSON response with results
+
+### Still Pending
+- [ ] x-n8n-secret header on HTTP callbacks (security)
+- [ ] Check Abort #2 (after LLM call) in Battle Agent
+- [ ] Tool Mocking implementation in Battle Agent
+- [ ] Update test_run status to 'completed' at end
+
+---
+
 ## [Unreleased]
 
 ### Test RUNNER Battle
-- [ ] Webhook input: prompt_version_id
-- [ ] Query da prompt_versions
-- [ ] Filtro personas via prompt_personas + validation_status
-- [ ] Nuove tabelle test_runs + battle_results
-- [ ] Heartbeat updates
-- [ ] HMAC authentication su callbacks
+- [x] ~~Webhook input: prompt_version_id~~ DONE
+- [x] ~~Query da prompt_versions~~ DONE
+- [x] ~~Filtro personas via prompt_personas + validation_status~~ DONE
+- [x] ~~Nuove tabelle test_runs + battle_results~~ DONE (test_runs)
+- [ ] Heartbeat updates (partial - in Check Abort)
+- [ ] HMAC authentication su callbacks (deferred to x-n8n-secret)
 
 ### Evaluator
-- [ ] Query battle_results **con filtro test_run_id**
+- [x] ~~Query battle_results **con filtro test_run_id**~~ DONE (using conversations + filter)
 - [ ] Update evaluation_details
 - [ ] HMAC authentication su callbacks
 
 ### Personas Generator
-- [ ] Workflow da creare
+- [x] ~~Workflow da creare~~ DONE
 - [ ] HMAC authentication su callbacks
 
 ---

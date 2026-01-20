@@ -1,40 +1,68 @@
 # AI Agent Testing Dashboard
 
-## 🚀 Quick Reference - Full Stack AI Development
+## Quick Reference - Full Stack AI Development
 
 | Need | Tool | Command/Path |
 |------|------|--------------|
 | **Coding Rules** | Claude Bootstrap | Read `.claude/skills/` |
 | **Workflow/Planning** | BMAD Agents | `*workflow-init` |
-| **Documentation** | Local Docs | `docs/` and `_project_specs/` |
+| **Documentation** | Context7 | "Query Context7 for [library] docs" |
 | **Project Specs** | Local Docs | `_project_specs/` |
 
 ---
 
-## ⚡ AI Development Integration
+## AI Development Integration
 
 This project uses three complementary AI development systems:
 
-### 1. **Claude Bootstrap** ✅ Installed
+### 1. **Claude Bootstrap** - Installed
 - **Purpose**: Enforces coding standards, TDD, security patterns
 - **Skills Location**: `.claude/skills/`
 - **Key Skills**: base, security, typescript, react-web, supabase-nextjs
 - **Commands**: `/code-review`, `/initialize-project`
 
-### 2. **BMAD-METHOD** ✅ Configured
+### 2. **BMAD-METHOD** - Configured
 - **Purpose**: Structured workflows with specialized agents
 - **Agents Reference**: `.claude/agents/bmad-agents.md`
 - **Quick Start**: `*workflow-init` to begin any task
 - **21 Agents**: PM, Architect, Dev, QA, Security, DevOps, etc.
 
-### 3. **Archon** 🔒 Deactivated (Not Currently Used)
-- **Purpose**: Knowledge base, semantic search, RAG
-- **Status**: Intentionally disabled for this project
-- **Setup Guide**: `.claude/agents/archon-integration.md` (for future reference)
+### 3. **Context7** - Active
+- **Purpose**: Query public library documentation
+- **Usage**: "Query Context7 for React hooks documentation"
 
 ---
 
-## 📋 Development Workflow
+## Rules
+
+### Codice
+- **Commenta tutto**: header file + docstrings + inline per logica non ovvia
+- **Unit test ≠ verifica**: TESTA MANUALMENTE (avvia app, curl, verifica DB)
+- **Logging obbligatorio**: ogni feature deve loggare
+- **Preflight prima di commit**: `./scripts/preflight.sh`
+
+### MCP Tools
+- **Brainstorming/Analisi**: USA SEMPRE `mcp__sequential-thinking__sequentialthinking`
+- **Docs librerie**: Query Context7
+- **Supabase**: Use Supabase MCP tools for database operations
+
+### Skills (leggi prima di scrivere codice)
+- `.claude/skills/base/SKILL.md`
+- `.claude/skills/security/SKILL.md`
+- `.claude/skills/real-testing/SKILL.md`
+
+### Workflow
+- `*workflow-init` per iniziare
+- `/code-review` prima di commit
+- Agents BMAD: `.claude/agents/bmad-agents.md`
+
+### Session
+- Stato: `_project_specs/session/current-state.md`
+- Todos: `_project_specs/todos/active.md`
+
+---
+
+## Development Workflow
 
 ### Starting a New Feature
 ```
@@ -54,35 +82,10 @@ This project uses three complementary AI development systems:
 4. /code-review          → Verify quality
 ```
 
-### Architecture Changes
-```
-1. *workflow-enterprise   → 30-min comprehensive workflow
-2. *architect             → Design changes
-3. *security              → Security review
-4. *devops                → Deployment strategy
-```
-
----
-
-## 🛠️ Skills to Follow (Claude Bootstrap)
-
-Before writing ANY code, read and apply these skills:
-
-### Core Skills (Always Apply)
-- `.claude/skills/base/SKILL.md` - TDD, simplicity, clean code
-- `.claude/skills/security/SKILL.md` - Security-first development
-- `.claude/skills/code-review/SKILL.md` - Review requirements
-- `.claude/skills/session-management/SKILL.md` - Context preservation
-- `.claude/skills/code-deduplication/SKILL.md` - DRY principles
-
-### Tech-Specific Skills
-- `.claude/skills/typescript/SKILL.md` - TypeScript best practices
-- `.claude/skills/react-web/SKILL.md` - React patterns
-- `.claude/skills/supabase-nextjs/SKILL.md` - Supabase integration
-
 ---
 
 ## Project Overview
+
 A Next.js 14 dashboard for analyzing and visualizing AI agent conversation testing results. Displays persona performance metrics, test run analytics, conversation transcripts, and evaluation criteria across multiple test scenarios.
 
 ## Tech Stack
@@ -101,6 +104,10 @@ A Next.js 14 dashboard for analyzing and visualizing AI agent conversation testi
 ├── app/
 │   ├── page.tsx                    # Main dashboard page
 │   ├── layout.tsx                  # Root layout with theme provider
+│   ├── agentic/                    # Agentic testing features
+│   ├── api/                        # API routes
+│   ├── prompts/                    # Prompt management
+│   ├── test-launcher/              # Test launcher UI
 │   └── conversations/
 │       └── page.tsx                # Conversation explorer page
 ├── components/
@@ -111,18 +118,26 @@ A Next.js 14 dashboard for analyzing and visualizing AI agent conversation testi
 │   ├── personas-heatmap.tsx        # Performance heatmap visualization
 │   ├── persona-testruns-view.tsx   # Test run history for personas
 │   ├── filter-bar.tsx              # Dashboard filter controls
-│   ├── theme-provider.tsx          # Dark/light mode provider
-│   ├── theme-toggle.tsx            # Theme switcher component
+│   ├── navigation-header.tsx       # Navigation component
+│   ├── agentic/                    # Agentic components
+│   ├── version-centric/            # Version-centric components
 │   └── ui/                         # shadcn/ui components
 ├── lib/
 │   ├── supabase.ts                 # Supabase client configuration
 │   ├── queries.ts                  # Database query functions
 │   ├── mock-data.ts                # Sample data for development
 │   └── utils.ts                    # Utility functions
-└── supabase/
-    ├── config.toml                 # Supabase local dev configuration
-    └── seed.sql                    # Database seed file
-
+├── supabase/
+│   ├── config.toml                 # Supabase local dev configuration
+│   ├── migrations/                 # Database migrations
+│   └── seed.sql                    # Database seed file
+├── _project_specs/                 # Project specifications
+│   ├── features/                   # Feature specs
+│   ├── todos/                      # Active todos
+│   └── session/                    # Session state
+└── .claude/
+    ├── skills/                     # Claude Bootstrap skills
+    └── agents/                     # BMAD agents reference
 ```
 
 ## Key Features
@@ -243,19 +258,6 @@ All queries include automatic retry with exponential backoff (3 attempts) to han
 - **Theme Toggle**: Available in header
 - **CSS Variables**: Defined in `app/globals.css`
 
-## Data Flow
-1. **Load**: Components fetch data on mount via `lib/queries.ts`
-2. **Filter**: User interactions update filter state
-3. **Compute**: useMemo derives filtered/aggregated data
-4. **Render**: Components display computed data
-5. **Select**: User clicks conversation → side panel shows details
-
-## Performance Optimizations
-- useMemo for expensive filtering/aggregation
-- Lazy loading with React Suspense
-- Client-side filtering after initial data fetch
-- Retry logic prevents failed requests from blocking UI
-
 ## Evaluation Criteria
 Conversations are scored across multiple criteria:
 - Individual criterion scores (0-10)
@@ -278,39 +280,11 @@ Conversations are scored across multiple criteria:
 - User-friendly error messages
 - Graceful degradation (falls back to mock data if Supabase unavailable)
 
-## Future Enhancement Areas
-- Real-time updates via Supabase subscriptions
-- Export functionality (CSV, JSON)
-- Advanced analytics (trends, comparisons)
-- User authentication & multi-tenancy
-- Conversation replay/step-through
-- Custom evaluation criteria configuration
-- Test run comparison tools
-- Performance benchmarking
-
-## Contributing Guidelines
-1. Follow existing code style (TypeScript strict mode)
-2. Use shadcn/ui components for UI consistency
-3. Keep components focused and composable
-4. Add loading/error states for all async operations
-5. Use semantic HTML and ARIA labels for accessibility
-6. Test dark mode compatibility
-7. Validate data with Zod schemas where applicable
-
-## Deployment Notes
-- **Platform**: Vercel (recommended)
-- **Environment Variables**: Set in Vercel dashboard
-- **Build Command**: `pnpm build`
-- **Output Directory**: `.next`
-- **Node Version**: 22.x
-- **Analytics**: Vercel Analytics enabled
-
 ## MCP Server Configuration
 Supabase MCP server is configured for Claude Code integration:
 - **URL**: https://mcp.supabase.com/mcp
 - **Project**: dlozxirsmrbriuklgcxq
 - **Config Location**: `~/Library/Application Support/ClaudeCode/managed-mcp.json`
-- Restart Claude Code after configuration to enable Supabase tools
 
 ## Troubleshooting
 

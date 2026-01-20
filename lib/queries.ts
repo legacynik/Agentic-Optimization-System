@@ -1,34 +1,63 @@
 import { getSupabase } from "./supabase"
 import type { PersonaPerformanceRow } from "./supabase"
 
+/**
+ * Retry wrapper for Supabase queries
+ * Only retries on specific transient errors (invalid API key during init)
+ * Max 2 retries with exponential backoff
+ */
 async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 100): Promise<T> {
+  console.log(`[Queries] withRetry: Attempt ${3 - retries}/3`)
+
   try {
-    return await fn()
+    const result = await fn()
+    console.log("[Queries] withRetry: Success")
+    return result
   } catch (error: any) {
+    console.error("[Queries] withRetry: Error caught", error?.message)
+
+    // Only retry on specific initialization errors, not on all errors
     if (retries > 0 && (error.message?.includes("Invalid API key") || error.message?.includes("supabaseUrl"))) {
-      console.log(`[v0] Retrying after ${delay}ms... (${retries} retries left)`)
+      console.log(`[Queries] withRetry: Retrying after ${delay}ms... (${retries} retries left)`)
       await new Promise((resolve) => setTimeout(resolve, delay))
       return withRetry(fn, retries - 1, delay * 2)
     }
+
+    // Don't retry other errors
+    console.error("[Queries] withRetry: No more retries, throwing error")
     throw error
   }
 }
 
+/**
+ * Fetches all personas performance data from the VIEW
+ * Returns empty array if no data (valid state for new installations)
+ */
 export async function fetchPersonasPerformance() {
+  console.log("[Queries] fetchPersonasPerformance: Starting...")
+
   return withRetry(async () => {
     const supabase = getSupabase()
+    console.log("[Queries] fetchPersonasPerformance: Got Supabase client")
 
     const { data, error } = await supabase
       .from("personas_performance")
       .select("*")
       .order("test_date", { ascending: false })
 
+    console.log("[Queries] fetchPersonasPerformance: Query completed", {
+      hasData: !!data,
+      count: data?.length || 0,
+      hasError: !!error
+    })
+
     if (error) {
-      console.error("[v0] Error fetching personas_performance:", error)
+      console.error("[Queries] Error fetching personas_performance:", error)
       throw error
     }
 
-    return data as PersonaPerformanceRow[]
+    // Return empty array if no data (valid state)
+    return (data || []) as PersonaPerformanceRow[]
   })
 }
 

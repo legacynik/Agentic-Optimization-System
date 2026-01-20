@@ -65,17 +65,14 @@ const navTesting = [
     title: "Agentic Testing",
     url: "/agentic",
     icon: Bot,
-    items: [
-      { title: "Battles", url: "/agentic/battles" },
-      { title: "Evaluations", url: "/agentic/evaluations" },
-    ],
+    // Note: Battles, Personas, Optimization are all tabs within /agentic
   },
 ]
 
 const navConfig = [
   {
     title: "Personas",
-    url: "/personas",
+    url: "/agentic?tab=personas",
     icon: Users,
   },
   {

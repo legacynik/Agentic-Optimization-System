@@ -1,6 +1,15 @@
+/**
+ * Test Launcher Page
+ *
+ * Allows users to launch AI persona battle tests via n8n workflows.
+ * Fetches prompt versions from Supabase and displays test history.
+ *
+ * @module app/test-launcher/page
+ */
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getSupabase } from "@/lib/supabase"
 import {
   Card,
   CardContent,
@@ -50,47 +59,92 @@ import { TestRunStatusMonitor } from "@/components/test-run-status-monitor"
 import { useTestRuns, TestRunStatus } from "@/hooks/use-test-run-status"
 import { getScenarioOptions, ToolScenarioId, TOOL_SCENARIOS } from "@/lib/tool-scenarios"
 
+/**
+ * PromptVersion interface - matches prompt_versions table in Supabase
+ * FIX BUG-004: Replaced mock data with real DB schema
+ */
 interface PromptVersion {
-  id: string
-  name: string
-  version: string
+  id: string          // UUID from prompt_versions table
+  prompt_name: string // e.g., "Medical Audit Assistant"
+  version: string     // e.g., "v3.0"
   status: "production" | "testing" | "draft"
-  personas: number
-  lastScore: number | null
-  lastRunAt: string | null
+  personas_count?: number   // Count from prompt_personas junction
+  last_score?: number | null
+  last_run_at?: string | null
 }
 
 export default function TestLauncherPage() {
-  // Mock prompt versions (to be replaced with real API)
-  const [prompts] = useState<PromptVersion[]>([
-    {
-      id: "prompt-1",
-      name: "Medical Audit Assistant",
-      version: "v3.0",
-      status: "production",
-      personas: 12,
-      lastScore: 8.5,
-      lastRunAt: "2024-01-15T10:30:00Z",
-    },
-    {
-      id: "prompt-2",
-      name: "Medical Audit Assistant",
-      version: "v3.1-beta",
-      status: "testing",
-      personas: 12,
-      lastScore: null,
-      lastRunAt: null,
-    },
-    {
-      id: "prompt-3",
-      name: "Customer Service Bot",
-      version: "v2.1",
-      status: "testing",
-      personas: 8,
-      lastScore: 7.9,
-      lastRunAt: "2024-01-14T15:45:00Z",
-    },
-  ])
+  // FIX BUG-004: Fetch real prompt versions from Supabase instead of mock data
+  const [prompts, setPrompts] = useState<PromptVersion[]>([])
+  const [promptsLoading, setPromptsLoading] = useState(true)
+
+  /**
+   * Fetches prompt versions from Supabase with associated persona counts
+   * Runs on mount to populate the prompt selector
+   */
+  useEffect(() => {
+    async function fetchPromptVersions() {
+      console.log("[TestLauncher] Fetching prompt versions...")
+      const supabase = getSupabase()
+
+      try {
+        // Fetch prompt versions
+        const { data: versions, error } = await supabase
+          .from("prompt_versions")
+          .select("id, prompt_name, version, status, created_at")
+          .order("created_at", { ascending: false })
+
+        if (error) {
+          console.error("[TestLauncher] Error fetching prompt_versions:", error)
+          return
+        }
+
+        if (!versions || versions.length === 0) {
+          console.log("[TestLauncher] No prompt versions found")
+          setPrompts([])
+          return
+        }
+
+        // Fetch persona counts for each prompt via prompt_personas junction
+        const { data: personaCounts, error: countError } = await supabase
+          .from("prompt_personas")
+          .select("prompt_name")
+          .eq("is_active", true)
+
+        const countMap: Record<string, number> = {}
+        if (!countError && personaCounts) {
+          personaCounts.forEach((row: { prompt_name: string }) => {
+            countMap[row.prompt_name] = (countMap[row.prompt_name] || 0) + 1
+          })
+        }
+
+        // Map to interface format
+        const mappedPrompts: PromptVersion[] = versions.map((v: {
+          id: string
+          prompt_name: string
+          version: string
+          status: string | null
+        }) => ({
+          id: v.id,
+          prompt_name: v.prompt_name,
+          version: v.version,
+          status: (v.status || "draft") as "production" | "testing" | "draft",
+          personas_count: countMap[v.prompt_name] || 0,
+          last_score: null,    // Could be fetched from test_runs if needed
+          last_run_at: null    // Could be fetched from test_runs if needed
+        }))
+
+        console.log("[TestLauncher] Loaded", mappedPrompts.length, "prompt versions")
+        setPrompts(mappedPrompts)
+      } catch (err) {
+        console.error("[TestLauncher] Unexpected error:", err)
+      } finally {
+        setPromptsLoading(false)
+      }
+    }
+
+    fetchPromptVersions()
+  }, [])
 
   const [selectedPrompt, setSelectedPrompt] = useState<string>("")
   const [testMode, setTestMode] = useState<"single" | "full_cycle_with_review">("full_cycle_with_review")
@@ -105,29 +159,45 @@ export default function TestLauncherPage() {
   // Tool scenario options
   const scenarioOptions = getScenarioOptions()
 
+  /**
+   * Launches a new test run by calling POST /api/test-runs
+   * FIX BUG-005: Payload uses 'mode' not 'test_mode', and personas are fetched server-side
+   */
   async function handleLaunchTest() {
     if (!selectedPrompt) return
 
     setLoading(true)
+    console.log("[TestLauncher] Launching test for prompt:", selectedPrompt)
+
     try {
+      // FIX BUG-005: Use 'mode' instead of 'test_mode'
+      // Personas are fetched server-side via prompt_personas table - don't send count
+      const payload = {
+        prompt_version_id: selectedPrompt,
+        mode: testMode,                    // FIX: was 'test_mode'
+        tool_scenario_id: toolScenario,
+        // Note: personas are resolved server-side from prompt_personas junction table
+      }
+
+      console.log("[TestLauncher] POST /api/test-runs payload:", payload)
+
       const res = await fetch("/api/test-runs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt_version_id: selectedPrompt,
-          tool_scenario_id: toolScenario,
-          test_mode: testMode,
-          // Get personas from the selected prompt
-          personas: prompts.find((p) => p.id === selectedPrompt)?.personas || 0,
-        }),
+        body: JSON.stringify(payload),
       })
 
-      if (!res.ok) throw new Error("Failed to launch test")
-
       const data = await res.json()
-      setActiveTestRunId(data.id || data.test_run_code)
+
+      if (!res.ok) {
+        console.error("[TestLauncher] API error:", data)
+        throw new Error(data.error || "Failed to launch test")
+      }
+
+      console.log("[TestLauncher] Test run created:", data)
+      setActiveTestRunId(data.test_run_id || data.id || data.test_run_code)
     } catch (error) {
-      console.error("Failed to launch test:", error)
+      console.error("[TestLauncher] Failed to launch test:", error)
     } finally {
       setLoading(false)
     }
@@ -181,24 +251,30 @@ export default function TestLauncherPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {/* Prompt Version Selector */}
+                  {/* Prompt Version Selector - FIX BUG-004: Shows real data from Supabase */}
                   <div className="space-y-2">
                     <Label>Prompt Version</Label>
                     <Select value={selectedPrompt} onValueChange={setSelectedPrompt}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a prompt version" />
+                        <SelectValue placeholder={promptsLoading ? "Loading..." : "Select a prompt version"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {prompts.map((prompt) => (
-                          <SelectItem key={prompt.id} value={prompt.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{prompt.name}</span>
-                              <Badge variant="outline" className="ml-2">
-                                {prompt.version}
-                              </Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {promptsLoading ? (
+                          <SelectItem value="__loading__" disabled>Loading prompt versions...</SelectItem>
+                        ) : prompts.length === 0 ? (
+                          <SelectItem value="__empty__" disabled>No prompt versions found</SelectItem>
+                        ) : (
+                          prompts.map((prompt) => (
+                            <SelectItem key={prompt.id} value={prompt.id}>
+                              <div className="flex items-center gap-2">
+                                <span>{prompt.prompt_name}</span>
+                                <Badge variant="outline" className="ml-2">
+                                  {prompt.version}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -284,18 +360,18 @@ export default function TestLauncherPage() {
                   </div>
                 )}
 
-                {/* Selected Prompt Summary */}
+                {/* Selected Prompt Summary - FIX BUG-004: Uses new field names */}
                 {selectedPromptData && (
                   <div className="rounded-lg border bg-muted/50 p-4">
                     <div className="grid gap-4 md:grid-cols-4">
                       <div>
                         <p className="text-xs text-muted-foreground">Personas</p>
-                        <p className="text-lg font-semibold">{selectedPromptData.personas}</p>
+                        <p className="text-lg font-semibold">{selectedPromptData.personas_count || 0}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Last Score</p>
                         <p className="text-lg font-semibold">
-                          {selectedPromptData.lastScore || "—"}
+                          {selectedPromptData.last_score || "—"}
                         </p>
                       </div>
                       <div>
@@ -309,8 +385,8 @@ export default function TestLauncherPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">Last Run</p>
                         <p className="text-sm">
-                          {selectedPromptData.lastRunAt
-                            ? new Date(selectedPromptData.lastRunAt).toLocaleDateString()
+                          {selectedPromptData.last_run_at
+                            ? new Date(selectedPromptData.last_run_at).toLocaleDateString()
                             : "Never"}
                         </p>
                       </div>
@@ -440,60 +516,74 @@ export default function TestLauncherPage() {
               </CardContent>
             </Card>
 
-            {/* Prompt Versions Table */}
+            {/* Prompt Versions Table - FIX BUG-004: Uses real data from Supabase */}
             <Card>
               <CardHeader>
                 <CardTitle>Available Prompts</CardTitle>
                 <CardDescription>All prompt versions available for testing</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Version</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Personas</TableHead>
-                      <TableHead>Last Score</TableHead>
-                      <TableHead>Last Run</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {prompts.map((prompt) => (
-                      <TableRow key={prompt.id}>
-                        <TableCell className="font-medium">{prompt.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{prompt.version}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={prompt.status === "production" ? "default" : "secondary"}
-                          >
-                            {prompt.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3 text-muted-foreground" />
-                            {prompt.personas}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {prompt.lastScore ? (
-                            <span className="font-medium">{prompt.lastScore}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {prompt.lastRunAt
-                            ? new Date(prompt.lastRunAt).toLocaleDateString()
-                            : "Never"}
-                        </TableCell>
+                {promptsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Version</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Personas</TableHead>
+                        <TableHead>Last Score</TableHead>
+                        <TableHead>Last Run</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {prompts.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            No prompt versions found. Create a prompt version to get started.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        prompts.map((prompt) => (
+                          <TableRow key={prompt.id}>
+                            <TableCell className="font-medium">{prompt.prompt_name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{prompt.version}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={prompt.status === "production" ? "default" : "secondary"}
+                              >
+                                {prompt.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-3 w-3 text-muted-foreground" />
+                                {prompt.personas_count || 0}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {prompt.last_score ? (
+                                <span className="font-medium">{prompt.last_score}</span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {prompt.last_run_at
+                                ? new Date(prompt.last_run_at).toLocaleDateString()
+                                : "Never"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
