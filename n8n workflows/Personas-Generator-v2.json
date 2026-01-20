@@ -1,0 +1,365 @@
+{
+  "name": "Personas Generator v2.0",
+  "id": "HltftwB9Bm8LNQsO",
+  "active": true,
+  "updatedAt": "2026-01-19T15:59:43.454Z",
+  "versionId": "e26843a3-77ac-4fe5-b8a3-c49dba7ee278",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-personas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-96, 304],
+      "webhookId": "a82ad444-9698-47b6-9529-b916bc828cbc"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate Personas Generator input\nconst input = $input.first().json.body;\n\n// Required fields\nif (!input.prompt_version_id) {\n  throw new Error('Missing required field: prompt_version_id');\n}\n\n// Validate UUID format\nconst uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRegex.test(input.prompt_version_id)) {\n  throw new Error('Invalid prompt_version_id format: must be UUID');\n}\n\n// Defaults\nconst count = input.count || 5;\nif (count < 1 || count > 20) {\n  throw new Error('count must be between 1 and 20');\n}\n\nconst criteria = input.criteria || {\n  difficulty_mix: { easy: 0.3, medium: 0.4, hard: 0.2, extreme: 0.1 },\n  categories: ['decision_maker', 'skeptical', 'busy', 'interested']\n};\n\nreturn {\n  json: {\n    prompt_version_id: input.prompt_version_id,\n    prompt_name: input.prompt_name || null,\n    count: count,\n    criteria: criteria,\n    validated_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "validate-001",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [112, 304]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, prompt_name, version, content, status FROM prompt_versions WHERE id = '{{ $json.prompt_version_id }}'::uuid",
+        "options": {}
+      },
+      "id": "get-prompt-001",
+      "name": "Get Prompt Content",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [304, 304],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const promptData = $input.first().json;\nconst inputData = $('Validate Input').item.json;\n\nif (!promptData.content) {\n  throw new Error('Prompt version not found or has no content');\n}\n\n// Prepare the AI generation context\nreturn {\n  json: {\n    prompt_version_id: inputData.prompt_version_id,\n    prompt_name: promptData.prompt_name,\n    prompt_content: promptData.content,\n    count: inputData.count,\n    criteria: inputData.criteria,\n    difficulty_mix: inputData.criteria.difficulty_mix,\n    categories: inputData.criteria.categories\n  }\n};"
+      },
+      "id": "prepare-ai-001",
+      "name": "Prepare AI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [512, 304]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Genera {{ $json.count }} personas per testare questo agente AI.\n\n=== PROMPT DELL'AGENTE ===\n{{ $json.prompt_content }}\n=== FINE PROMPT ===\n\nREQUISITI:\n- Personalità italiane autentiche (nomi italiani realistici, modi di fare tipici, espressioni colloquiali)\n- Mix di difficoltà: {{ JSON.stringify($json.difficulty_mix) }}\n- Categorie da coprire: {{ $json.categories.join(', ') }}\n- Ogni persona deve avere un obiettivo chiaro nella conversazione\n- Comportamenti specifici e testabili\n- Le personas devono sfidare l'agente in modi realistici\n\nOUTPUT JSON (array di oggetti):",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Sei un esperto di design di test personas per agenti conversazionali italiani.\n\nIl tuo compito è generare personas realistiche che simulino clienti italiani con personalità distintive.\n\nOgni persona DEVE avere:\n1. Nome e cognome italiano realistico\n2. Categoria di comportamento (dal parametro categories)\n3. Livello di difficoltà (easy, medium, hard, extreme)\n4. Un personaprompt dettagliato che descriva come la persona deve comportarsi\n5. Un profilo psicologico breve\n6. Comportamenti specifici (array di 3-5 comportamenti)\n7. L'obiettivo del test (cosa deve verificare)\n\nFormato output richiesto per ogni persona:\n{\n  \"name\": \"Nome Cognome\",\n  \"category\": \"categoria\",\n  \"difficulty\": \"easy|medium|hard|extreme\",\n  \"personaprompt\": \"Istruzioni dettagliate per simulare questa persona...\",\n  \"psychological_profile\": \"Descrizione psicologica breve...\",\n  \"behaviors\": [\"comportamento 1\", \"comportamento 2\", \"comportamento 3\"],\n  \"test_objective\": \"Cosa deve verificare questo test\"\n}\n\nRispondi SOLO con un array JSON valido."
+        }
+      },
+      "id": "ai-generator-001",
+      "name": "AI Persona Generator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [816, 304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.first().json.output;\nconst inputData = $('Prepare AI Context').item.json;\n\nlet personas;\ntry {\n  // Try to parse as JSON if it's a string\n  if (typeof aiOutput === 'string') {\n    // Clean up markdown code blocks if present\n    let cleanOutput = aiOutput.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n    personas = JSON.parse(cleanOutput);\n  } else if (Array.isArray(aiOutput)) {\n    personas = aiOutput;\n  } else if (aiOutput && aiOutput.personas) {\n    personas = aiOutput.personas;\n  } else {\n    throw new Error('Unexpected AI output format');\n  }\n  \n  if (!Array.isArray(personas)) {\n    throw new Error('Personas must be an array');\n  }\n} catch (error) {\n  throw new Error(`Failed to parse AI output: ${error.message}`);\n}\n\n// Add metadata to each persona\nreturn personas.map((persona, index) => ({\n  json: {\n    ...persona,\n    prompt_name: inputData.prompt_name,\n    prompt_version_id: inputData.prompt_version_id,\n    priority: index + 1,\n    personaid: `${inputData.prompt_name}-${persona.category}-${index + 1}`,\n    validation_status: 'pending'\n  }\n}));"
+      },
+      "id": "parse-personas-001",
+      "name": "Parse Generated Personas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1248, 304]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "loop-001",
+      "name": "Loop Personas",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1440, 304]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO personas (\n  personaid,\n  name,\n  personaprompt,\n  category,\n  difficulty,\n  validation_status,\n  psychological_profile,\n  behaviors,\n  test_objective\n) VALUES (\n  '{{ $json.personaid }}',\n  '{{ $json.name }}',\n  '{{ $json.personaprompt.replace(/'/g, \"''\") }}',\n  '{{ $json.category }}',\n  '{{ $json.difficulty || 'medium' }}',\n  'pending',\n  '{{ ($json.psychological_profile || '').replace(/'/g, \"''\") }}',\n  '{{ JSON.stringify($json.behaviors || []) }}'::jsonb,\n  '{{ ($json.test_objective || '').replace(/'/g, \"''\") }}'\n) RETURNING id, personaid, name",
+        "options": {}
+      },
+      "id": "insert-persona-001",
+      "name": "Insert Persona",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1648, 432],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO prompt_personas (\n  persona_id,\n  prompt_name,\n  priority,\n  is_active\n) VALUES (\n  '{{ $json.id }}'::uuid,\n  '{{ $('Loop Personas').item.json.prompt_name }}',\n  {{ $('Loop Personas').item.json.priority }},\n  true\n) RETURNING persona_id, prompt_name",
+        "options": {}
+      },
+      "id": "insert-assoc-001",
+      "name": "Insert Persona Association",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1840, 432],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst inputData = $('Validate Input').item.json;\n\nreturn {\n  json: {\n    success: true,\n    prompt_version_id: inputData.prompt_version_id,\n    prompt_name: inputData.prompt_name || 'unknown',\n    personas_generated: items.length,\n    generated_at: new Date().toISOString(),\n    message: `Successfully generated ${items.length} personas`\n  }\n};"
+      },
+      "id": "collect-results-001",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1648, 192]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {}
+      },
+      "id": "respond-001",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1840, 192]
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {}
+      },
+      "id": "llm-model-001",
+      "name": "OpenRouter Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [592, 592],
+      "credentials": {
+        "openRouterApi": {
+          "id": "am83txd1aTbmmhSo",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[{\"name\": \"Mario Rossi\", \"category\": \"skeptical\", \"difficulty\": \"medium\", \"personaprompt\": \"Sei Mario Rossi, un imprenditore di 55 anni...\", \"psychological_profile\": \"Pragmatico e diffidente...\", \"behaviors\": [\"Chiede sempre prove concrete\", \"Interrompe spesso\"], \"test_objective\": \"Verificare gestione obiezioni\"}]",
+        "autoFix": true
+      },
+      "id": "output-parser-001",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [976, 560]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [912, 768],
+      "id": "219da5d7-4e10-416d-ac47-748958e8efda",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "xpYZwRyZjASctgwp",
+          "name": "OpenAi def"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Get Prompt Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prompt Content": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Context": {
+      "main": [
+        [
+          {
+            "node": "AI Persona Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Persona Generator": {
+      "main": [
+        [
+          {
+            "node": "Parse Generated Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Generated Personas": {
+      "main": [
+        [
+          {
+            "node": "Loop Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Personas": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Persona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Persona": {
+      "main": [
+        [
+          {
+            "node": "Insert Persona Association",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Persona Association": {
+      "main": [
+        [
+          {
+            "node": "Loop Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Model": {
+      "main": [[]],
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Persona Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "main": [[]],
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Persona Generator",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "EgAdQyNFrL5OS1J4"
+  },
+  "tags": ["Battle Test"]
+}

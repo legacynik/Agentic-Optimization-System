@@ -4,6 +4,95 @@ Log di tutte le modifiche applicate ai workflow n8n.
 
 ---
 
+## [2026-01-20] - Test Battle Agent v2.0 Architecture Update
+
+### Test Battle Agent (Z35cpvwXt7Xy4Mgi) - REFACTORED ✅
+
+**Major Architecture Change**: Aligned with PRD v2.4 - No more individual `turns` storage.
+Now uses n8n's built-in Postgres Chat Memory during battle, then creates single `battle_results` record at end.
+
+#### Removed Deprecated Nodes
+- `Insert rows in a table` - Was inserting into deprecated `conversations` table
+- `Registra Turn Agente` - Was inserting individual turns into `turns` table
+- `Registra Turn Persona` - Was inserting individual turns into `turns` table
+- `end for timeout/success/error` - Were updating deprecated `conversations` table
+
+#### Added New Nodes
+- **Init Battle** (Set node) - Creates session_id, stores test_run_id, persona_id, start_time
+  - session_id format: `{TestRunID}_{personasid}`
+- **Set Outcome Timeout** - Sets outcome='timeout' when loop exhausts
+- **Set Outcome Success Agent** - Sets outcome='success' when AI Agent ends call
+- **Set Outcome Success Persona** - Sets outcome='success' when Persona ends call
+- **Get Chat History** (Postgres node) - Fetches all messages from `n8n_chat_histories`
+  - Query: `SELECT id, message FROM n8n_chat_histories WHERE session_id = :session_id ORDER BY id ASC`
+- **Format Transcript** (Code node) - Reformats chat history into JSONB transcript
+  - Detects outcome from which Set Outcome node executed
+  - Calculates turn count and duration
+- **Insert Battle Result** (Postgres node) - Single INSERT into `battle_results`
+  - Fields: test_run_id, persona_id, outcome, turns, duration_seconds, transcript, created_at
+
+#### Updated Nodes
+- **Edit Fields1** - Now uses `$('Init Battle').item.json.session_id` instead of conversations.conversationid
+- **Postgres Chat Memory** - Now uses `$('Init Battle').item.json.session_id` as sessionKey
+- **Postgres Chat Memory1** - Now uses `$('Init Battle').item.json.session_id` as sessionKey
+
+#### New Flow
+```
+When Executed → Init Battle → Code (30 loops) → Loop Over Items
+                                                    ↓
+                                               Edit Fields1 → AI Agent → If (agent ended?)
+                                                                         ↓ true: Set Outcome Success Agent → Get Chat History
+                                                                         ↓ false: AI Persona → If1 (persona ended?)
+                                                                                               ↓ true: Set Outcome Success Persona → Get Chat History
+                                                                                               ↓ false: Loop Over Items
+                                               ← Set Outcome Timeout ←
+                                                    ↓
+                                               Get Chat History → Format Transcript → Insert Battle Result
+```
+
+#### Data Flow Change
+- **Before**: Individual `turns` rows created during battle, `conversations` row created at start
+- **After**: `n8n_chat_histories` used during battle (automatic via Postgres Chat Memory), single `battle_results` row at end
+
+### Workflow Exports
+- [x] Exported: `Test-Battle-Agent-v1.0.json`
+
+### Notes
+- Node count: 23 (was 26)
+- Backward compatible with existing trigger parameters (personasid, agentPrompt, personasPrompt, TestRunID)
+- Old cleanup utility still present (disabled) for legacy data cleanup
+
+---
+
+## [2026-01-20] - Manual Test Trigger Implementation
+
+### Test RUNNER Battle (XmpBhcUxsRpxAYPN) - IMPLEMENTED ✅
+- [x] **Manual Test Config node** - Added Code node for manual test configuration
+  - Editable config section with prompt_version_id, mode, max_iterations, tool_scenario_id
+  - UUID validation before passing to Validate Input
+  - Supports all mock scenarios: `happy_path`, `calendar_full`, `booking_fails`, `partial_availability`
+- [x] **Validate Input** - Updated to handle both webhook and manual trigger
+  - Detects input source via `rawInput.body` check
+  - Webhook: data in `body` object
+  - Manual: data direct in JSON
+  - Adds `source` field to output ('webhook' | 'manual')
+- [x] **Workflow Connection** - New dual-path flow
+  - Manual Trigger → Manual Test Config → Validate Input → Get Prompt Testing → ...
+  - Webhook → Validate Input → Get Prompt Testing → ...
+
+### Workflow Exports
+- [x] Exported all workflows to `n8n workflows/` folder:
+  - `Test-RUNNER-Battle.json`
+  - `Battles-Evaluator.json`
+  - `Personas-Generator-v2.json`
+
+### Notes
+- Sincronizzato con MODIFICATIONS-REQUIRED.md Section 4b
+- Testabile via n8n "Execute Workflow" button
+- No changes to Evaluator or Personas Generator
+
+---
+
 ## [2026-01-19] - MODIFICATIONS-REQUIRED.md v2.4 Lean Update
 
 ### Further Simplified (v2.4 LEAN)
