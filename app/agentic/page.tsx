@@ -1,263 +1,250 @@
+/**
+ * Agentic Testing Page - Agent Health Monitor
+ *
+ * Refactored from the original tabbed layout to a focused Agent Health Monitor.
+ * This page answers the question: "How is my agent performing?"
+ *
+ * Features:
+ * - Agent selector dropdown
+ * - Health monitor with score, trend, and insights
+ * - Agent details with issues, personas, and trend chart
+ * - Optimization panel with feedback and trigger
+ * - Real-time n8n status bar
+ *
+ * @module app/agentic/page
+ */
+
 'use client'
 
-import React from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { BattleArena } from '@/components/agentic/battle-arena'
-import { PersonaGenerator } from '@/components/agentic/persona-generator'
-import { OptimizationLoop } from '@/components/agentic/optimization-loop'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Brain,
-  Zap,
-  Users,
-  TrendingUp,
-  Target,
-  Activity,
-  GitBranch,
-  Sparkles,
-  PlayCircle,
-  Settings,
-  ChevronRight
-} from 'lucide-react'
+import { useState, Suspense } from 'react'
+import { AgentSelector } from '@/components/agentic/agent-selector'
+import { HealthMonitor } from '@/components/agentic/health-monitor'
+import { AgentDetails } from '@/components/agentic/agent-details'
+import { OptimizationPanel } from '@/components/agentic/optimization-panel'
+import { N8NStatusBar } from '@/components/agentic/n8n-status-bar'
+import { useAgentHealth } from '@/hooks/use-agent-health'
+import { useAgentDetails } from '@/hooks/use-agent-details'
+import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
-export default function AgenticDashboard() {
-  const searchParams = useSearchParams()
-  const tabParam = searchParams.get('tab')
+/**
+ * Loading skeleton for the page
+ */
+function LoadingSkeleton() {
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-10 w-48" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  )
+}
 
-  // Map URL param to tab value
-  const defaultTab = tabParam === 'personas' ? 'personas' :
-                     tabParam === 'optimization' ? 'optimization' :
-                     tabParam === 'analytics' ? 'analytics' : 'battle'
+/**
+ * Main content component with agent health monitoring
+ */
+function AgentHealthContent() {
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
+  const [showDetails, setShowDetails] = useState(false)
+  const [isOptimizing, setIsOptimizing] = useState(false)
+
+  // Fetch health data
+  const { data: health, isLoading, error } = useAgentHealth(selectedAgent)
+
+  // Fetch detailed data (only when details are shown)
+  const { data: details, isLoading: detailsLoading } = useAgentDetails(
+    selectedAgent,
+    showDetails
+  )
+
+  // Handle "See Details" button - toggle details panel
+  const handleSeeDetails = () => {
+    setShowDetails((prev) => !prev)
+  }
+
+  // Handle "View Full Report" - navigate to dashboard with filter
+  const handleViewFullReport = () => {
+    if (selectedAgent) {
+      window.location.href = `/?prompt_name=${encodeURIComponent(selectedAgent)}`
+    }
+  }
+
+  // Handle optimization trigger via n8n trigger endpoint
+  const handleOptimize = async (selectedSuggestions: string[], feedback: string) => {
+    if (!details?.latestTestRunId) {
+      throw new Error('No test run available for optimization')
+    }
+
+    setIsOptimizing(true)
+
+    try {
+      const response = await fetch('/api/n8n/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workflow_type: 'optimizer',
+          test_run_id: details.latestTestRunId,
+          selected_suggestions: selectedSuggestions,
+          human_feedback: feedback || null,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to trigger optimization')
+      }
+    } finally {
+      setIsOptimizing(false)
+    }
+  }
+
+  // Handle n8n logs view - opens n8n dashboard on Railway
+  const handleViewLogs = () => {
+    window.open('https://primary-production-1d87.up.railway.app/', '_blank')
+  }
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col min-h-screen">
+      {/* Main Content */}
+      <div className="flex-1 container mx-auto p-6 space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Agentic Testing System
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Scalare senza assumere - Il futuro del testing automatizzato degli agenti AI
+          <h1 className="text-3xl font-bold">Agentic Testing</h1>
+          <p className="text-muted-foreground mt-1">
+            Monitor and optimize your AI agent performance
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" size="sm">
-            <Settings className="w-4 h-4 mr-2" />
-            N8N Config
-          </Button>
-          <Button
-            size="sm"
-            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
-          >
-            <PlayCircle className="w-4 h-4 mr-2" />
-            Start Full Cycle
-          </Button>
-        </div>
-      </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Battles Run
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1,247</div>
-            <div className="flex items-center text-xs text-green-600 mt-1">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              +23% this week
-            </div>
-          </CardContent>
-        </Card>
+        {/* Agent Selector */}
+        <AgentSelector value={selectedAgent} onChange={setSelectedAgent} />
 
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Personas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">48</div>
-            <div className="flex items-center text-xs text-muted-foreground mt-1">
-              <Users className="w-3 h-3 mr-1" />
-              12 categories
-            </div>
-          </CardContent>
-        </Card>
+        {/* Health Monitor */}
+        {selectedAgent ? (
+          <>
+            {/* Summary Row */}
+            <div className="grid gap-6 md:grid-cols-2">
+              <HealthMonitor
+                score={health?.currentScore ?? null}
+                trend={health?.trend ?? null}
+                scoreHistory={health?.scoreHistory ?? []}
+                outcomes={health?.outcomes ?? null}
+                insight={health?.insight ?? null}
+                isLoading={isLoading}
+                onSeeDetails={handleSeeDetails}
+                onOptimize={() => setShowDetails(true)}
+                goalScore={8.0}
+              />
 
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Success Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">87.3%</div>
-            <div className="flex items-center text-xs text-green-600 mt-1">
-              <Target className="w-3 h-3 mr-1" />
-              Above target
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-orange-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Optimization Cycles
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <div className="flex items-center text-xs text-orange-600 mt-1">
-              <GitBranch className="w-3 h-3 mr-1" />
-              3 running now
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Tabs */}
-      <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-1 bg-gray-100/50 dark:bg-gray-800/50">
-          <TabsTrigger
-            value="battle"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white"
-          >
-            <Zap className="w-4 h-4 mr-2" />
-            Battle Arena
-          </TabsTrigger>
-          <TabsTrigger
-            value="personas"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            Persona Generator
-          </TabsTrigger>
-          <TabsTrigger
-            value="optimization"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white"
-          >
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Optimization Loop
-          </TabsTrigger>
-          <TabsTrigger
-            value="analytics"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-600 data-[state=active]:text-white"
-          >
-            <Activity className="w-4 h-4 mr-2" />
-            Analytics
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="battle" className="space-y-6">
-          <BattleArena />
-
-          {/* Recent Battles */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Battles</CardTitle>
-              <CardDescription>
-                Latest test runs from your N8N workflows
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-                        A{i}
-                      </div>
-                      <div>
-                        <p className="font-medium">Agent v2.{i} vs Paziente Ansioso</p>
-                        <p className="text-sm text-muted-foreground">TestRun-2024-{1000 + i}</p>
-                      </div>
+              {/* Quick Stats Card */}
+              <Card>
+                <CardContent className="py-6">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Total Test Runs
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {isLoading ? (
+                          <Skeleton className="h-8 w-12 mx-auto" />
+                        ) : (
+                          health?.testRunsCount ?? 0
+                        )}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={i === 1 ? 'default' : 'secondary'}>
-                        {i === 1 ? 'Running' : 'Completed'}
-                      </Badge>
-                      <Badge variant="outline">
-                        {20 + i * 3} turns
-                      </Badge>
-                      <Button size="sm" variant="ghost">
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Latest Score
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {isLoading ? (
+                          <Skeleton className="h-8 w-12 mx-auto" />
+                        ) : health?.currentScore !== null ? (
+                          health.currentScore.toFixed(1)
+                        ) : (
+                          '—'
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Trend</p>
+                      <p
+                        className={`text-2xl font-bold ${
+                          health?.trend && health.trend > 0
+                            ? 'text-emerald-600'
+                            : health?.trend && health.trend < 0
+                              ? 'text-rose-600'
+                              : ''
+                        }`}
+                      >
+                        {isLoading ? (
+                          <Skeleton className="h-8 w-12 mx-auto" />
+                        ) : health?.trend !== null ? (
+                          `${health.trend > 0 ? '+' : ''}${health.trend.toFixed(1)}`
+                        ) : (
+                          '—'
+                        )}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="personas" className="space-y-6">
-          <PersonaGenerator />
-        </TabsContent>
-
-        <TabsContent value="optimization" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GitBranch className="w-5 h-5 text-green-500" />
-                Optimization Loop
-              </CardTitle>
-              <CardDescription>
-                Ciclo automatico di ottimizzazione basato sui risultati delle battle
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center py-12">
-              <Sparkles className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-muted-foreground">Component coming soon...</p>
-              <p className="text-sm mt-2">Il loop di ottimizzazione automatica sarà qui</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-orange-500" />
-                Advanced Analytics
-              </CardTitle>
-              <CardDescription>
-                Pattern recognition e predictive analytics
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center py-12">
-              <Brain className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-muted-foreground">Analytics engine coming soon...</p>
-              <p className="text-sm mt-2">Analisi avanzate e suggerimenti di ottimizzazione</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Workflow Status Bar */}
-      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 border-2 border-purple-200/50">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-sm font-medium">N8N Workflows: Connected</span>
-              </div>
-              <Badge variant="outline">3 workflows active</Badge>
-              <Badge variant="outline">Supabase: dlozxirsmrbriuklgcxq</Badge>
+                </CardContent>
+              </Card>
             </div>
-            <Button size="sm" variant="ghost">
-              View Logs
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* Details Section (collapsible) */}
+            {showDetails && (
+              <div className="grid gap-6 md:grid-cols-2">
+                <AgentDetails
+                  topIssues={details?.topIssues ?? []}
+                  scoreHistory={health?.scoreHistory ?? []}
+                  strugglingPersonas={details?.strugglingPersonas ?? []}
+                  excellingPersonas={details?.excellingPersonas ?? []}
+                  isLoading={detailsLoading}
+                  onViewFullReport={handleViewFullReport}
+                />
+
+                <OptimizationPanel
+                  testRunId={details?.latestTestRunId ?? null}
+                  agentName={selectedAgent}
+                  suggestions={details?.suggestions ?? []}
+                  onOptimize={handleOptimize}
+                  isOptimizing={isOptimizing}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">
+                Select an agent above to view health metrics
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Card className="border-destructive">
+            <CardContent className="py-4 text-center text-destructive">
+              Failed to load agent health data. Please try again.
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* N8N Status Bar (footer) */}
+      <N8NStatusBar onViewLogs={handleViewLogs} />
     </div>
+  )
+}
+
+/**
+ * Main page export wrapped in Suspense
+ */
+export default function AgenticPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <AgentHealthContent />
+    </Suspense>
   )
 }
