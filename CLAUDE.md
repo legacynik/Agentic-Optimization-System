@@ -4,42 +4,126 @@
 
 | Need | Tool | Command/Path |
 |------|------|--------------|
+| **Resume Session** | Session State | `_project_specs/session/current-state.md` |
+| **Project Overview** | PRD v3 Index | `_project_specs/PRD-v3-index.md` |
+| **Implement Feature** | Ralph Spec | `/ralph-spec [phase]` |
 | **Coding Rules** | Claude Bootstrap | Read `.claude/skills/` |
 | **Workflow/Planning** | BMAD Agents | `*workflow-init` |
 | **Documentation** | Context7 | "Query Context7 for [library] docs" |
-| **Project Specs** | Local Docs | `_project_specs/` |
 
 ---
 
 ## AI Development Integration
 
-This project uses three complementary AI development systems:
+This project uses three **complementary** AI development systems at different levels:
 
-### 1. **Claude Bootstrap** - Installed
-- **Purpose**: Enforces coding standards, TDD, security patterns
+```
+┌────────────────────────────────────────────────────┐
+│  LIVELLO 1: STRATEGIA (BMAD Method)                │
+│  *pm, *architect, *workflow-init, brainstorming    │
+│  → Cosa fare, chi coinvolgere, pianificazione      │
+└────────────────────────────────────────────────────┘
+                      ▼
+┌────────────────────────────────────────────────────┐
+│  LIVELLO 2: IMPLEMENTAZIONE (Claude Bootstrap)     │
+│  base, TDD, security skill, session-management     │
+│  → Come farlo bene, qualità codice, test           │
+└────────────────────────────────────────────────────┘
+                      ▼
+┌────────────────────────────────────────────────────┐
+│  LIVELLO 3: DOCS AGGIORNATE (Context7)             │
+│  Query librerie per documentazione attuale         │
+└────────────────────────────────────────────────────┘
+```
+
+### 1. **Claude Bootstrap** - Esecuzione
+- **Purpose**: Enforces coding standards, TDD, security coding patterns
 - **Skills Location**: `.claude/skills/`
 - **Key Skills**: base, security, typescript, react-web, supabase-nextjs
 - **Commands**: `/code-review`, `/initialize-project`
+- **Owns**: Code quality, TDD workflow, session persistence, OWASP patterns
 
-### 2. **BMAD-METHOD** - Configured
+### 2. **BMAD-METHOD** - Orchestrazione
 - **Purpose**: Structured workflows with specialized agents
 - **Agents Reference**: `.claude/agents/bmad-agents.md`
-- **Quick Start**: `*workflow-init` to begin any task
+- **Quick Start**: `*workflow-init` to begin planning/discussion
 - **21 Agents**: PM, Architect, Dev, QA, Security, DevOps, etc.
+- **Owns**: Planning, architecture decisions, QA strategy, threat modeling
+- **Note**: BMAD agents automatically follow Claude Bootstrap skills during implementation
 
-### 3. **Context7** - Active
+### 3. **Context7** - Documentazione
 - **Purpose**: Query public library documentation
 - **Usage**: "Query Context7 for React hooks documentation"
+
+---
+
+## System Ownership (Chi Fa Cosa)
+
+### BMAD Method → Orchestrazione (COSA fare)
+| Responsabilità | Comando |
+|----------------|---------|
+| Pianificazione requisiti | `*pm` |
+| Design architetturale | `*architect` |
+| Workflow orchestration | `*workflow-init` |
+| Ideazione/brainstorming | `*brainstorming` |
+| QA Strategy (test plans) | `*qa` |
+| Security Architecture Review | `*security` (threat modeling, architettura) |
+
+### Claude Bootstrap → Esecuzione (COME farlo bene)
+| Responsabilità | Skill/Command |
+|----------------|---------------|
+| Qualità codice (max 200 righe/file) | `base` skill |
+| TDD Workflow (RED→GREEN→VALIDATE) | `base` skill |
+| Security Coding Patterns (OWASP) | `security` skill |
+| Session persistence | `session-management` skill |
+| Pre-commit verification | `/code-review` |
+| Manual testing checklist | `real-testing` skill |
+
+---
+
+## Decision Tree: Quando Usare Cosa
+
+```
+Devo iniziare un task?
+│
+├─ Non so cosa costruire
+│  └─→ BMAD: *workflow-init, *pm
+│
+├─ So cosa costruire ma devo progettare
+│  └─→ BMAD: *architect
+│
+├─ Ho la spec, devo implementare
+│  └─→ Claude Bootstrap: /ralph-spec + TDD
+│
+├─ Bug da fixare
+│  └─→ Claude Bootstrap: TDD bug fix workflow
+│
+├─ Need brainstorming/ideazione
+│  └─→ BMAD: brainstorming workflow
+│
+├─ Security review architetturale
+│  └─→ BMAD: *security (threat modeling)
+│
+├─ Security durante coding
+│  └─→ Claude Bootstrap: security skill (OWASP patterns)
+│
+├─ Pre-commit review
+│  └─→ Claude Bootstrap: /code-review
+│
+└─ Riprendere sessione
+   └─→ Claude Bootstrap: session-management
+```
 
 ---
 
 ## Rules
 
 ### Codice
-- **Commenta tutto**: header file + docstrings + inline per logica non ovvia
+- **Commenti per WHY, non WHAT**: header file (scopo), docstrings API pubbliche, inline solo per logica non ovvia. Il codice deve essere self-documenting (nomi descrittivi > commenti)
 - **Unit test ≠ verifica**: TESTA MANUALMENTE (avvia app, curl, verifica DB)
 - **Logging obbligatorio**: ogni feature deve loggare
 - **Preflight prima di commit**: `./scripts/preflight.sh`
+- **Limiti Claude Bootstrap**: max 200 righe/file, max 20 righe/funzione, max 3 parametri
 
 ### MCP Tools
 - **Brainstorming/Analisi**: USA SEMPRE `mcp__sequential-thinking__sequentialthinking`
@@ -47,39 +131,305 @@ This project uses three complementary AI development systems:
 - **Supabase**: Use Supabase MCP tools for database operations
 
 ### Skills (leggi prima di scrivere codice)
-- `.claude/skills/base/SKILL.md`
-- `.claude/skills/security/SKILL.md`
-- `.claude/skills/real-testing/SKILL.md`
+- `.claude/skills/base/SKILL.md` → Qualità codice, TDD
+- `.claude/skills/security/SKILL.md` → OWASP patterns durante coding
+- `.claude/skills/real-testing/SKILL.md` → Checklist test manuali
 
 ### Workflow
-- `*workflow-init` per iniziare
-- `/code-review` prima di commit
+- `*workflow-init` → quando serve planning/discussione
+- `/ralph-spec [phase]` → quando hai spec e devi implementare
+- `/code-review` → SEMPRE prima di commit
 - Agents BMAD: `.claude/agents/bmad-agents.md`
 
-### Session
-- Stato: `_project_specs/session/current-state.md`
+### Session & Specs
+- **Resume**: `_project_specs/session/current-state.md`
+- **PRD Index**: `_project_specs/PRD-v3-index.md`
+- **Specs**: `_project_specs/specs/*.md`
+- **Ralph Command**: `.claude/commands/ralph-spec.md`
 - Todos: `_project_specs/todos/active.md`
+
+---
+
+## Session Documentation Flow
+
+### Struttura Files di Sessione
+```
+_project_specs/session/
+├── current-state.md      # 🔄 LIVE - Stato attuale (cosa sto facendo ORA)
+├── decisions.md          # 📝 APPEND-ONLY - Log decisioni chiave (PERCHÉ)
+├── code-landmarks.md     # 📍 Posizioni codice importanti (DOVE)
+└── archive/              # 📚 STORIA COMPLETA - Sessioni passate
+    └── YYYY-MM-DD-topic.md
+```
+
+### Quando Aggiornare Cosa
+
+| Evento | File da Aggiornare | Azione |
+|--------|-------------------|--------|
+| **Fine task** | `current-state.md` | Quick update: progress, next steps |
+| **Decisione presa** | `decisions.md` | APPEND entry con context e reasoning |
+| **~20 tool calls** | `current-state.md` | Full checkpoint |
+| **Fine sessione** | `archive/YYYY-MM-DD.md` | Crea summary, pulisci current-state |
+| **Feature completata** | `archive/` + `current-state.md` | Archive + reset |
+
+### current-state.md (STATO LIVE)
+**Aggiorna frequentemente** - È lo stato attuale della sessione:
+- Active Task (cosa sto facendo)
+- Progress (a che punto sono)
+- Pending Issues (cosa resta da fare)
+- Resume Instructions (come riprendere)
+
+**ATTENZIONE**: Questo file viene SOVRASCRITTO ad ogni sessione. Non contiene la storia completa.
+
+### decisions.md (LOG DECISIONI)
+**Append-only** - MAI cancellare entries:
+```markdown
+## [YYYY-MM-DD] Titolo Decisione
+
+**Decision**: Cosa abbiamo deciso
+**Context**: Perché stavamo decidendo
+**Options Considered**: Alternative valutate
+**Choice**: Scelta finale
+**Reasoning**: Motivazione
+**Trade-offs**: Compromessi accettati
+**References**: File/code coinvolti
+```
+
+### archive/ (STORIA COMPLETA)
+**Questo è il LOG STORICO del progetto**. Ogni sessione significativa diventa un file:
+- `2026-01-19-prd-v24-backend.md` - Backend implementation
+- `2026-01-25-schema-refactor.md` - Schema changes
+- etc.
+
+Contiene: Summary, Tasks Completed, Key Decisions, Code Changes, Session Stats.
+
+### Flusso Completo
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  INIZIO SESSIONE                                            │
+│  1. Leggi current-state.md → Capisci dove eri               │
+│  2. Leggi decisions.md recenti → Capisci perché             │
+│  3. Continua da "Resume Instructions"                       │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  DURANTE LA SESSIONE                                        │
+│  - Ogni task completato → Quick update current-state.md     │
+│  - Ogni decisione → APPEND a decisions.md                   │
+│  - Ogni ~20 tool calls → Full checkpoint current-state.md   │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  FINE SESSIONE / FEATURE COMPLETATA                         │
+│  1. Crea archive/YYYY-MM-DD-topic.md con summary completo   │
+│  2. Aggiorna current-state.md con "Resume Instructions"     │
+│  3. La storia è preservata in archive/                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Dove Trovare la Storia Completa?
+- **Storia sessioni**: `_project_specs/session/archive/*.md`
+- **Storia decisioni**: `_project_specs/session/decisions.md`
+- **Stato attuale**: `_project_specs/session/current-state.md`
+
+---
+
+## Regole Obbligatorie per Session State
+
+### Comandi Sessione (User)
+| Comando | Azione |
+|---------|--------|
+| `"inizio sessione"` / `"riprendi"` | Legge current-state.md e riprende |
+| `"checkpoint"` / `"salva stato"` | Full checkpoint di current-state.md |
+| `"fine sessione"` / `"chiudi sessione"` | Esegue workflow completo fine sessione |
+| `"archivia"` | Crea file in archive/ |
+
+### INIZIO SESSIONE (SEMPRE)
+```
+1. LEGGI current-state.md PRIMA di fare qualsiasi cosa
+2. LEGGI decisions.md recenti se serve contesto
+3. ANNUNCIA cosa stai per fare basandoti su "Resume Instructions"
+```
+
+### DURANTE LA SESSIONE (OBBLIGATORIO)
+
+| Trigger | Azione | File |
+|---------|--------|------|
+| Task completato | Aggiorna "Completed This Session" | `current-state.md` |
+| Decisione architetturale | APPEND nuova entry | `decisions.md` |
+| Ogni ~20 tool calls | Full checkpoint | `current-state.md` |
+| Errore/blocco risolto | Documenta soluzione | `current-state.md` |
+| Nuovo pattern/location importante | Aggiungi entry | `code-landmarks.md` |
+
+### FINE SESSIONE (SEMPRE)
+```
+1. CREA file in archive/YYYY-MM-DD-topic.md con:
+   - Summary (1 paragrafo)
+   - Tasks Completed (checkbox list)
+   - Key Decisions (riferimenti a decisions.md)
+   - Code Changes (tabella file modificati)
+   - Open Items (cosa resta da fare)
+   - Session Stats (durata, tool calls, files)
+
+2. AGGIORNA current-state.md con:
+   - Active Task = "Ready for next session"
+   - Pending Issues = tasks non completati
+   - Resume Instructions = prossimi passi chiari
+
+3. VERIFICA che decisions.md contenga tutte le decisioni
+```
+
+### Template current-state.md
+```markdown
+# Current Session State
+*Last updated: YYYY-MM-DD ~HH:MM*
+
+## Active Task
+[Cosa sto facendo ORA]
+
+## Current Status
+- **Phase**: [exploring | planning | implementing | testing | debugging]
+- **Progress**: [X of Y steps / percentage]
+- **Blockers**: [None / descrizione]
+
+## Completed This Session
+- [x] Task 1
+- [x] Task 2
+
+## Pending Issues
+| Task | Priority | Notes |
+|------|----------|-------|
+| ... | High/Medium/Low | ... |
+
+## Key Context
+[Info importante per capire lo stato]
+
+## Resume Instructions
+```
+1. Passo 1
+2. Passo 2
+3. Passo 3
+```
+```
+
+### Template decisions.md Entry
+```markdown
+---
+
+## [YYYY-MM-DD] Titolo Decisione
+
+**Decision**: Cosa abbiamo deciso
+**Context**: Perché stavamo decidendo
+**Options Considered**:
+1. Opzione A
+2. Opzione B
+**Choice**: Scelta finale
+**Reasoning**: Motivazione dettagliata
+**Trade-offs**: Compromessi accettati
+**References**: File/code coinvolti
+```
+
+### Template archive/YYYY-MM-DD-topic.md
+```markdown
+# Session Archive: YYYY-MM-DD - Topic
+
+## Summary
+[1 paragrafo riassuntivo]
+
+## Tasks Completed
+- [x] Task 1
+- [x] Task 2
+
+## Key Decisions
+- [YYYY-MM-DD] Decision 1 (vedi decisions.md)
+
+## Code Changes
+| File | Change Type | Description |
+|------|-------------|-------------|
+| path/file.ts | Created/Modified | Descrizione |
+
+## Open Items Carried Forward
+- [ ] Task non completato
+
+## Session Stats
+- Duration: ~X hours
+- Tool calls: ~N
+- Files modified: N
+```
+
+### Checklist Fine Sessione
+- [ ] `current-state.md` aggiornato con stato pulito
+- [ ] `decisions.md` contiene tutte le decisioni
+- [ ] `archive/YYYY-MM-DD-topic.md` creato
+- [ ] "Resume Instructions" sono chiari e actionable
+- [ ] Pending Issues elencati con priorità
+
+### Auto-Trigger Fine Sessione
+Claude DEVE suggerire "Vuoi che chiuda la sessione?" quando:
+- L'utente dice "ok grazie", "perfetto", "fatto" senza altri task
+- È passato molto tempo (~50+ tool calls)
+- Una feature major è completata
+- L'utente sembra aver finito
+
+### Esecuzione "Fine Sessione"
+Quando l'utente dice `"fine sessione"` o equivalente, Claude DEVE:
+```
+1. Creare archive/YYYY-MM-DD-topic.md con summary completo
+2. Aggiornare current-state.md con stato pulito
+3. Verificare decisions.md sia completo
+4. Mostrare riepilogo: "Sessione archiviata in archive/..."
+```
 
 ---
 
 ## Development Workflow
 
-### Starting a New Feature
+### Spec-Driven Development (PREFERRED - Claude Bootstrap)
+**Use when**: Hai già la spec e devi implementare
 ```
-1. *workflow-init          → Choose workflow type
-2. *pm                     → Define requirements
-3. *architect              → Design solution
-4. Read skills             → Apply Bootstrap patterns
-5. *dev                    → Implement with TDD
-6. /code-review           → Review before commit
+1. Read PRD-v3-index.md   → Find pending phase
+2. /ralph-spec [phase]    → Auto-generate TDD prompt (CB)
+3. Implement with TDD     → RED → GREEN → VALIDATE (CB)
+4. Manual test            → real-testing skill checklist (CB)
+5. Update spec status     → Mark requirements [x]
+6. /code-review          → Review before commit (CB)
 ```
 
-### Quick Bug Fix
+### Planning New Feature (BMAD → Claude Bootstrap)
+**Use when**: Non sai ancora cosa/come costruire
 ```
-1. *workflow-quick        → Fast 5-min workflow
-2. *qa                    → Reproduce issue
-3. *dev                   → Fix with tests
-4. /code-review          → Verify quality
+1. *workflow-init         → Start planning process (BMAD)
+2. *pm                    → Define requirements (BMAD)
+3. *architect             → Design system (BMAD)
+4. Create spec            → _project_specs/specs/ con template
+5. /ralph-spec [name]     → Implement with TDD (CB)
+6. /code-review          → Verify quality (CB)
+```
+
+### Starting a New Feature (Hai già i requisiti chiari)
+```
+1. Create spec in _project_specs/specs/
+2. Use _TEMPLATE.md as base
+3. Define requirements + acceptance criteria
+4. /ralph-spec [spec-name] → Implement (CB)
+```
+
+### Quick Bug Fix (BMAD + Claude Bootstrap)
+```
+1. *workflow-quick        → Fast workflow (BMAD)
+2. *qa                    → Reproduce issue (BMAD)
+3. *dev                   → Fix with TDD (BMAD + CB skills)
+4. /code-review          → Verify quality (CB)
+```
+
+### Security Review (BMAD + Claude Bootstrap)
+```
+1. *security              → Threat modeling, architettura (BMAD)
+2. security skill         → OWASP patterns nel codice (CB)
+3. /code-review           → Automated security checks (CB)
 ```
 
 ---
@@ -132,7 +482,12 @@ A Next.js 14 dashboard for analyzing and visualizing AI agent conversation testi
 │   ├── migrations/                 # Database migrations
 │   └── seed.sql                    # Database seed file
 ├── _project_specs/                 # Project specifications
-│   ├── features/                   # Feature specs
+│   ├── PRD-v3-index.md             # Master index (~2k tokens)
+│   ├── specs/                      # Granular specs per phase
+│   │   ├── _TEMPLATE.md            # Spec template
+│   │   ├── phase-5-n8n.md          # n8n workflow spec
+│   │   └── ui-refactor-minimal.md  # UI refactor spec
+│   ├── features/                   # Feature specs (legacy)
 │   ├── todos/                      # Active todos
 │   └── session/                    # Session state
 └── .claude/
@@ -255,8 +610,10 @@ All queries include automatic retry with exponential backoff (3 attempts) to han
 ## Theming
 - **Provider**: next-themes
 - **Modes**: Light, Dark, System
+- **Current Theme**: shadcn/ui Slate (blu-grigio)
 - **Theme Toggle**: Available in header
 - **CSS Variables**: Defined in `app/globals.css`
+- **Theme Options**: https://ui.shadcn.com/themes
 
 ## Evaluation Criteria
 Conversations are scored across multiple criteria:

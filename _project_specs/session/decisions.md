@@ -84,3 +84,56 @@ Track key decisions for future reference. Never delete entries.
 **References**:
 - `supabase/migrations/002_prd_v2_4_schema.sql` - CHECK constraint on mode
 - `app/api/test-runs/route.ts` - Mode validation
+
+---
+
+## [2026-01-25] Claude Bootstrap + BMAD Method Integration
+
+**Decision**: Usare BMAD e Claude Bootstrap come sistemi complementari a livelli diversi
+
+**Context**: Il progetto aveva entrambi i sistemi configurati ma con overlap e conflitti non chiariti
+
+**Options Considered**:
+1. Usare solo BMAD per tutto
+2. Usare solo Claude Bootstrap per tutto
+3. Integrarli a livelli diversi (complementari)
+
+**Choice**: Integrazione a 3 livelli
+
+**Architecture**:
+```
+LIVELLO 1: STRATEGIA (BMAD)
+  → *pm, *architect, *workflow-init, brainstorming
+  → Cosa fare, chi coinvolgere, pianificazione
+
+LIVELLO 2: IMPLEMENTAZIONE (Claude Bootstrap)
+  → base, TDD, security skill, session-management
+  → Come farlo bene, qualità codice, test
+
+LIVELLO 3: DOCS (Context7)
+  → Query librerie per documentazione attuale
+```
+
+**Ownership**:
+- BMAD: Orchestrazione, planning, agents, QA strategy, threat modeling
+- Claude Bootstrap: Code quality, TDD workflow, session persistence, OWASP patterns, code review
+
+**Reasoning**:
+- Evita duplicazione di responsabilità
+- BMAD eccelle in planning/discussion
+- Claude Bootstrap eccelle in code quality enforcement
+- Insieme coprono l'intero ciclo di sviluppo
+
+**Conflicts Resolved**:
+1. "Commenta tutto" vs "Self-documenting code" → "Commenti per WHY, non WHAT"
+2. `*workflow-init` vs `/ralph-spec` → Decision tree: planning vs implementation
+3. `*security` vs security skill → Architettura vs coding patterns
+
+**Trade-offs**:
+- Richiede conoscenza di entrambi i sistemi
+- Decision tree necessario per scegliere
+
+**References**:
+- `CLAUDE.md` - Sezioni "AI Development Integration", "System Ownership", "Decision Tree"
+- `.claude/skills/base/SKILL.md` - Code quality rules
+- `.claude/agents/bmad-agents.md` - BMAD agents reference
