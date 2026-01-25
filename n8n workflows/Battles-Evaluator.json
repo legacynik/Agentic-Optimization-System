@@ -448,7 +448,7 @@
         "operation": "executeQuery",
         "query": "SELECT\n  json_build_object(\n    'test_run_id', $1,\n    'overall_stats', (\n      SELECT json_build_object(\n        'total', COUNT(*),\n        'success', COUNT(*) FILTER (WHERE outcome = 'success'),\n        'partial', COUNT(*) FILTER (WHERE outcome = 'partial'),\n        'failure', COUNT(*) FILTER (WHERE outcome = 'failure'),\n        'avg_score', ROUND(AVG(score)::numeric, 2)\n      )\n      FROM battle_results WHERE test_run_id = $1\n    ),\n    'failures_detail', (\n      SELECT json_agg(json_build_object(\n        'persona', p.name,\n        'category', p.category,\n        'score', br.score,\n        'transcript_snippet', LEFT(br.transcript::text, 500)\n      ))\n      FROM battle_results br\n      JOIN personas p ON br.persona_id = p.id\n      WHERE br.test_run_id = $1 AND br.outcome IN ('failure', 'partial')\n      LIMIT 5\n    ),\n    'human_notes', (\n      SELECT json_agg(bn.note)\n      FROM battle_notes bn\n      JOIN battle_results br ON bn.battle_result_id = br.id\n      WHERE br.test_run_id = $1\n    )\n  ) as analysis_context",
         "options": {
-          "queryReplacement": "={{ $json.test_run_id }}"
+          "queryReplacement": "={{ $('Extract Test Run Info').item.json.test_run_id }}"
         }
       },
       "type": "n8n-nodes-base.postgres",
@@ -1384,7 +1384,7 @@
           "operation": "executeQuery",
           "query": "SELECT\n  json_build_object(\n    'test_run_id', $1,\n    'overall_stats', (\n      SELECT json_build_object(\n        'total', COUNT(*),\n        'success', COUNT(*) FILTER (WHERE outcome = 'success'),\n        'partial', COUNT(*) FILTER (WHERE outcome = 'partial'),\n        'failure', COUNT(*) FILTER (WHERE outcome = 'failure'),\n        'avg_score', ROUND(AVG(score)::numeric, 2)\n      )\n      FROM battle_results WHERE test_run_id = $1\n    ),\n    'failures_detail', (\n      SELECT json_agg(json_build_object(\n        'persona', p.name,\n        'category', p.category,\n        'score', br.score,\n        'transcript_snippet', LEFT(br.transcript::text, 500)\n      ))\n      FROM battle_results br\n      JOIN personas p ON br.persona_id = p.id\n      WHERE br.test_run_id = $1 AND br.outcome IN ('failure', 'partial')\n      LIMIT 5\n    ),\n    'human_notes', (\n      SELECT json_agg(bn.note)\n      FROM battle_notes bn\n      JOIN battle_results br ON bn.battle_result_id = br.id\n      WHERE br.test_run_id = $1\n    )\n  ) as analysis_context",
           "options": {
-            "queryReplacement": "={{ $json.test_run_id }}"
+            "queryReplacement": "={{ $('Extract Test Run Info').item.json.test_run_id }}"
           }
         },
         "type": "n8n-nodes-base.postgres",
