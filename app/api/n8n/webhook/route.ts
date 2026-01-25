@@ -352,9 +352,25 @@ async function handlePersonasValidatorCallback(payload: N8nCallbackPayload): Pro
 
 /**
  * Saves a battle result to the database
+ * Implements idempotency: skips insert if result already exists for same test_run + persona
+ * Throws an error if insert fails to prevent silent data loss
  */
 async function saveBattleResult(testRunId: string, battleResult: BattleResultPayload): Promise<void> {
-  const { error } = await supabase
+  // Idempotency check: verify if battle result already exists
+  const { data: existing } = await supabase
+    .from('battle_results')
+    .select('id')
+    .eq('test_run_id', testRunId)
+    .eq('persona_id', battleResult.persona_id)
+    .maybeSingle()
+
+  if (existing) {
+    console.log(`[n8n/webhook] Idempotency: Battle result already exists for test_run=${testRunId}, persona=${battleResult.persona_id}. Skipping duplicate.`)
+    return
+  }
+
+  // Insert new battle result
+  const { data, error } = await supabase
     .from('battle_results')
     .insert({
       test_run_id: testRunId,
@@ -366,12 +382,15 @@ async function saveBattleResult(testRunId: string, battleResult: BattleResultPay
       evaluation_details: battleResult.evaluation_details || null,
       tool_session_state: battleResult.tool_session_state || {}
     })
+    .select()
+    .single()
 
   if (error) {
-    console.error('[n8n/webhook] Error saving battle result:', error)
-  } else {
-    console.log(`[n8n/webhook] Saved battle result for persona ${battleResult.persona_id}`)
+    console.error('[n8n/webhook] Failed to save battle result:', error)
+    throw new Error(`Battle result save failed: ${error.message}`)
   }
+
+  console.log(`[n8n/webhook] Saved battle result for persona ${battleResult.persona_id}, id: ${data.id}`)
 }
 
 /**

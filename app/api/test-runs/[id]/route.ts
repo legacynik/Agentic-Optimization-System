@@ -60,6 +60,7 @@ interface TestRunDetailResponse {
   failure_patterns: unknown
   strengths: unknown
   weaknesses: unknown
+  analysis_report: unknown
 }
 
 // ============================================================================
@@ -122,6 +123,7 @@ export async function GET(
         failure_patterns,
         strengths,
         weaknesses,
+        analysis_report,
         test_config,
         llm_config
       `)
@@ -218,7 +220,8 @@ export async function GET(
       battle_results: formattedBattleResults,
       failure_patterns: testRun.failure_patterns,
       strengths: testRun.strengths,
-      weaknesses: testRun.weaknesses
+      weaknesses: testRun.weaknesses,
+      analysis_report: testRun.analysis_report
     }
 
     return NextResponse.json(response)

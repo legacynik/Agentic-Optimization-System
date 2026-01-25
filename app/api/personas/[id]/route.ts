@@ -156,7 +156,8 @@ export async function PATCH(
     const allowedFields = [
       'name', 'description', 'psychological_profile', 'personaprompt',
       'category', 'difficulty', 'behaviors',
-      'validation_status', 'validation_notes', 'validated_by_human'
+      'validation_status', 'validation_notes', 'validated_by_human',
+      'created_for_prompt'
     ]
 
     const updateData: Record<string, unknown> = {}

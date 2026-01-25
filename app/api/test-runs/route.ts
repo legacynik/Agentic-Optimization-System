@@ -24,8 +24,16 @@ const supabase = createClient(
 /** Valid test run modes per PRD v2.4 */
 type TestMode = 'single' | 'full_cycle_with_review'
 
-/** Valid test run statuses */
-type TestRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'aborted' | 'awaiting_review'
+/** Valid test run statuses - State Machine per PRD v3 */
+type TestRunStatus =
+  | 'pending'           // Creato, in attesa di avvio
+  | 'running'           // Battles in corso (streaming)
+  | 'battles_completed' // Battles finite, evaluator in attesa
+  | 'evaluating'        // Evaluator in corso
+  | 'completed'         // Tutto finito (analysis_report pronto)
+  | 'failed'            // Errore
+  | 'aborted'           // Abortito manualmente
+  | 'awaiting_review'   // In attesa di review umana (full_cycle mode)
 
 /** Valid tool scenario IDs (hardcoded per PRD v2.4) */
 type ToolScenarioId = 'happy_path' | 'calendar_full' | 'booking_fails' | 'partial_availability'

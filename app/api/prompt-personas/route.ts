@@ -24,7 +24,7 @@ const supabase = createClient(
 /** Request body for creating an association */
 interface CreateAssociationRequest {
   persona_id: string
-  prompt_name: string
+  prompt_version_id: string
   priority?: number
   is_active?: boolean
 }
@@ -32,7 +32,7 @@ interface CreateAssociationRequest {
 /** Association response with persona details */
 interface AssociationWithPersona {
   persona_id: string
-  prompt_name: string
+  prompt_version_id: string
   is_active: boolean
   priority: number
   created_at: string
