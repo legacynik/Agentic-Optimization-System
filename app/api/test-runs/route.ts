@@ -79,43 +79,30 @@ function generateTestRunCode(): string {
 }
 
 /**
- * Fetches personas associated with a prompt
- * Only returns validated personas per PRD v2.4
+ * Fetches validated personas for a prompt
+ * Uses created_for_prompt column in personas table (simpler than junction table)
  *
  * @param promptName - The prompt name to look up
  * @returns Array of persona UUIDs
  */
 async function getPersonasForPrompt(promptName: string): Promise<string[]> {
   const { data, error } = await supabase
-    .from('prompt_personas')
-    .select('persona_id')
-    .eq('prompt_name', promptName)
-    .eq('is_active', true)
+    .from('personas')
+    .select('id')
+    .eq('created_for_prompt', promptName)
+    .eq('validation_status', 'validated')
 
   if (error) {
-    console.error('[test-runs] Error fetching prompt_personas:', error)
+    console.error('[test-runs] Error fetching personas:', error)
     return []
   }
 
   if (!data || data.length === 0) {
-    console.log(`[test-runs] No personas associated with prompt: ${promptName}`)
+    console.log(`[test-runs] No validated personas found for prompt: ${promptName}`)
     return []
   }
 
-  // Filter for validated personas only
-  const personaIds = data.map(d => d.persona_id)
-  const { data: validatedPersonas, error: personaError } = await supabase
-    .from('personas')
-    .select('id')
-    .in('id', personaIds)
-    .eq('validation_status', 'validated')
-
-  if (personaError) {
-    console.error('[test-runs] Error fetching validated personas:', personaError)
-    return personaIds // Fallback to all associated personas
-  }
-
-  return validatedPersonas?.map(p => p.id) || []
+  return data.map(p => p.id)
 }
 
 /**
@@ -176,12 +163,18 @@ async function triggerN8nWorkflow(
       return false
     }
 
-    // Update workflow_configs tracking
+    // Update workflow_configs tracking (increment done via separate call to avoid .rpc() inside .update())
+    const { data: currentConfig } = await supabase
+      .from('workflow_configs')
+      .select('total_executions')
+      .eq('workflow_type', 'test_runner')
+      .single()
+
     await supabase
       .from('workflow_configs')
       .update({
         last_triggered_at: new Date().toISOString(),
-        total_executions: supabase.rpc('increment', { row_id: 'test_runner' })
+        total_executions: (currentConfig?.total_executions || 0) + 1
       })
       .eq('workflow_type', 'test_runner')
 
@@ -206,8 +199,10 @@ async function triggerN8nWorkflow(
  * Query params:
  * - status: Filter by status
  * - prompt_version_id: Filter by prompt version
+ * - prompt_name: Filter by prompt name (joins prompt_versions table)
  * - limit: Number of results (default 50, max 100)
  * - offset: Pagination offset
+ * - order: Sort order for started_at ('asc' or 'desc', default 'desc')
  */
 export async function GET(request: NextRequest) {
   try {
@@ -216,10 +211,12 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const status = searchParams.get('status')
     const promptVersionId = searchParams.get('prompt_version_id')
+    const promptName = searchParams.get('prompt_name')
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
     const offset = parseInt(searchParams.get('offset') || '0')
+    const order = searchParams.get('order') === 'asc' ? true : false
 
-    // Build query
+    // Build query with join to prompt_versions for prompt_name access
     let query = supabase
       .from('test_runs')
       .select(`
@@ -239,9 +236,12 @@ export async function GET(request: NextRequest) {
         last_heartbeat_at,
         started_at,
         completed_at,
-        stopped_reason
+        stopped_reason,
+        analysis_report,
+        analyzed_at,
+        prompt_versions!inner(prompt_name, version)
       `, { count: 'exact' })
-      .order('started_at', { ascending: false })
+      .order('started_at', { ascending: order })
       .range(offset, offset + limit - 1)
 
     // Apply filters
@@ -250,6 +250,9 @@ export async function GET(request: NextRequest) {
     }
     if (promptVersionId) {
       query = query.eq('prompt_version_id', promptVersionId)
+    }
+    if (promptName) {
+      query = query.eq('prompt_versions.prompt_name', promptName)
     }
 
     const { data, error, count } = await query
