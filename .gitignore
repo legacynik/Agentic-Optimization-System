@@ -27,4 +27,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+next-env.d.ts.claude/
+_bmad/
+_bmad-output/
