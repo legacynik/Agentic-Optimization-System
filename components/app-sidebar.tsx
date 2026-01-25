@@ -72,7 +72,7 @@ const navTesting = [
 const navConfig = [
   {
     title: "Personas",
-    url: "/agentic?tab=personas",
+    url: "/personas",
     icon: Users,
   },
   {

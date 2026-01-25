@@ -213,7 +213,7 @@ export async function fetchHeatmapData() {
 
 /**
  * Update human notes for a conversation
- * Note: This updates the conversations_summary JSON field with the new human_notes value
+ * Updates directly on old_conversations table (atomic, no race condition)
  */
 export async function updateConversationNotes(
   conversationId: number,
@@ -222,44 +222,17 @@ export async function updateConversationNotes(
   return withRetry(async () => {
     const supabase = getSupabase()
 
-    // First, fetch the current row to get the conversations_summary
-    const { data: currentData, error: fetchError } = await supabase
-      .from("personas_performance")
-      .select("conversations_summary")
-      .eq("conversationid", conversationId)
-      .single()
-
-    if (fetchError) {
-      console.error("[v0] Error fetching conversation for update:", fetchError)
-      throw fetchError
-    }
-
-    // Parse and update the conversations_summary
-    let summary = currentData.conversations_summary
-    if (typeof summary === 'string') {
-      try {
-        summary = JSON.parse(summary)
-      } catch {
-        summary = []
-      }
-    }
-
-    // Update the first conversation's human_notes (or all if they share the same conversation)
-    if (Array.isArray(summary) && summary.length > 0) {
-      summary[0].human_notes = notes
-    }
-
-    // Update back to database
+    // Atomic update directly on the source table (no fetch needed)
     const { error: updateError } = await supabase
-      .from("personas_performance")
-      .update({ conversations_summary: summary })
+      .from("old_conversations")
+      .update({ human_notes: notes })
       .eq("conversationid", conversationId)
 
     if (updateError) {
-      console.error("[v0] Error updating conversation notes:", updateError)
+      console.error("[Queries] Error updating conversation notes:", updateError)
       throw updateError
     }
 
-    console.log("[v0] Successfully updated notes for conversation", conversationId)
+    console.log("[Queries] Successfully updated notes for conversation", conversationId)
   })
 }

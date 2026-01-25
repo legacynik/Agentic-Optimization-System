@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-// Test run status types per PRD
+// Test run status types per PRD v3 - State Machine
 export type TestRunStatus =
-  | 'pending'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'aborted'
-  | 'awaiting_review'
+  | 'pending'           // Creato, in attesa di avvio
+  | 'running'           // Battles in corso
+  | 'battles_completed' // Battles finite, evaluator in attesa
+  | 'evaluating'        // Evaluator in corso
+  | 'completed'         // Tutto finito (analysis_report pronto)
+  | 'failed'            // Errore
+  | 'aborted'           // Abortito manualmente
+  | 'awaiting_review'   // In attesa di review umana (full_cycle mode)
 
 /** Test run interface matching API response structure */
 export interface TestRun {
@@ -110,8 +112,9 @@ export function useTestRunStatus(testRunId: string | null) {
     enabled: !!testRunId,
     refetchInterval: (query) => {
       const data = query.state.data
-      // Poll every 5 sec while running or pending
-      return data?.status === 'running' || data?.status === 'pending'
+      // Poll every 5 sec while in active states (pending, running, battles_completed, evaluating)
+      const activeStates: TestRunStatus[] = ['pending', 'running', 'battles_completed', 'evaluating']
+      return data?.status && activeStates.includes(data.status)
         ? 5000
         : false
     },
@@ -141,12 +144,16 @@ export function useAbortTestRun() {
 export function useTestRuns(filters?: {
   status?: TestRunStatus
   prompt_version_id?: string
+  prompt_name?: string
   limit?: number
+  order?: 'asc' | 'desc'
 }) {
   const params = new URLSearchParams()
   if (filters?.status) params.set('status', filters.status)
   if (filters?.prompt_version_id) params.set('prompt_version_id', filters.prompt_version_id)
+  if (filters?.prompt_name) params.set('prompt_name', filters.prompt_name)
   if (filters?.limit) params.set('limit', filters.limit.toString())
+  if (filters?.order) params.set('order', filters.order)
 
   return useQuery({
     queryKey: ['test-runs', filters],

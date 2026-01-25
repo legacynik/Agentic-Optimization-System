@@ -160,8 +160,9 @@ export function TestRunStatusMonitor({
     ? Math.round((testRun.completed_personas / testRun.total_personas) * 100)
     : testRun.progress || 0
 
-  const canAbort = testRun.status === "running" || testRun.status === "pending"
+  const canAbort = testRun.status === "running" || testRun.status === "pending" || testRun.status === "battles_completed" || testRun.status === "evaluating"
   const canViewResults = testRun.status === "completed" || testRun.status === "awaiting_review"
+  const isProcessing = testRun.status === "running" || testRun.status === "battles_completed" || testRun.status === "evaluating"
 
   return (
     <Card className={statusConfig.borderClass}>
@@ -174,23 +175,43 @@ export function TestRunStatusMonitor({
             </CardTitle>
           </div>
           <Badge variant={statusConfig.variant}>
-            {testRun.status.toUpperCase()}
+            {statusConfig.label}
           </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Progress section */}
-        {(testRun.status === "running" || testRun.status === "pending") && (
+        {/* Progress section - show during all active states */}
+        {isProcessing && (
           <>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                {testRun.completed_personas} of {testRun.total_personas} personas completed
+                {testRun.status === "running" || testRun.status === "pending" ? (
+                  <>{testRun.completed_personas} of {testRun.total_personas} personas completed</>
+                ) : testRun.status === "battles_completed" ? (
+                  <>Battles complete. Starting evaluation...</>
+                ) : testRun.status === "evaluating" ? (
+                  <>Evaluating results and generating analysis...</>
+                ) : null}
               </span>
-              <span className="font-medium">{progress}%</span>
+              <span className="font-medium">
+                {testRun.status === "running" || testRun.status === "pending"
+                  ? `${progress}%`
+                  : testRun.status === "battles_completed"
+                    ? "100%"
+                    : "Analyzing..."}
+              </span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress
+              value={testRun.status === "running" || testRun.status === "pending" ? progress : 100}
+              className={`h-2 ${testRun.status === "evaluating" ? "animate-pulse" : ""}`}
+            />
           </>
+        )}
+        {testRun.status === "pending" && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Waiting to start...</span>
+          </div>
         )}
 
         {/* Completed stats */}
@@ -297,6 +318,7 @@ function getStatusConfig(status: TestRunStatus): {
   icon: React.ReactNode
   borderClass: string
   variant: "default" | "secondary" | "destructive" | "outline"
+  label: string
 } {
   switch (status) {
     case "pending":
@@ -304,42 +326,63 @@ function getStatusConfig(status: TestRunStatus): {
         icon: <Clock className="h-4 w-4 text-muted-foreground" />,
         borderClass: "border-muted",
         variant: "outline",
+        label: "PENDING",
       }
     case "running":
       return {
         icon: <Loader2 className="h-4 w-4 animate-spin text-blue-500" />,
         borderClass: "border-blue-500/50",
         variant: "secondary",
+        label: "RUNNING",
+      }
+    case "battles_completed":
+      return {
+        icon: <CheckCircle2 className="h-4 w-4 text-cyan-500" />,
+        borderClass: "border-cyan-500/50",
+        variant: "secondary",
+        label: "BATTLES DONE",
+      }
+    case "evaluating":
+      return {
+        icon: <Loader2 className="h-4 w-4 animate-spin text-purple-500" />,
+        borderClass: "border-purple-500/50",
+        variant: "secondary",
+        label: "EVALUATING",
       }
     case "completed":
       return {
         icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
         borderClass: "border-green-500/50",
         variant: "default",
+        label: "COMPLETED",
       }
     case "failed":
       return {
         icon: <XCircle className="h-4 w-4 text-destructive" />,
         borderClass: "border-destructive/50",
         variant: "destructive",
+        label: "FAILED",
       }
     case "aborted":
       return {
         icon: <Square className="h-4 w-4 text-orange-500" />,
         borderClass: "border-orange-500/50",
         variant: "destructive",
+        label: "ABORTED",
       }
     case "awaiting_review":
       return {
         icon: <Eye className="h-4 w-4 text-yellow-500" />,
         borderClass: "border-yellow-500/50",
         variant: "secondary",
+        label: "AWAITING REVIEW",
       }
     default:
       return {
         icon: <AlertCircle className="h-4 w-4 text-muted-foreground" />,
         borderClass: "",
         variant: "outline",
+        label: "UNKNOWN",
       }
   }
 }

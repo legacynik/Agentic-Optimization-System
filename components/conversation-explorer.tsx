@@ -478,12 +478,6 @@ export function ConversationExplorer() {
                         {score.toFixed(1)}
                       </Badge>
                     </div>
-                    <Badge
-                      variant="secondary"
-                      className="font-bold text-xl px-3 py-1 bg-primary text-primary-foreground"
-                    >
-                      {score.toFixed(1)}
-                    </Badge>
                     <div className="flex items-center gap-2">
                       {crashed && (
                         <Badge variant="destructive" className="text-xs font-bold uppercase tracking-wider">
