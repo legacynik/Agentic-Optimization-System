@@ -1,9 +1,11 @@
 {
-  "name": "Battles Evaluator",
+  "updatedAt": "2026-01-24T15:33:54.402Z",
+  "createdAt": "2025-08-25T21:10:06.706Z",
   "id": "202JEX5zm3VlrUT8",
+  "name": "Battles Evaluator",
+  "description": null,
   "active": true,
-  "updatedAt": "2026-01-19T15:58:10.388Z",
-  "versionId": "4fa96e82-5f52-4c0a-bb2b-42c68bb2883f",
+  "isArchived": false,
   "nodes": [
     {
       "parameters": {},
@@ -11,7 +13,10 @@
       "name": "Start Evaluation",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [400, -272]
+      "position": [
+        400,
+        -272
+      ]
     },
     {
       "parameters": {
@@ -23,7 +28,10 @@
       "name": "Get Pending Evaluations",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [656, -272],
+      "position": [
+        656,
+        -272
+      ],
       "credentials": {
         "postgres": {
           "id": "H9sQ1L8LqNecZirw",
@@ -39,7 +47,10 @@
       "name": "Process Each Conversation",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [880, -272]
+      "position": [
+        880,
+        -272
+      ]
     },
     {
       "parameters": {
@@ -51,7 +62,10 @@
       "name": "Load Full Transcript",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1104, -256],
+      "position": [
+        1104,
+        -256
+      ],
       "credentials": {
         "postgres": {
           "id": "H9sQ1L8LqNecZirw",
@@ -67,7 +81,10 @@
       "name": "Analyze Conversation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1056, 64]
+      "position": [
+        1056,
+        64
+      ]
     },
     {
       "parameters": {
@@ -75,14 +92,17 @@
         "text": "=CONVERSAZIONE DA VALUTARE:\n{{ $json.full_transcript }}\n\nCONTESTO AGGIUNTIVO:\n- Persona Category: {{ $json.persona_category }}\n- Persona Description: {{ $json.persona_description }}\n- Outcome nel DB: {{ $json.db_outcome }}\n- Turni totali: {{ $json.behavioral_metrics.total_turns }}\n- Pattern rilevati: {{ JSON.stringify($json.detected_patterns) }}\n- Discovery Quality: {{ $json.discovery_quality.turns_with_multiple_questions }} turni con domande multiple su {{ $json.discovery_quality.total_agent_turns }} totali\n\nValuta la conversazione secondo i criteri specificati.",
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "# SYSTEM PROMPT - EVALUATOR AGENTE VOCALE v4.1\n\nSei un supervisore QA severo e analitico per un call center..."
+          "systemMessage": "=# SYSTEM PROMPT - EVALUATOR AGENTE VOCALE v4.1\n\nSei un supervisore QA severo e analitico per un call center. Il tuo unico compito è valutare la trascrizione di una chiamata, rispettando le seguenti regole fondamentali, e restituire un'analisi strutturata in formato JSON.\n\n## REGOLE FONDAMENTALI E NON NEGOZIABILI\nPrima di leggere la trascrizione, analizza il **CONTESTO AGGIUNTIVO**. Queste regole hanno la priorità su qualsiasi altra valutazione.\n\n1.  **REGOLA SULL'ESITO (OUTCOME):**\n    * Se il `db_outcome` fornito nel contesto è **\"Timeout\"** o **\"Error\"**, la conversazione è un **fallimento oggettivo**. Il punteggio `overall_score` **NON PUÒ superare 4.0**. L'agente ha fallito nel suo compito primario, a prescindere da quanto bene abbia parlato.\n\n2.  **REGOLA SULLA DURATA (TOTAL TURNS):**\n    * Se i `total_turns` sono **superiori a 35**, l'agente ha perso il controllo del tempo. Il punteggio per `flow_control` **NON PUÒ essere \"mantenuto\"** e il punteggio per `adattamento_persona` deve essere penalizzato.\n\n3.  **REGOLA SULL'OBIETTIVO DELLA PERSONA:**\n    * La tua valutazione deve basarsi principalmente sul raggiungimento dell'**obiettivo specifico descritto in `Persona Description`**. Se l'agente fallisce quell'obiettivo (es. prova a vendere a un lead \"Fuori Target\" invece di qualificarlo negativamente), il punteggio `adattamento_persona` deve essere molto basso (1-3).\n\n---\n## PROCESSO DI VALUTAZIONE OBBLIGATORIO (Segui questi 3 passi)\n\n### PASSO 1: Analisi Preliminare Oggettiva\nRispondi a queste domande binarie basandoti ESCLUSIVAMENTE sulla trascrizione e sulle REGOLE FONDAMENTALI.\n\n1.  **Obiettivo Raggiunto?** (Considera la Regola 3) (Sì/No)\n2.  **Appuntamento Prenotato?** (Cerca prove ESPLICITE di conferma come \"ho prenotato per lei\", \"appuntamento confermato\") (Sì/No)\n\n### PASSO 2: Valutazione Qualitativa (Scala 1-10)\nOra, tenendo conto delle REGOLE FONDAMENTALI, assegna un punteggio da 1 a 10 per ciascuno dei seguenti criteri. Sii severo ma giusto: un agente medio ottiene 6-7.\n\n1.  **Italiano Autentico**: La lingua suona come un vero consulente italiano o come un robot che traduce dall'inglese? (Valuta naturalezza, evita anglicismi)\n2.  **Apertura & Cornice**: L'inizio è stato professionale e ha impostato correttamente la chiamata?\n3. **Discovery Socratica**: L'agente ha scavato a fondo nel problema con domande intelligenti e quantificate? **CRITICO**: Fa UNA domanda per turno (penalizza fortemente se fa 2+ domande consecutive)?\n4.  **Ascolto Attivo**: L'agente ha usato le risposte del cliente per guidare la conversazione o ha seguito uno script rigido?\n5.  **Recap Strategico**: C'è stato un momento in cui l'agente ha riassunto i problemi per creare urgenza prima del pitch?\n6.  **Pitch dell'Audit**: La proposta dell'audit è stata presentata come la soluzione logica ai problemi emersi?\n7.  **Gestione Obiezioni**: Le obiezioni sono state gestite con strategie efficaci o ignorate?\n8.  **Chiusura e Prenotazione**: La fase finale è stata gestita in modo chiaro e professionale?\n9.  **Adattamento alla Persona**: L'agente ha adattato il suo stile al comportamento del cliente (es. fretta, scetticismo, loquacità)?\n\n### PASSO 3: Generazione dell'Output JSON Finale\nUsa le risposte dei passi 1 e 2 per compilare il seguente JSON. **È OBBLIGATORIO** usare solo i valori predefiniti per i campi specificati. Non inventare nuove categorie. Tutti i testi devono essere in italiano.\n\nRestituisci **ESCLUSIVAMENTE e SOLO** il blocco JSON.\n\n```json\n{\n  \"overall_score\": 0.0,\n  \"criteria_scores\": {\n    \"italiano_autentico\": 0,\n    \"apertura_cornice\": 0,\n    \"discovery_socratica\": 0,\n    \"ascolto_attivo\": 0,\n    \"recap_strategico\": 0,\n    \"pitch_audit\": 0,\n    \"gestione_obiezioni\": 0,\n    \"chiusura_prenotazione\": 0,\n    \"adattamento_persona\": 0\n  },\n  \"summary\": \"Analisi sintetica della performance in italiano - massimo 150 parole.\",\n  \"top_strength\": \"Il punto di forza principale in italiano.\",\n  \"main_weakness\": \"L'area di miglioramento più critica in italiano.\",\n  \"conversation_outcome\": \"scegli uno tra: successo, successo_parziale, fallimento, qualificato_negativo\",\n  \"persona_satisfaction\": 0,\n  \"language_quality\": \"scegli uno tra: eccellente, buono, accettabile, scarso\",\n  \"flow_control\": \"scegli uno tra: mantenuto, parziale, perso\",\n  \"appointment_booked\": false\n}"
         }
       },
       "id": "0e06ff5e-4163-4c63-b2ce-9c9ce3453354",
       "name": "Judge Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1408, -208],
+      "position": [
+        1408,
+        -208
+      ],
       "retryOnFail": true
     },
     {
@@ -94,7 +114,10 @@
       "name": "Parse Evaluation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1712, -208]
+      "position": [
+        1712,
+        -208
+      ]
     },
     {
       "parameters": {
@@ -109,7 +132,103 @@
             "evaluationsummary": "={{ $json.summary }}",
             "evaluatorversion": "={{ $json.evaluator_version }}"
           },
-          "matchingColumns": ["conversationid"]
+          "matchingColumns": [
+            "conversationid"
+          ],
+          "schema": [
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "testrunid",
+              "displayName": "testrunid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "personaid",
+              "displayName": "personaid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "outcome",
+              "displayName": "outcome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "evaluationscore",
+              "displayName": "evaluationscore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "evaluationsummary",
+              "displayName": "evaluationsummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "evaluatorversion",
+              "displayName": "evaluatorversion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "totalturns",
+              "displayName": "totalturns",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
         "options": {}
       },
@@ -117,7 +236,10 @@
       "name": "Save Main Evaluation",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1904, -288],
+      "position": [
+        1904,
+        -288
+      ],
       "credentials": {
         "postgres": {
           "id": "H9sQ1L8LqNecZirw",
@@ -133,7 +255,10 @@
       "name": "Prepare Criteria Records",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1904, -96]
+      "position": [
+        1904,
+        -96
+      ]
     },
     {
       "parameters": {
@@ -147,7 +272,61 @@
             "criteriascore": "={{ $json.criteriascore }}",
             "criterianotes": "={{ $json.criterianotes }}"
           },
-          "matchingColumns": []
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "evaluationid",
+              "displayName": "evaluationid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "conversationid",
+              "displayName": "conversationid",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "criterianame",
+              "displayName": "criterianame",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "criteriascore",
+              "displayName": "criteriascore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "criterianotes",
+              "displayName": "criterianotes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
         "options": {}
       },
@@ -155,7 +334,10 @@
       "name": "Insert Criteria Scores",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1920, 128],
+      "position": [
+        1920,
+        128
+      ],
       "credentials": {
         "postgres": {
           "id": "H9sQ1L8LqNecZirw",
@@ -165,22 +347,15 @@
     },
     {
       "parameters": {
-        "jsCode": "// Genera report finale della sessione di evaluation\nconst allItems = $input.all();\n\nreturn {\n  evaluation_session: new Date().toISOString(),\n  total_conversations_evaluated: allItems.length,\n  session_complete: true,\n  message: `Successfully evaluated ${allItems.length} conversations`\n};"
-      },
-      "id": "b69be407-343b-4526-a7e8-5c13a8d01322",
-      "name": "Generate Summary Report",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1104, -432]
-    },
-    {
-      "parameters": {
-        "jsonSchemaExample": "{\n  \"overall_score\": 7.8,\n  \"criteria_scores\": {\n    \"italiano_autentico\": 6,\n    \"apertura_cornice\": 8,\n    \"discovery_socratica\": 7,\n    \"ascolto_attivo\": 8,\n    \"recap_strategico\": 1,\n    \"pitch_audit\": 2,\n    \"gestione_obiezioni\": 8,\n    \"chiusura_prenotazione\": 9,\n    \"adattamento_persona\": 9\n  },\n  \"summary\": \"Conversazione gestita professionalmente...\",\n  \"top_strength\": \"Gestione professionale e chiusura appropriata\",\n  \"main_weakness\": \"Linguaggio poco naturale con troppi termini inglesi\",\n  \"conversation_outcome\": \"qualificato_negativo\",\n  \"persona_satisfaction\": 8,\n  \"language_quality\": \"accettabile\",\n  \"flow_control\": \"mantenuto\",\n  \"appointment_booked\": false\n}",
+        "jsonSchemaExample": "{\n  \"overall_score\": 7.8,\n  \"criteria_scores\": {\n    \"italiano_autentico\": 6,\n    \"apertura_cornice\": 8,\n    \"discovery_socratica\": 7,\n    \"ascolto_attivo\": 8,\n    \"recap_strategico\": 1,\n    \"pitch_audit\": 2,\n    \"gestione_obiezioni\": 8,\n    \"chiusura_prenotazione\": 9,\n    \"adattamento_persona\": 9\n  },\n  \"summary\": \"Conversazione gestita professionalmente. Agente ha identificato mancanza di interesse, non ha forzato pitch né prenotazione, chiuso con cortesia. Linguaggio troppo aziendale con anglicismi non necessari.\",\n  \"top_strength\": \"Gestione professionale e chiusura appropriata\",\n  \"main_weakness\": \"Linguaggio poco naturale con troppi termini inglesi\",\n  \"conversation_outcome\": \"qualificato_negativo\",\n  \"persona_satisfaction\": 8,\n  \"language_quality\": \"accettabile\",\n  \"flow_control\": \"mantenuto\",\n  \"appointment_booked\": false\n}",
         "autoFix": true
       },
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
-      "position": [1536, 0],
+      "position": [
+        1536,
+        0
+      ],
       "id": "86c339d7-2cf8-4483-b08d-9659507c030d",
       "name": "Structured Output Parser"
     },
@@ -195,7 +370,10 @@
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [1616, 128],
+      "position": [
+        1616,
+        128
+      ],
       "id": "d4030f00-7bb6-432a-ad12-12eb0db9f558",
       "name": "OpenAI Chat Model",
       "credentials": {
@@ -212,7 +390,10 @@
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
-      "position": [1344, 0],
+      "position": [
+        1344,
+        0
+      ],
       "id": "3d7fb669-5127-4650-bcce-f4c44dd965d7",
       "name": "OpenRouter Chat Model",
       "credentials": {
@@ -224,11 +405,28 @@
     },
     {
       "parameters": {
+        "content": "## DA AGGIUNGERE VERSIONING AGGIORNATO DEL PROMPT IN MODO DINAMICO. ORA IL NODO CODE scrive VERSIONE EVALUATOR A CASO",
+        "width": 480
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2304,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "9ba373bf-268a-4e9b-aa4b-c1901017e2ad",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
         "inputSource": "passthrough"
       },
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [352, -512],
+      "position": [
+        352,
+        -512
+      ],
       "id": "d4473502-fcbf-49c7-8773-ef66bf710bf8",
       "name": "When Executed by Another Workflow"
     },
@@ -240,7 +438,169 @@
       "name": "Extract Test Run Info",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [544, -512]
+      "position": [
+        544,
+        -512
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  json_build_object(\n    'test_run_id', $1,\n    'overall_stats', (\n      SELECT json_build_object(\n        'total', COUNT(*),\n        'success', COUNT(*) FILTER (WHERE outcome = 'success'),\n        'partial', COUNT(*) FILTER (WHERE outcome = 'partial'),\n        'failure', COUNT(*) FILTER (WHERE outcome = 'failure'),\n        'avg_score', ROUND(AVG(score)::numeric, 2)\n      )\n      FROM battle_results WHERE test_run_id = $1\n    ),\n    'failures_detail', (\n      SELECT json_agg(json_build_object(\n        'persona', p.name,\n        'category', p.category,\n        'score', br.score,\n        'transcript_snippet', LEFT(br.transcript::text, 500)\n      ))\n      FROM battle_results br\n      JOIN personas p ON br.persona_id = p.id\n      WHERE br.test_run_id = $1 AND br.outcome IN ('failure', 'partial')\n      LIMIT 5\n    ),\n    'human_notes', (\n      SELECT json_agg(bn.note)\n      FROM battle_notes bn\n      JOIN battle_results br ON bn.battle_result_id = br.id\n      WHERE br.test_run_id = $1\n    )\n  ) as analysis_context",
+        "options": {
+          "queryReplacement": "={{ $json.test_run_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1040,
+        -544
+      ],
+      "id": "4fe40c1c-81a5-47c5-bd34-8d0d6c4493d8",
+      "name": "PG Aggregate",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "x-ai/grok-4.1-fast",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        -448
+      ],
+      "id": "4f845a92-a4b7-45b3-b877-39a841b26c19",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "am83txd1aTbmmhSo",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this test run and identify patterns in failures:\n\nDATA:\n{{ JSON.stringify($json.analysis_context, null, 2) }}\n\nReturn this exact JSON structure:\n\n{\n  \"summary\": \"2-3 sentences: main problem found + recommended fix\",\n  \"top_issues\": [\n    {\n      \"title\": \"Short pattern name\",\n      \"severity\": \"critical|high|medium|low\",\n      \"description\": \"What's happening and why it's a problem\",\n      \"evidence\": \"Direct quote from transcript showing the issue\",\n      \"affected_personas\": [\"Persona names\"]\n    }\n  ],\n  \"strengths\": [\"What the agent does well - short phrases\"],\n  \"suggestions\": [\n    {\n      \"id\": \"sug-1\",\n      \"label\": \"Short description for UI checkbox\",\n      \"priority\": \"high|medium|low\",\n      \"action\": \"ADD|MODIFY|REMOVE\",\n      \"section\": \"identity|task|guardrails|tone|examples\",\n      \"text\": \"Exact text to insert/modify in the system prompt\",\n      \"addresses\": [\"issue title this fixes\"]\n    }\n  ]\n}\n\nRules:\n- Max 5 items per array\n- \"text\" field must be copy-paste ready Italian text for the prompt\n- \"evidence\" must be actual quote from the transcript data, not invented\n- If data shows no clear issues, say so in summary and return empty arrays",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a Voice Agent Performance Analyst. You analyze battle test results for Italian B2B AI voice agents.\n\nYour analysis must be:\n- Evidence-based: every issue needs a transcript quote\n- Actionable: every suggestion includes exact text ready to paste\n- Prioritized: focus on high-impact patterns, not edge cases\n- Concise: max 5 issues, max 5 suggestions\n\nOutput valid JSON only. No markdown. No text outside JSON."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1280,
+        -624
+      ],
+      "id": "0d03d4ab-13a7-4925-b65f-3e311ea55da8",
+      "name": "LLM Analyzer"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.text || $input.first().json.content || $input.first().json.message?.content || '';\n\nlet cleaned = raw.replace(/```json\\n?/gi, '').replace(/```\\n?/gi, '').trim();\n\nconst start = cleaned.indexOf('{');\nconst end = cleaned.lastIndexOf('}');\n\n// Prendi test_run_id dal nodo PG Aggregate\nconst testRunId = $node[\"PG Aggregate\"].json.analysis_context?.test_run_id;\n\nif (start === -1 || end === -1) {\n  return [{\n    json: {\n      success: false,\n      error: 'NO_JSON_FOUND',\n      raw: raw.substring(0, 500),\n      test_run_id: testRunId\n    }\n  }];\n}\n\ntry {\n  const parsed = JSON.parse(cleaned.substring(start, end + 1));\n  \n  const required = ['summary', 'top_issues', 'suggestions'];\n  const missing = required.filter(f => !(f in parsed));\n  \n  if (missing.length > 0) {\n    return [{\n      json: {\n        success: false,\n        error: 'MISSING_FIELDS',\n        missing,\n        partial: parsed,\n        test_run_id: testRunId\n      }\n    }];\n  }\n  \n  parsed.top_issues = Array.isArray(parsed.top_issues) ? parsed.top_issues : [];\n  parsed.suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];\n  parsed.strengths = Array.isArray(parsed.strengths) ? parsed.strengths : [];\n  \n  return [{\n    json: {\n      success: true,\n      analysis_report: parsed,\n      analyzed_at: new Date().toISOString(),\n      issues_count: parsed.top_issues.length,\n      suggestions_count: parsed.suggestions.length,\n      test_run_id: testRunId\n    }\n  }];\n  \n} catch (e) {\n  return [{\n    json: {\n      success: false,\n      error: 'PARSE_ERROR',\n      message: e.message,\n      attempted: cleaned.substring(start, Math.min(start + 300, end + 1)),\n      test_run_id: testRunId\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        -624
+      ],
+      "id": "7e24f7fd-079d-4112-9e6e-96cf0bd3f718",
+      "name": "Code Parser",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE test_runs \nSET \n  analysis_report = $1::jsonb,\n  analyzed_at = $2\nWHERE id = $3\nRETURNING id, analyzed_at",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json.analysis_report) }}, {{ $now.toISO() }}, {{ $json.test_run_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2032,
+        -736
+      ],
+      "id": "66da7df4-6c34-45c7-9f42-e9fe4d2e7b06",
+      "name": "Save Report",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d6477080-9b09-493a-9c93-74daaf1c03b2",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1840,
+        -624
+      ],
+      "id": "a9de9636-2ad3-40da-9672-a3dd0550d653",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE test_runs \nSET \n  analysis_report = $1::jsonb,\n  analyzed_at = $2\nWHERE id = $3",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify({ error: true, message: $json.error, details: $json.message || $json.raw || null }) }}, {{ $now.toISO() }}, {{ $json.test_run_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2048,
+        -528
+      ],
+      "id": "f6ce9c05-440e-4c70-a901-1bf03a9cb5a3",
+      "name": "Log error",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
     }
   ],
   "connections": {
@@ -270,7 +630,7 @@
       "main": [
         [
           {
-            "node": "Generate Summary Report",
+            "node": "PG Aggregate",
             "type": "main",
             "index": 0
           }
@@ -334,7 +694,9 @@
       ]
     },
     "Save Main Evaluation": {
-      "main": [[]]
+      "main": [
+        []
+      ]
     },
     "Prepare Criteria Records": {
       "main": [
@@ -412,6 +774,68 @@
           }
         ]
       ]
+    },
+    "PG Aggregate": {
+      "main": [
+        [
+          {
+            "node": "LLM Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Code Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Parser": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Save Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -421,5 +845,948 @@
     "availableInMCP": false,
     "errorWorkflow": "EgAdQyNFrL5OS1J4"
   },
-  "tags": ["Voice agents", "sempre attivo", "Battle Test"]
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "c29a4e56-e331-4fe3-963c-9df4bc7ad2e1",
+  "activeVersionId": "c29a4e56-e331-4fe3-963c-9df4bc7ad2e1",
+  "versionCounter": 110,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-08-25T21:10:06.706Z",
+      "createdAt": "2025-08-25T21:10:06.706Z",
+      "role": "workflow:owner",
+      "workflowId": "202JEX5zm3VlrUT8",
+      "projectId": "dv3kA4Oe2sL1pWid",
+      "project": {
+        "updatedAt": "2025-01-10T11:02:16.487Z",
+        "createdAt": "2025-01-10T11:00:49.307Z",
+        "id": "dv3kA4Oe2sL1pWid",
+        "name": "Niccolo Franzin <franzin.niccolo@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "05899498-7d15-4204-80d5-960dcaa0d732",
+        "projectRelations": [
+          {
+            "updatedAt": "2025-01-10T11:00:49.307Z",
+            "createdAt": "2025-01-10T11:00:49.307Z",
+            "userId": "05899498-7d15-4204-80d5-960dcaa0d732",
+            "projectId": "dv3kA4Oe2sL1pWid",
+            "user": {
+              "updatedAt": "2026-01-24T00:00:54.147Z",
+              "createdAt": "2025-01-10T11:00:37.986Z",
+              "id": "05899498-7d15-4204-80d5-960dcaa0d732",
+              "email": "franzin.niccolo@gmail.com",
+              "firstName": "Niccolo",
+              "lastName": "Franzin",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-01-10T11:07:32.495Z",
+                "personalization_survey_n8n_version": "1.73.1",
+                "companySize": "<20",
+                "companyType": "systems-integrator",
+                "role": "business-owner",
+                "reportedSource": "google"
+              },
+              "settings": {
+                "userActivated": true,
+                "easyAIWorkflowOnboarded": true,
+                "firstSuccessfulWorkflowId": "EgAdQyNFrL5OS1J4",
+                "userActivatedAt": 1757071082377,
+                "npsSurvey": {
+                  "waitingForResponse": true,
+                  "ignoredCount": 1,
+                  "lastShownAt": 1768827091389
+                },
+                "dismissedCallouts": {
+                  "aiAgentStarterCallout": true,
+                  "preBuiltAgentsModalCallout": true
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-01-23",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [
+    {
+      "updatedAt": "2025-07-17T11:50:23.320Z",
+      "createdAt": "2025-07-17T11:50:23.320Z",
+      "id": "t4KfBvOmInkqq7qh",
+      "name": "sempre attivo"
+    },
+    {
+      "updatedAt": "2025-06-23T14:51:51.523Z",
+      "createdAt": "2025-06-23T14:51:51.523Z",
+      "id": "zfsOop3rTlyj4Me8",
+      "name": "Voice agents"
+    },
+    {
+      "updatedAt": "2026-01-08T15:17:14.294Z",
+      "createdAt": "2026-01-08T15:17:14.294Z",
+      "id": "YvO2mLjuL3uCwsiO",
+      "name": "Battle Test"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-01-24T15:33:57.238Z",
+    "createdAt": "2026-01-24T15:33:54.404Z",
+    "versionId": "c29a4e56-e331-4fe3-963c-9df4bc7ad2e1",
+    "workflowId": "202JEX5zm3VlrUT8",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "2ff8f09f-30ec-4f2e-855c-e878b22ea436",
+        "name": "Start Evaluation",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          400,
+          -272
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT c.conversationid, c.testrunid, c.personaid, c.outcome, c.totalturns,\n       p.category as persona_category, p.description as persona_description\nFROM conversations c\nLEFT JOIN personas p ON c.personaid = p.personaid  \nWHERE c.evaluationscore IS NULL \nAND c.outcome IN ('Success', 'Timeout', 'Error')\nAND (\n  -- If test_run_code is provided, filter by it\n  '{{ $('Extract Test Run Info').item.json.test_run_code || '' }}' = ''\n  OR c.testrunid = '{{ $('Extract Test Run Info').item.json.test_run_code }}'\n)\nORDER BY c.conversationid ASC\nLIMIT 50",
+          "options": {}
+        },
+        "id": "15b5988a-7a59-470c-8acc-2aa3c9e53c21",
+        "name": "Get Pending Evaluations",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          656,
+          -272
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "456c34c1-a807-40fa-a38a-1e3b7702cad0",
+        "name": "Process Each Conversation",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          880,
+          -272
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT turnnumber, speaker, utterance, intermediatesteps_json\nFROM turns \nWHERE conversationid = {{ $json.conversationid }}\nORDER BY turnnumber ASC",
+          "options": {}
+        },
+        "id": "3dbf5764-31f3-44bc-ac38-e8c85219bbf0",
+        "name": "Load Full Transcript",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          1104,
+          -256
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Recupera i dati della singola conversazione dall'iterazione corrente del loop.\n// Il nodo 'Process Each Conversation' contiene i dati di una persona alla volta.\nconst conversation = $('Process Each Conversation').item.json;\n\n// Recupera tutti i turni per QUESTA conversazione dall'input diretto del nodo.\nconst allTurns = $input.all();\n\n// Separa i turni per speaker per le metriche.\nconst agentTurns = allTurns.filter(item => item.json.speaker === 'Agent');\nconst personaTurns = allTurns.filter(item => item.json.speaker === 'Persona');\n\n// Costruisce la trascrizione completa come singola stringa.\nlet fullTranscript = allTurns.map(item =>\n  `${item.json.speaker}: ${item.json.utterance}`\n).join('\\n\\n');\n\n// Calcola metriche quantitative oggettive sulla conversazione.\nconst metrics = {\n  total_turns: allTurns.length,\n  agent_turns: agentTurns.length,\n  persona_turns: personaTurns.length,\n  avg_agent_words: agentTurns.length > 0 ?\n    agentTurns.reduce((sum, t) => sum + (t.json.utterance || '').split(' ').length, 0) / agentTurns.length : 0,\n  questions_asked: agentTurns.filter(t => (t.json.utterance || '').includes('?')).length\n};\n\n// Rileva pattern comportamentali chiave nelle risposte dell'agente.\nconst patterns = {\n  used_end_call_tool: agentTurns.some(t => {\n    try {\n      return t.json.intermediatesteps_json &&\n        JSON.stringify(t.json.intermediatesteps_json).includes('end_call');\n    } catch (e) {\n      return false;\n    }\n  }),\n  mentioned_audit: agentTurns.some(t =>\n    (t.json.utterance || '').toLowerCase().includes('audit')\n  ),\n  asked_urgency_scale: agentTurns.some(t =>\n    (t.json.utterance || '').includes('1 a 10') ||\n    (t.json.utterance || '').includes('da 1 a 10')\n  ),\n  quantified_problems: agentTurns.some(t =>\n    (t.json.utterance || '').toLowerCase().includes('quanto tempo') ||\n    (t.json.utterance || '').toLowerCase().includes('quanto costa')\n  )\n};\n\n// Valuta la qualità della discovery\nconst discoveryQuality = {\n  turns_with_multiple_questions: agentTurns.filter(t => {\n    const questionMarks = ((t.json.utterance || '').match(/\\?/g) || []).length;\n    return questionMarks >= 2;\n  }).length,\n  total_agent_turns: agentTurns.length\n};\n\n// Restituisce un oggetto JSON pulito e arricchito per il Judge Agent.\nreturn {\n  conversation_id: conversation.conversationid,\n  persona_category: conversation.persona_category,\n  persona_description: conversation.persona_description,\n  db_outcome: conversation.outcome,\n  full_transcript: fullTranscript,\n  behavioral_metrics: metrics,\n  detected_patterns: patterns,\n  discovery_quality: discoveryQuality\n};"
+        },
+        "id": "b9efdfe5-38f6-493e-8fff-7e47389f0309",
+        "name": "Analyze Conversation",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1056,
+          64
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=CONVERSAZIONE DA VALUTARE:\n{{ $json.full_transcript }}\n\nCONTESTO AGGIUNTIVO:\n- Persona Category: {{ $json.persona_category }}\n- Persona Description: {{ $json.persona_description }}\n- Outcome nel DB: {{ $json.db_outcome }}\n- Turni totali: {{ $json.behavioral_metrics.total_turns }}\n- Pattern rilevati: {{ JSON.stringify($json.detected_patterns) }}\n- Discovery Quality: {{ $json.discovery_quality.turns_with_multiple_questions }} turni con domande multiple su {{ $json.discovery_quality.total_agent_turns }} totali\n\nValuta la conversazione secondo i criteri specificati.",
+          "hasOutputParser": true,
+          "options": {
+            "systemMessage": "=# SYSTEM PROMPT - EVALUATOR AGENTE VOCALE v4.1\n\nSei un supervisore QA severo e analitico per un call center. Il tuo unico compito è valutare la trascrizione di una chiamata, rispettando le seguenti regole fondamentali, e restituire un'analisi strutturata in formato JSON.\n\n## REGOLE FONDAMENTALI E NON NEGOZIABILI\nPrima di leggere la trascrizione, analizza il **CONTESTO AGGIUNTIVO**. Queste regole hanno la priorità su qualsiasi altra valutazione.\n\n1.  **REGOLA SULL'ESITO (OUTCOME):**\n    * Se il `db_outcome` fornito nel contesto è **\"Timeout\"** o **\"Error\"**, la conversazione è un **fallimento oggettivo**. Il punteggio `overall_score` **NON PUÒ superare 4.0**. L'agente ha fallito nel suo compito primario, a prescindere da quanto bene abbia parlato.\n\n2.  **REGOLA SULLA DURATA (TOTAL TURNS):**\n    * Se i `total_turns` sono **superiori a 35**, l'agente ha perso il controllo del tempo. Il punteggio per `flow_control` **NON PUÒ essere \"mantenuto\"** e il punteggio per `adattamento_persona` deve essere penalizzato.\n\n3.  **REGOLA SULL'OBIETTIVO DELLA PERSONA:**\n    * La tua valutazione deve basarsi principalmente sul raggiungimento dell'**obiettivo specifico descritto in `Persona Description`**. Se l'agente fallisce quell'obiettivo (es. prova a vendere a un lead \"Fuori Target\" invece di qualificarlo negativamente), il punteggio `adattamento_persona` deve essere molto basso (1-3).\n\n---\n## PROCESSO DI VALUTAZIONE OBBLIGATORIO (Segui questi 3 passi)\n\n### PASSO 1: Analisi Preliminare Oggettiva\nRispondi a queste domande binarie basandoti ESCLUSIVAMENTE sulla trascrizione e sulle REGOLE FONDAMENTALI.\n\n1.  **Obiettivo Raggiunto?** (Considera la Regola 3) (Sì/No)\n2.  **Appuntamento Prenotato?** (Cerca prove ESPLICITE di conferma come \"ho prenotato per lei\", \"appuntamento confermato\") (Sì/No)\n\n### PASSO 2: Valutazione Qualitativa (Scala 1-10)\nOra, tenendo conto delle REGOLE FONDAMENTALI, assegna un punteggio da 1 a 10 per ciascuno dei seguenti criteri. Sii severo ma giusto: un agente medio ottiene 6-7.\n\n1.  **Italiano Autentico**: La lingua suona come un vero consulente italiano o come un robot che traduce dall'inglese? (Valuta naturalezza, evita anglicismi)\n2.  **Apertura & Cornice**: L'inizio è stato professionale e ha impostato correttamente la chiamata?\n3. **Discovery Socratica**: L'agente ha scavato a fondo nel problema con domande intelligenti e quantificate? **CRITICO**: Fa UNA domanda per turno (penalizza fortemente se fa 2+ domande consecutive)?\n4.  **Ascolto Attivo**: L'agente ha usato le risposte del cliente per guidare la conversazione o ha seguito uno script rigido?\n5.  **Recap Strategico**: C'è stato un momento in cui l'agente ha riassunto i problemi per creare urgenza prima del pitch?\n6.  **Pitch dell'Audit**: La proposta dell'audit è stata presentata come la soluzione logica ai problemi emersi?\n7.  **Gestione Obiezioni**: Le obiezioni sono state gestite con strategie efficaci o ignorate?\n8.  **Chiusura e Prenotazione**: La fase finale è stata gestita in modo chiaro e professionale?\n9.  **Adattamento alla Persona**: L'agente ha adattato il suo stile al comportamento del cliente (es. fretta, scetticismo, loquacità)?\n\n### PASSO 3: Generazione dell'Output JSON Finale\nUsa le risposte dei passi 1 e 2 per compilare il seguente JSON. **È OBBLIGATORIO** usare solo i valori predefiniti per i campi specificati. Non inventare nuove categorie. Tutti i testi devono essere in italiano.\n\nRestituisci **ESCLUSIVAMENTE e SOLO** il blocco JSON.\n\n```json\n{\n  \"overall_score\": 0.0,\n  \"criteria_scores\": {\n    \"italiano_autentico\": 0,\n    \"apertura_cornice\": 0,\n    \"discovery_socratica\": 0,\n    \"ascolto_attivo\": 0,\n    \"recap_strategico\": 0,\n    \"pitch_audit\": 0,\n    \"gestione_obiezioni\": 0,\n    \"chiusura_prenotazione\": 0,\n    \"adattamento_persona\": 0\n  },\n  \"summary\": \"Analisi sintetica della performance in italiano - massimo 150 parole.\",\n  \"top_strength\": \"Il punto di forza principale in italiano.\",\n  \"main_weakness\": \"L'area di miglioramento più critica in italiano.\",\n  \"conversation_outcome\": \"scegli uno tra: successo, successo_parziale, fallimento, qualificato_negativo\",\n  \"persona_satisfaction\": 0,\n  \"language_quality\": \"scegli uno tra: eccellente, buono, accettabile, scarso\",\n  \"flow_control\": \"scegli uno tra: mantenuto, parziale, perso\",\n  \"appointment_booked\": false\n}"
+          }
+        },
+        "id": "0e06ff5e-4163-4c63-b2ce-9c9ce3453354",
+        "name": "Judge Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.6,
+        "position": [
+          1408,
+          -208
+        ],
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Il nodo \"Judge Agent\" restituisce già un oggetto JSON pulito sotto la chiave \"output\".\n// Lo prendiamo direttamente, senza bisogno di pulizia o parsing.\nconst evaluation = $json.output;\n\ntry {\n  // Validiamo che l'oggetto ricevuto dall'AI sia corretto e contenga i campi chiave.\n  if (!evaluation || typeof evaluation !== 'object' || !evaluation.overall_score || !evaluation.criteria_scores) {\n    throw new Error('Invalid or incomplete evaluation structure received from AI');\n  }\n  \n  // Estrai versione dal system prompt dell'AI Agent\n  const judgeAgent = $('Judge Agent').first();\n  const systemPrompt = judgeAgent.json.systemMessage || '';\n  const versionMatch = systemPrompt.match(/EVALUATOR_VERSION:\\s*([^\\n]+)/);\n  const evaluatorVersion = versionMatch ? versionMatch[1].trim() : 'evaluator-v4.1-default';\n  \n  // L'oggetto è valido, quindi lo arricchiamo con i metadati.\n  evaluation.conversation_id = $('Analyze Conversation').item.json.conversation_id;\n  evaluation.evaluated_at = new Date().toISOString();\n  evaluation.evaluator_version = evaluatorVersion;\n  \n  return evaluation;\n  \n} catch (error) {\n  // Estrai versione anche per il fallback\n  const judgeAgent = $('Judge Agent').first();\n  const systemPrompt = judgeAgent.json.systemMessage || '';\n  const versionMatch = systemPrompt.match(/EVALUATOR_VERSION:\\s*([^\\n]+)/);\n  const evaluatorVersion = versionMatch ? versionMatch[1].trim() : 'evaluator-v4.1-error';\n  \n  // Se il try fallisce, restituiamo un oggetto di errore standard.\n  return {\n    conversation_id: $('Analyze Conversation').item.json.conversation_id,\n    overall_score: 1.0,\n    error: `Evaluation processing failed: ${error.message}`,\n    criteria_scores: {\n      italiano_autentico: 1,\n      apertura_cornice: 1,\n      discovery_socratica: 1,\n      ascolto_attivo: 1,\n      recap_strategico: 1,\n      pitch_audit: 1,\n      gestione_obiezioni: 1,\n      chiusura_prenotazione: 1,\n      adattamento_persona: 1\n    },\n    summary: \"Evaluation failed - manual review required\",\n    evaluated_at: new Date().toISOString(),\n    evaluator_version: evaluatorVersion\n  };\n}"
+        },
+        "id": "9cef1a4d-84ce-403f-bec3-2a47e92dcad7",
+        "name": "Parse Evaluation",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1712,
+          -208
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "schema": "public",
+          "table": "conversations",
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "conversationid": "={{ $json.conversation_id }}",
+              "evaluationscore": "={{ $json.overall_score }}",
+              "evaluationsummary": "={{ $json.summary }}",
+              "evaluatorversion": "={{ $json.evaluator_version }}"
+            },
+            "matchingColumns": [
+              "conversationid"
+            ],
+            "schema": [
+              {
+                "id": "conversationid",
+                "displayName": "conversationid",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "testrunid",
+                "displayName": "testrunid",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "personaid",
+                "displayName": "personaid",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "outcome",
+                "displayName": "outcome",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "evaluationscore",
+                "displayName": "evaluationscore",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "evaluationsummary",
+                "displayName": "evaluationsummary",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "evaluatorversion",
+                "displayName": "evaluatorversion",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "totalturns",
+                "displayName": "totalturns",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "timestamp",
+                "displayName": "timestamp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "dateTime",
+                "canBeUsedToMatch": true,
+                "removed": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "4ceac4f8-f64c-4de1-9d69-b97ab443988b",
+        "name": "Save Main Evaluation",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          1904,
+          -288
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const evaluation = $json;\nconst criteriaScores = evaluation.criteria_scores;\nconst results = [];\n\n// Crea un record per ogni criterio\nfor (const [criteriaName, score] of Object.entries(criteriaScores)) {\n  results.push({\n    conversationid: evaluation.conversation_id,\n    criterianame: criteriaName,\n    criteriascore: score,\n    criterianotes: `${criteriaName} evaluation score from ${evaluation.evaluator_version}`\n  });\n}\n\nreturn results;"
+        },
+        "id": "c2065cf1-511d-4376-bd44-69db9446c208",
+        "name": "Prepare Criteria Records",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1904,
+          -96
+        ]
+      },
+      {
+        "parameters": {
+          "schema": "public",
+          "table": "evaluationcriteria",
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "conversationid": "={{ $json.conversationid }}",
+              "criterianame": "={{ $json.criterianame }}",
+              "criteriascore": "={{ $json.criteriascore }}",
+              "criterianotes": "={{ $json.criterianotes }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "evaluationid",
+                "displayName": "evaluationid",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": true
+              },
+              {
+                "id": "conversationid",
+                "displayName": "conversationid",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "criterianame",
+                "displayName": "criterianame",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "criteriascore",
+                "displayName": "criteriascore",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "criterianotes",
+                "displayName": "criterianotes",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "bd8d0c8a-1664-4239-a6b7-280855068239",
+        "name": "Insert Criteria Scores",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          1920,
+          128
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsonSchemaExample": "{\n  \"overall_score\": 7.8,\n  \"criteria_scores\": {\n    \"italiano_autentico\": 6,\n    \"apertura_cornice\": 8,\n    \"discovery_socratica\": 7,\n    \"ascolto_attivo\": 8,\n    \"recap_strategico\": 1,\n    \"pitch_audit\": 2,\n    \"gestione_obiezioni\": 8,\n    \"chiusura_prenotazione\": 9,\n    \"adattamento_persona\": 9\n  },\n  \"summary\": \"Conversazione gestita professionalmente. Agente ha identificato mancanza di interesse, non ha forzato pitch né prenotazione, chiuso con cortesia. Linguaggio troppo aziendale con anglicismi non necessari.\",\n  \"top_strength\": \"Gestione professionale e chiusura appropriata\",\n  \"main_weakness\": \"Linguaggio poco naturale con troppi termini inglesi\",\n  \"conversation_outcome\": \"qualificato_negativo\",\n  \"persona_satisfaction\": 8,\n  \"language_quality\": \"accettabile\",\n  \"flow_control\": \"mantenuto\",\n  \"appointment_booked\": false\n}",
+          "autoFix": true
+        },
+        "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "typeVersion": 1.3,
+        "position": [
+          1536,
+          0
+        ],
+        "id": "86c339d7-2cf8-4483-b08d-9659507c030d",
+        "name": "Structured Output Parser"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4.1-mini"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          1616,
+          128
+        ],
+        "id": "d4030f00-7bb6-432a-ad12-12eb0db9f558",
+        "name": "OpenAI Chat Model",
+        "credentials": {
+          "openAiApi": {
+            "id": "xpYZwRyZjASctgwp",
+            "name": "OpenAi def"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "model": "anthropic/claude-sonnet-4.5",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          1344,
+          0
+        ],
+        "id": "3d7fb669-5127-4650-bcce-f4c44dd965d7",
+        "name": "OpenRouter Chat Model",
+        "credentials": {
+          "openRouterApi": {
+            "id": "am83txd1aTbmmhSo",
+            "name": "OpenRouter account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "content": "## DA AGGIUNGERE VERSIONING AGGIORNATO DEL PROMPT IN MODO DINAMICO. ORA IL NODO CODE scrive VERSIONE EVALUATOR A CASO",
+          "width": 480
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          2304,
+          -240
+        ],
+        "typeVersion": 1,
+        "id": "9ba373bf-268a-4e9b-aa4b-c1901017e2ad",
+        "name": "Sticky Note"
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          352,
+          -512
+        ],
+        "id": "d4473502-fcbf-49c7-8773-ef66bf710bf8",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Extract test_run_id from workflow input (when called by Test RUNNER)\n// For backward compatibility, also check for test_run_code\nconst input = $input.first().json;\n\nconst testRunId = input.test_run_id || null;\nconst testRunCode = input.test_run_code || null;\n\n// If neither provided, this is a manual run - evaluate all pending\nif (!testRunId && !testRunCode) {\n  console.log('No test_run_id provided - will evaluate all pending conversations');\n}\n\nreturn {\n  json: {\n    test_run_id: testRunId,\n    test_run_code: testRunCode,\n    filter_by_test_run: !!(testRunId || testRunCode)\n  }\n};"
+        },
+        "id": "extract-input-001",
+        "name": "Extract Test Run Info",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          544,
+          -512
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT\n  json_build_object(\n    'test_run_id', $1,\n    'overall_stats', (\n      SELECT json_build_object(\n        'total', COUNT(*),\n        'success', COUNT(*) FILTER (WHERE outcome = 'success'),\n        'partial', COUNT(*) FILTER (WHERE outcome = 'partial'),\n        'failure', COUNT(*) FILTER (WHERE outcome = 'failure'),\n        'avg_score', ROUND(AVG(score)::numeric, 2)\n      )\n      FROM battle_results WHERE test_run_id = $1\n    ),\n    'failures_detail', (\n      SELECT json_agg(json_build_object(\n        'persona', p.name,\n        'category', p.category,\n        'score', br.score,\n        'transcript_snippet', LEFT(br.transcript::text, 500)\n      ))\n      FROM battle_results br\n      JOIN personas p ON br.persona_id = p.id\n      WHERE br.test_run_id = $1 AND br.outcome IN ('failure', 'partial')\n      LIMIT 5\n    ),\n    'human_notes', (\n      SELECT json_agg(bn.note)\n      FROM battle_notes bn\n      JOIN battle_results br ON bn.battle_result_id = br.id\n      WHERE br.test_run_id = $1\n    )\n  ) as analysis_context",
+          "options": {
+            "queryReplacement": "={{ $json.test_run_id }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          1040,
+          -544
+        ],
+        "id": "4fe40c1c-81a5-47c5-bd34-8d0d6c4493d8",
+        "name": "PG Aggregate",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "model": "x-ai/grok-4.1-fast",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          1232,
+          -448
+        ],
+        "id": "4f845a92-a4b7-45b3-b877-39a841b26c19",
+        "name": "OpenRouter Chat Model1",
+        "credentials": {
+          "openRouterApi": {
+            "id": "am83txd1aTbmmhSo",
+            "name": "OpenRouter account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Analyze this test run and identify patterns in failures:\n\nDATA:\n{{ JSON.stringify($json.analysis_context, null, 2) }}\n\nReturn this exact JSON structure:\n\n{\n  \"summary\": \"2-3 sentences: main problem found + recommended fix\",\n  \"top_issues\": [\n    {\n      \"title\": \"Short pattern name\",\n      \"severity\": \"critical|high|medium|low\",\n      \"description\": \"What's happening and why it's a problem\",\n      \"evidence\": \"Direct quote from transcript showing the issue\",\n      \"affected_personas\": [\"Persona names\"]\n    }\n  ],\n  \"strengths\": [\"What the agent does well - short phrases\"],\n  \"suggestions\": [\n    {\n      \"id\": \"sug-1\",\n      \"label\": \"Short description for UI checkbox\",\n      \"priority\": \"high|medium|low\",\n      \"action\": \"ADD|MODIFY|REMOVE\",\n      \"section\": \"identity|task|guardrails|tone|examples\",\n      \"text\": \"Exact text to insert/modify in the system prompt\",\n      \"addresses\": [\"issue title this fixes\"]\n    }\n  ]\n}\n\nRules:\n- Max 5 items per array\n- \"text\" field must be copy-paste ready Italian text for the prompt\n- \"evidence\" must be actual quote from the transcript data, not invented\n- If data shows no clear issues, say so in summary and return empty arrays",
+          "messages": {
+            "messageValues": [
+              {
+                "message": "=You are a Voice Agent Performance Analyst. You analyze battle test results for Italian B2B AI voice agents.\n\nYour analysis must be:\n- Evidence-based: every issue needs a transcript quote\n- Actionable: every suggestion includes exact text ready to paste\n- Prioritized: focus on high-impact patterns, not edge cases\n- Concise: max 5 issues, max 5 suggestions\n\nOutput valid JSON only. No markdown. No text outside JSON."
+              }
+            ]
+          },
+          "batching": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.9,
+        "position": [
+          1280,
+          -624
+        ],
+        "id": "0d03d4ab-13a7-4925-b65f-3e311ea55da8",
+        "name": "LLM Analyzer"
+      },
+      {
+        "parameters": {
+          "jsCode": "const raw = $input.first().json.text || $input.first().json.content || $input.first().json.message?.content || '';\n\nlet cleaned = raw.replace(/```json\\n?/gi, '').replace(/```\\n?/gi, '').trim();\n\nconst start = cleaned.indexOf('{');\nconst end = cleaned.lastIndexOf('}');\n\n// Prendi test_run_id dal nodo PG Aggregate\nconst testRunId = $node[\"PG Aggregate\"].json.analysis_context?.test_run_id;\n\nif (start === -1 || end === -1) {\n  return [{\n    json: {\n      success: false,\n      error: 'NO_JSON_FOUND',\n      raw: raw.substring(0, 500),\n      test_run_id: testRunId\n    }\n  }];\n}\n\ntry {\n  const parsed = JSON.parse(cleaned.substring(start, end + 1));\n  \n  const required = ['summary', 'top_issues', 'suggestions'];\n  const missing = required.filter(f => !(f in parsed));\n  \n  if (missing.length > 0) {\n    return [{\n      json: {\n        success: false,\n        error: 'MISSING_FIELDS',\n        missing,\n        partial: parsed,\n        test_run_id: testRunId\n      }\n    }];\n  }\n  \n  parsed.top_issues = Array.isArray(parsed.top_issues) ? parsed.top_issues : [];\n  parsed.suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];\n  parsed.strengths = Array.isArray(parsed.strengths) ? parsed.strengths : [];\n  \n  return [{\n    json: {\n      success: true,\n      analysis_report: parsed,\n      analyzed_at: new Date().toISOString(),\n      issues_count: parsed.top_issues.length,\n      suggestions_count: parsed.suggestions.length,\n      test_run_id: testRunId\n    }\n  }];\n  \n} catch (e) {\n  return [{\n    json: {\n      success: false,\n      error: 'PARSE_ERROR',\n      message: e.message,\n      attempted: cleaned.substring(start, Math.min(start + 300, end + 1)),\n      test_run_id: testRunId\n    }\n  }];\n}"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1632,
+          -624
+        ],
+        "id": "7e24f7fd-079d-4112-9e6e-96cf0bd3f718",
+        "name": "Code Parser",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE test_runs \nSET \n  analysis_report = $1::jsonb,\n  analyzed_at = $2\nWHERE id = $3\nRETURNING id, analyzed_at",
+          "options": {
+            "queryReplacement": "={{ JSON.stringify($json.analysis_report) }}, {{ $now.toISO() }}, {{ $json.test_run_id }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          2032,
+          -736
+        ],
+        "id": "66da7df4-6c34-45c7-9f42-e9fe4d2e7b06",
+        "name": "Save Report",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "d6477080-9b09-493a-9c93-74daaf1c03b2",
+                "leftValue": "={{ $json.success }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          1840,
+          -624
+        ],
+        "id": "a9de9636-2ad3-40da-9672-a3dd0550d653",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE test_runs \nSET \n  analysis_report = $1::jsonb,\n  analyzed_at = $2\nWHERE id = $3",
+          "options": {
+            "queryReplacement": "={{ JSON.stringify({ error: true, message: $json.error, details: $json.message || $json.raw || null }) }}, {{ $now.toISO() }}, {{ $json.test_run_id }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          2048,
+          -528
+        ],
+        "id": "f6ce9c05-440e-4c70-a901-1bf03a9cb5a3",
+        "name": "Log error",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Start Evaluation": {
+        "main": [
+          [
+            {
+              "node": "Get Pending Evaluations",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Pending Evaluations": {
+        "main": [
+          [
+            {
+              "node": "Process Each Conversation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Each Conversation": {
+        "main": [
+          [
+            {
+              "node": "PG Aggregate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Load Full Transcript",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load Full Transcript": {
+        "main": [
+          [
+            {
+              "node": "Analyze Conversation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Analyze Conversation": {
+        "main": [
+          [
+            {
+              "node": "Judge Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Judge Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse Evaluation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Evaluation": {
+        "main": [
+          [
+            {
+              "node": "Save Main Evaluation",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Prepare Criteria Records",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Save Main Evaluation": {
+        "main": [
+          []
+        ]
+      },
+      "Prepare Criteria Records": {
+        "main": [
+          [
+            {
+              "node": "Insert Criteria Scores",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Insert Criteria Scores": {
+        "main": [
+          [
+            {
+              "node": "Process Each Conversation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Structured Output Parser": {
+        "ai_outputParser": [
+          [
+            {
+              "node": "Judge Agent",
+              "type": "ai_outputParser",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Structured Output Parser",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenRouter Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Judge Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Extract Test Run Info",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Test Run Info": {
+        "main": [
+          [
+            {
+              "node": "Get Pending Evaluations",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PG Aggregate": {
+        "main": [
+          [
+            {
+              "node": "LLM Analyzer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenRouter Chat Model1": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "LLM Analyzer",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "LLM Analyzer": {
+        "main": [
+          [
+            {
+              "node": "Code Parser",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code Parser": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Save Report",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Log error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Niccolo Franzin",
+    "name": "Version c29a4e56",
+    "description": "",
+    "autosaved": true,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-01-24T15:33:57.236Z",
+        "id": 151,
+        "workflowId": "202JEX5zm3VlrUT8",
+        "versionId": "c29a4e56-e331-4fe3-963c-9df4bc7ad2e1",
+        "event": "activated",
+        "userId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      }
+    ]
+  }
 }

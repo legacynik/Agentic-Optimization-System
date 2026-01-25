@@ -1,0 +1,247 @@
+{
+  "name": "Prompt Optimizer",
+  "id": "honcSigslEtpoVqy",
+  "active": true,
+  "updatedAt": "2026-01-24T18:24:43.891Z",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "optimizer",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-16, 0],
+      "webhookId": "optimizer",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  tr.id as test_run_id,\n  tr.analysis_report,\n  pv.id as prompt_version_id,\n  pv.prompt_name,\n  pv.content as prompt_text,\n  pv.version\nFROM test_runs tr\nJOIN prompt_versions pv ON tr.prompt_version_id = pv.id\nWHERE tr.id = $1::uuid",
+        "options": {
+          "queryReplacement": "={{ $json.body.test_run_id }}"
+        }
+      },
+      "id": "get-context",
+      "name": "Get Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [224, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.prompt_version_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-context",
+      "name": "Check Context Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [448, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sei un esperto di prompt engineering. Ottimizza il prompt basandoti sui suggerimenti e feedback. Output il nuovo prompt COMPLETO, non solo le modifiche.\n\nPROMPT ATTUALE:\n{{ $('Get Context').item.json.prompt_text }}\n\nANALYSIS REPORT:\n{{ JSON.stringify($('Get Context').item.json.analysis_report) }}\n\nSUGGESTIONS SELEZIONATE:\n{{ JSON.stringify($('Webhook Trigger').item.json.body.selected_suggestions) }}\n\nFEEDBACK UMANO:\n{{ $('Webhook Trigger').item.json.body.human_feedback || 'Nessuno' }}\n\nGenera il nuovo prompt ottimizzato. Rispondi SOLO con il testo del nuovo prompt, niente altro.",
+        "batching": {}
+      },
+      "id": "llm-optimize",
+      "name": "LLM Optimize",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [640, -64]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO prompt_versions (\n  prompt_name,\n  content,\n  version,\n  status,\n  created_from,\n  optimization_notes\n)\nSELECT\n  prompt_name,\n  $1,\n  version || '-draft',\n  'draft',\n  $2::uuid,\n  $3::jsonb\nFROM prompt_versions\nWHERE id = $2::uuid\nRETURNING id, prompt_name, version",
+        "options": {
+          "queryReplacement": "={{ $json.text }}, {{ $('Get Context').item.json.prompt_version_id }}, {{ JSON.stringify({ selected_suggestions: $('Webhook Trigger').item.json.body.selected_suggestions, human_feedback: $('Webhook Trigger').item.json.body.human_feedback }) }}"
+        }
+      },
+      "id": "save-draft",
+      "name": "Save Draft",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [928, -96],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 3,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-2",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-save",
+      "name": "Check Save OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1104, -96]
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [720, 112],
+      "id": "0c728085-0c9f-4ada-8faa-b9f358f238d3",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "am83txd1aTbmmhSo",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "a1", "name": "status", "type": "string", "value": "success"},
+            {"id": "a2", "name": "new_version_id", "type": "string", "value": "={{ $('Save Draft').item.json.id }}"},
+            {"id": "a3", "name": "prompt_name", "type": "string", "value": "={{ $('Save Draft').item.json.prompt_name }}"},
+            {"id": "a4", "name": "version", "type": "string", "value": "={{ $('Save Draft').item.json.version }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-response-success",
+      "name": "Response Success",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1536, -192]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "b1", "name": "status", "type": "string", "value": "error"},
+            {"id": "b2", "name": "stage", "type": "string", "value": "save_draft"},
+            {"id": "b3", "name": "message", "type": "string", "value": "Failed to save optimized prompt to database"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-response-save-error",
+      "name": "Response Save Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1600, 48]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "c1", "name": "status", "type": "string", "value": "error"},
+            {"id": "c2", "name": "stage", "type": "string", "value": "get_context"},
+            {"id": "c3", "name": "message", "type": "string", "value": "Test run not found or invalid test_run_id"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-response-context-error",
+      "name": "Response Context Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [736, 256]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Get Context", "type": "main", "index": 0}]]
+    },
+    "Get Context": {
+      "main": [[{"node": "Check Context Found", "type": "main", "index": 0}]]
+    },
+    "Check Context Found": {
+      "main": [
+        [{"node": "LLM Optimize", "type": "main", "index": 0}],
+        [{"node": "Response Context Error", "type": "main", "index": 0}]
+      ]
+    },
+    "LLM Optimize": {
+      "main": [[{"node": "Save Draft", "type": "main", "index": 0}]]
+    },
+    "Save Draft": {
+      "main": [[{"node": "Check Save OK", "type": "main", "index": 0}]]
+    },
+    "Check Save OK": {
+      "main": [
+        [{"node": "Response Success", "type": "main", "index": 0}],
+        [{"node": "Response Save Error", "type": "main", "index": 0}]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [[{"node": "LLM Optimize", "type": "ai_languageModel", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "EgAdQyNFrL5OS1J4"
+  },
+  "tags": ["Battle Test"]
+}
