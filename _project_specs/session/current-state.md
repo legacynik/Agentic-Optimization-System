@@ -7,66 +7,52 @@ CHECKPOINT RULES (from session-management.md):
 
 # Current Session State
 
-*Last updated: 2026-01-25 ~16:00*
+*Last updated: 2026-01-25 ~17:00*
 
 ## Active Task
-Documentation & Architecture Clarification - COMPLETED
+Ready for next session
 
 ## Current Status
 - **Phase**: Ready for UI implementation
-- **Progress**: CLAUDE.md fully documented, session flow clear
+- **Progress**: Documentation complete, session management rules defined
 - **Blockers**: None
 
 ---
 
-## Completed This Session
+## Last Session Summary
+Vedi: `archive/2026-01-25-schema-n8n-docs.md`
 
-### CLAUDE.md Overhaul
-- [x] Diagramma architettura 3 livelli (BMAD → CB → Context7)
-- [x] System Ownership tables (chi fa cosa)
-- [x] Decision Tree (quando usare BMAD vs Claude Bootstrap)
-- [x] Regola commenti chiarita ("WHY not WHAT")
-- [x] Session Documentation Flow completo
-- [x] Creato archive per sessione odierna
-
-### Previous (Schema + n8n)
-- [x] Schema multi-tenant ready con tabella `prompts`
-- [x] Tutti i workflow n8n funzionanti
-- [x] Test runs salvano transcripts correttamente
+**Completato**:
+- Schema multi-tenant ready
+- n8n workflows tutti funzionanti
+- CLAUDE.md completamente documentato
+- Regole session management definite
 
 ---
 
 ## Pending Issues (Next Priority)
 
-### UI Tasks
-| Page | Issue | Priority | Notes |
-|------|-------|----------|-------|
-| `/prompts` | Mock data hardcoded | High | Collegare a DB |
-| `/agentic` → Optimization Loop | Placeholder | High | Implementare UI |
-| `/agentic` → Analytics | Placeholder | Medium | Dashboard analytics |
+### UI Tasks (HIGH)
+| Page | Issue | Notes |
+|------|-------|-------|
+| `/prompts` | Mock data hardcoded | Collegare a Supabase |
+| `/agentic` → Optimization Loop | Placeholder | Implementare UI |
+| `/agentic` → Analytics | Placeholder | Dashboard analytics |
 
-### Documentation
-| Task | Priority |
-|------|----------|
-| Creare `code-landmarks.md` | Low |
-| Review `decisions.md` | Low |
+### Documentation (LOW)
+| Task | Notes |
+|------|-------|
+| Creare `code-landmarks.md` | Posizioni codice importanti |
 
 ---
 
 ## Key Context
 
-### Systems Integration
+### Systems
 ```
-BMAD Method     → Orchestrazione (COSA fare)
+BMAD Method      → Orchestrazione (COSA fare)
 Claude Bootstrap → Esecuzione (COME farlo bene)
-Context7        → Docs librerie aggiornate
-```
-
-### Session Files
-```
-current-state.md  → Stato LIVE (questo file)
-decisions.md      → Log decisioni (append-only)
-archive/          → Storia completa sessioni
+Context7         → Docs librerie aggiornate
 ```
 
 ### Database
@@ -74,27 +60,39 @@ archive/          → Storia completa sessioni
 - 10 personas linked a qual-audit-sa
 - n8n workflows tutti funzionanti
 
+### Session Files
+```
+current-state.md  → Questo file (stato LIVE)
+decisions.md      → 4 decisioni logged
+archive/          → 2 sessioni archiviate
+```
+
 ---
 
 ## Resume Instructions
 
 ```
-1. Leggi questo file per contesto
-2. Scegli task da "Pending Issues":
-   - /prompts page → Collegare a Supabase
-   - /agentic Optimization → Implementare UI
-3. Usa Decision Tree in CLAUDE.md per scegliere workflow:
+1. Scegli task da "Pending Issues":
+   - /prompts page → Collegare a Supabase (HIGH)
+   - /agentic Optimization → Implementare UI (HIGH)
+
+2. Usa Decision Tree in CLAUDE.md:
    - Hai spec chiara? → /ralph-spec
    - Need planning? → *workflow-init
-4. Aggiorna current-state.md dopo ogni task
-5. Log decisioni in decisions.md
+
+3. Durante la sessione:
+   - Aggiorna questo file dopo ogni task
+   - Log decisioni in decisions.md
+
+4. Fine sessione:
+   - Di' "fine sessione" per archiviare
 ```
 
 ---
 
 ## Session History
 
-Per la storia completa, vedi:
-- `archive/2026-01-25-schema-n8n-docs.md` - Questa sessione
-- `archive/2026-01-19-prd-v24-backend.md` - Backend implementation
-- `decisions.md` - Tutte le decisioni architetturali
+| Data | File | Topic |
+|------|------|-------|
+| 2026-01-25 | `archive/2026-01-25-schema-n8n-docs.md` | Schema + n8n + Docs |
+| 2026-01-19 | `archive/2026-01-19-prd-v24-backend.md` | Backend APIs |
