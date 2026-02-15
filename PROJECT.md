@@ -279,6 +279,27 @@ next-themes: 0.4.6 (dark mode)
 
 ---
 
+## Documentation
+
+| Area | Location | Description |
+|------|----------|-------------|
+| Frontend | `docs/frontend.md` | Pages, components, hooks, state management, polling |
+| Backend | `docs/backend.md` | 26 API endpoints, DB schema (14 tables), utilities |
+| n8n | `docs/n8n.md` | 4 workflows, webhook integration, pending items |
+| Project Overview | `PROJECT.md` | This file — metrics, grades, completion status |
+| Session State | `_project_specs/session/` | current-state, decisions, code-landmarks, archive |
+| Specs | `_project_specs/specs/` | Feature specs per phase |
+
+### Session Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/session-start` | Load context, briefing, continue from last session |
+| `/session-update` | Quick checkpoint (1-3 bullets) |
+| `/session-end` | Archive, clean state, handoff |
+
+---
+
 ## Recommended Next Steps
 
 ### High Priority
@@ -323,6 +344,7 @@ next-themes: 0.4.6 (dark mode)
 | 2026-01-29 | Evaluator Architecture | Multi-evaluation system, 3 new tables, 11 API endpoints |
 | 2026-01-30 | Playwright E2E Tests | 31 tests created, test architecture patterns |
 | 2026-01-31 | UI Refactor + Tests | Sidebar fixes, 27 tests passing, cache fix |
+| 2026-02-13 | Docs + DevKit Alignment | Structured docs/, session commands, CLAUDE.md slim-down |
 
 Full session archives: `_project_specs/session/archive/`
 Decision log: `_project_specs/session/decisions.md`
