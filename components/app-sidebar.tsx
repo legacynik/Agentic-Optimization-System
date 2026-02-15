@@ -13,6 +13,9 @@ import {
   FileText,
   BarChart3,
   Users,
+  ClipboardCheck,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react"
 
 import {
@@ -30,6 +33,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   Collapsible,
@@ -81,6 +85,11 @@ const navConfig = [
     icon: FileText,
   },
   {
+    title: "Evaluators",
+    url: "/evaluators",
+    icon: ClipboardCheck,
+  },
+  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
@@ -89,6 +98,7 @@ const navConfig = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
+  const { state, toggleSidebar } = useSidebar()
 
   const isActive = (url: string) => {
     if (url === "/") return pathname === "/"
@@ -209,7 +219,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="sm" className="text-muted-foreground">
+            <SidebarMenuButton
+              size="sm"
+              onClick={toggleSidebar}
+              tooltip={state === "expanded" ? "Collapse menu" : "Expand menu"}
+            >
+              {state === "expanded" ? (
+                <PanelLeftClose className="size-4" />
+              ) : (
+                <PanelLeft className="size-4" />
+              )}
               <span className="text-xs">v2.4 Lean</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

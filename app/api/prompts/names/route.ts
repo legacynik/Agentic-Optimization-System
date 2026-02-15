@@ -1,55 +1,58 @@
 /**
  * API Route: /api/prompts/names
  *
- * Returns distinct prompt names from prompt_versions table.
- * Used by AgentSelector to populate the dropdown.
+ * Returns list of prompts with id and prompt_name for dropdown selection.
  *
  * @module api/prompts/names
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Create Supabase client for server-side operations
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+interface PromptName {
+  id: string
+  name: string
+}
+
 /**
  * GET /api/prompts/names
  *
- * Returns a list of distinct prompt_name values from prompt_versions.
+ * Returns list of available prompts with id and name.
  *
- * Response:
- * {
- *   names: string[]  // ["Sales Agent", "Support Agent", ...]
- * }
+ * Query params:
+ * - limit: Maximum number of prompts to return (default 100)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500)
+
     const { data, error } = await supabase
-      .from('prompt_versions')
-      .select('prompt_name')
+      .from('prompts')
+      .select('id, prompt_name')
+      .order('prompt_name', { ascending: true })
+      .limit(limit)
 
     if (error) {
-      console.error('[prompts/names] Error fetching prompt names:', error)
+      console.error('[prompts/names] Error fetching prompts:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch prompt names', code: 'INTERNAL_ERROR', details: error.message },
+        { error: 'Failed to fetch prompts', code: 'INTERNAL_ERROR', details: error.message },
         { status: 500 }
       )
     }
 
-    // Extract distinct prompt names
-    const uniqueNames = [...new Set(data?.map(row => row.prompt_name).filter(Boolean))]
+    // Transform prompt_name to name for consistent API response
+    const transformed: PromptName[] = (data || []).map((p: any) => ({
+      id: p.id,
+      name: p.prompt_name
+    }))
 
-    // Sort alphabetically
-    uniqueNames.sort((a, b) => a.localeCompare(b))
-
-    console.log(`[prompts/names] Returning ${uniqueNames.length} distinct prompt names`)
-
-    return NextResponse.json({ names: uniqueNames })
-
+    return NextResponse.json({ data: transformed })
   } catch (error) {
     console.error('[prompts/names] Unexpected error:', error)
     return NextResponse.json(

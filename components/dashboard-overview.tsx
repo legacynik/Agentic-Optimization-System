@@ -1,16 +1,22 @@
 "use client"
 
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Activity, TrendingUp, CheckCircle2, Zap, Calendar } from "lucide-react"
 import { PersonasHeatmap } from "@/components/personas-heatmap"
 import { PersonaTestRunsView } from "@/components/persona-testruns-view"
 import { FilterBar } from "@/components/filter-bar"
 import { ExportMenu } from "@/components/export-menu"
 import { AIInsights } from "@/components/ai-insights"
 import { SimpleTrends } from "@/components/simple-trends"
-import { useState, useEffect, useMemo } from "react"
-import { fetchPersonasPerformance, fetchTestRuns, fetchUniquePersonas, fetchHeatmapData } from "@/lib/queries"
+import { KPICards } from "@/components/dashboard/kpi-cards"
+import { TestRunsList } from "@/components/dashboard/test-runs-list"
+import { LatestConversations } from "@/components/dashboard/latest-conversations"
+import {
+  fetchPersonasPerformance,
+  fetchTestRuns,
+  fetchUniquePersonas,
+  fetchHeatmapData,
+} from "@/lib/queries"
 import type { PersonaPerformanceRow } from "@/lib/supabase"
 import { calculateOutliers } from "@/lib/outliers"
 import { exportDashboardToCSV } from "@/lib/export-csv"
@@ -43,12 +49,13 @@ export function DashboardOverview() {
       try {
         console.log("[v0] Starting to load dashboard data...")
         setLoading(true)
-        const [conversationsData, testRunsData, personasData, heatmapDataResult] = await Promise.all([
-          fetchPersonasPerformance(),
-          fetchTestRuns(),
-          fetchUniquePersonas(),
-          fetchHeatmapData(),
-        ])
+        const [conversationsData, testRunsData, personasData, heatmapDataResult] =
+          await Promise.all([
+            fetchPersonasPerformance(),
+            fetchTestRuns(),
+            fetchUniquePersonas(),
+            fetchHeatmapData(),
+          ])
 
         console.log("[v0] Data loaded successfully:", {
           conversations: conversationsData.length,
@@ -82,7 +89,9 @@ export function DashboardOverview() {
     }
 
     // Filter by score range
-    filtered = filtered.filter((row) => row.avg_score >= scoreRange[0] && row.avg_score <= scoreRange[1])
+    filtered = filtered.filter(
+      (row) => row.avg_score >= scoreRange[0] && row.avg_score <= scoreRange[1]
+    )
 
     // Filter by outcomes (based on score classification)
     if (selectedOutcomes.length > 0) {
@@ -120,60 +129,68 @@ export function DashboardOverview() {
     return calculateOutliers(scores)
   }, [filteredConversations])
 
-  const { totalConversations, successfulConversations, totalTests, avgScore, successRate, avgEfficiency, totalAppointments } =
-    useMemo(() => {
-      const totalConversations = filteredConversations.length
-      const successfulConversations = filteredConversations.filter((row) => row.avg_score >= 8).length
+  const {
+    totalConversations,
+    successfulConversations,
+    totalTests,
+    avgScore,
+    successRate,
+    avgEfficiency,
+    totalAppointments,
+  } = useMemo(() => {
+    const totalConversations = filteredConversations.length
+    const successfulConversations = filteredConversations.filter((row) => row.avg_score >= 8).length
 
-      const totalTests = filteredConversations.length
+    const totalTests = filteredConversations.length
 
-      const avgScore =
-        totalTests > 0
-          ? (filteredConversations.reduce((sum, c) => sum + c.avg_score, 0) / totalTests).toFixed(1)
-          : "0.0"
+    const avgScore =
+      totalTests > 0
+        ? (filteredConversations.reduce((sum, c) => sum + c.avg_score, 0) / totalTests).toFixed(1)
+        : "0.0"
 
-      const successRate =
-        totalConversations > 0 ? ((successfulConversations / totalConversations) * 100).toFixed(0) : "0"
+    const successRate =
+      totalConversations > 0 ? ((successfulConversations / totalConversations) * 100).toFixed(0) : "0"
 
-      const nonTimeoutConversations = filteredConversations.filter((row) => {
-        const summary = Array.isArray(row.conversations_summary)
-          ? row.conversations_summary
-          : typeof row.conversations_summary === "string"
-            ? JSON.parse(row.conversations_summary || "[]")
-            : []
-        const hasTimeout = summary.some((conv: any) => conv.outcome?.toLowerCase() === "timeout")
-        return !hasTimeout
-      })
+    const nonTimeoutConversations = filteredConversations.filter((row) => {
+      const summary = Array.isArray(row.conversations_summary)
+        ? row.conversations_summary
+        : typeof row.conversations_summary === "string"
+          ? JSON.parse(row.conversations_summary || "[]")
+          : []
+      const hasTimeout = summary.some((conv: any) => conv.outcome?.toLowerCase() === "timeout")
+      return !hasTimeout
+    })
 
-      const avgEfficiency =
-        nonTimeoutConversations.length > 0
-          ? (nonTimeoutConversations.reduce((sum, c) => sum + c.avg_turns, 0) / nonTimeoutConversations.length).toFixed(
-            1,
-          )
-          : "0.0"
+    const avgEfficiency =
+      nonTimeoutConversations.length > 0
+        ? (
+            nonTimeoutConversations.reduce((sum, c) => sum + c.avg_turns, 0) /
+            nonTimeoutConversations.length
+          ).toFixed(1)
+        : "0.0"
 
-      // Calculate total appointments booked
-      const totalAppointments = filteredConversations.reduce((sum, row) => {
-        const summary = Array.isArray(row.conversations_summary)
-          ? row.conversations_summary
-          : typeof row.conversations_summary === "string"
-            ? JSON.parse(row.conversations_summary || "[]")
-            : []
+    // Calculate total appointments booked
+    const totalAppointments = filteredConversations.reduce((sum, row) => {
+      const summary = Array.isArray(row.conversations_summary)
+        ? row.conversations_summary
+        : typeof row.conversations_summary === "string"
+          ? JSON.parse(row.conversations_summary || "[]")
+          : []
 
-        const hasAppointment = summary.some((conv: any) => conv.appointment_booked === true)
-        return sum + (hasAppointment ? 1 : 0)
-      }, 0)
+      const hasAppointment = summary.some((conv: any) => conv.appointment_booked === true)
+      return sum + (hasAppointment ? 1 : 0)
+    }, 0)
 
-      return {
-        totalConversations,
-        successfulConversations,
-        totalTests,
-        avgScore,
-        successRate,
-        avgEfficiency,
-        totalAppointments,
-      }
-    }, [filteredConversations])
+    return {
+      totalConversations,
+      successfulConversations,
+      totalTests,
+      avgScore,
+      successRate,
+      avgEfficiency,
+      totalAppointments,
+    }
+  }, [filteredConversations])
 
   const filteredTestRuns = useMemo(() => {
     const testrunIds = new Set(filteredConversations.map((c) => c.testrunid))
@@ -225,8 +242,10 @@ export function DashboardOverview() {
     // Transform into the format expected by PersonaTestRunsView
     return Array.from(testRunsMap.values()).map((testRun) => {
       // Calculate average score and turns across all conversations in this test run
-      const avgScore = testRun.conversations.reduce((sum, c) => sum + c.avg_score, 0) / testRun.conversations.length
-      const avgTurns = testRun.conversations.reduce((sum, c) => sum + c.avg_turns, 0) / testRun.conversations.length
+      const avgScore =
+        testRun.conversations.reduce((sum, c) => sum + c.avg_score, 0) / testRun.conversations.length
+      const avgTurns =
+        testRun.conversations.reduce((sum, c) => sum + c.avg_turns, 0) / testRun.conversations.length
 
       // Aggregate criteria scores across all conversations
       const criteriaMap = new Map<string, number[]>()
@@ -282,19 +301,22 @@ export function DashboardOverview() {
               <>
                 <p className="text-sm text-muted-foreground">
                   Your Supabase connection is working, but the{" "}
-                  <code className="bg-muted px-1 py-0.5 rounded">personas_performance</code> view hasn't been set up
-                  yet.
+                  <code className="bg-muted px-1 py-0.5 rounded">personas_performance</code> view hasn't
+                  been set up yet.
                 </p>
 
                 <div className="bg-muted/50 p-4 rounded-lg space-y-3">
                   <p className="text-sm font-semibold text-foreground">To set up your database:</p>
                   <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
                     <li>
-                      Look for the <code className="bg-muted px-1 py-0.5 rounded">scripts</code> folder in the file tree
-                      on the left
+                      Look for the <code className="bg-muted px-1 py-0.5 rounded">scripts</code> folder in
+                      the file tree on the left
                     </li>
                     <li>
-                      Open <code className="bg-muted px-1 py-0.5 rounded">01-create-personas-performance-view.sql</code>
+                      Open{" "}
+                      <code className="bg-muted px-1 py-0.5 rounded">
+                        01-create-personas-performance-view.sql
+                      </code>
                     </li>
                     <li>
                       Click the <strong>Run</strong> button to create the database schema
@@ -310,15 +332,16 @@ export function DashboardOverview() {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  The scripts will create the required tables and views with sample test data. Once you have real data,
-                  you can replace the sample data with your own.
+                  The scripts will create the required tables and views with sample test data. Once you have
+                  real data, you can replace the sample data with your own.
                 </p>
               </>
             ) : (
               <>
                 <p className="text-destructive font-semibold">{error}</p>
                 <p className="text-xs text-muted-foreground mt-4">
-                  Make sure you've added your Supabase credentials in Project Settings (gear icon in top right):
+                  Make sure you've added your Supabase credentials in Project Settings (gear icon in top
+                  right):
                   <br />• NEXT_PUBLIC_SUPABASE_URL
                   <br />• NEXT_PUBLIC_SUPABASE_ANON_KEY
                 </p>
@@ -336,7 +359,7 @@ export function DashboardOverview() {
       totalConversations,
       avgScore: parseFloat(avgScore),
       successRate: parseFloat(successRate),
-      appointmentRate: totalConversations > 0 ? (totalAppointments / totalConversations) * 100 : 0
+      appointmentRate: totalConversations > 0 ? (totalAppointments / totalConversations) * 100 : 0,
     }
     exportDashboardToCSV(filteredConversations, kpis)
   }
@@ -346,7 +369,7 @@ export function DashboardOverview() {
       totalConversations,
       avgScore: parseFloat(avgScore),
       successRate: parseFloat(successRate),
-      appointmentRate: totalConversations > 0 ? (totalAppointments / totalConversations) * 100 : 0
+      appointmentRate: totalConversations > 0 ? (totalAppointments / totalConversations) * 100 : 0,
     }
     exportDashboardToPDF(filteredConversations, kpis)
   }
@@ -356,13 +379,13 @@ export function DashboardOverview() {
       totalConversations,
       avgScore: parseFloat(avgScore),
       successRate: parseFloat(successRate),
-      appointmentRate: totalConversations > 0 ? (totalAppointments / totalConversations) * 100 : 0
+      appointmentRate: totalConversations > 0 ? (totalAppointments / totalConversations) * 100 : 0,
     }
     const filters = {
       selectedPersona,
       selectedOutcomes,
       scoreRange,
-      showBookedOnly
+      showBookedOnly,
     }
     exportDashboardToJSON(filteredConversations, kpis, filters)
   }
@@ -379,65 +402,16 @@ export function DashboardOverview() {
         />
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Tests</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{totalTests}</div>
-            <p className="text-xs text-muted-foreground mt-1">Across {filteredTestRuns.length} test runs</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Score</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{avgScore}</div>
-            <p className="text-xs text-muted-foreground mt-1">Out of 10.0</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Success Rate</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{successRate}%</div>
-            <p className="text-xs text-muted-foreground mt-1">Successful outcomes</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Appointments</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{totalAppointments}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {totalConversations > 0 ? `${((totalAppointments / totalConversations) * 100).toFixed(1)}% booking rate` : "No data"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Efficiency</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{avgEfficiency}</div>
-            <p className="text-xs text-muted-foreground mt-1">Turns per conversation (excl. timeouts)</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* KPI Cards - Modular Component */}
+      <KPICards
+        totalTests={totalTests}
+        avgScore={avgScore}
+        successRate={successRate}
+        totalAppointments={totalAppointments}
+        totalConversations={totalConversations}
+        avgEfficiency={avgEfficiency}
+        filteredTestRunsCount={filteredTestRuns.length}
+      />
 
       {/* Insights and Trends */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -481,84 +455,11 @@ export function DashboardOverview() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Test Runs List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Test Runs</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {filteredTestRuns.slice(0, 5).map((run) => (
-              <Card key={run.id} className="bg-muted/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-sm text-foreground">{run.id}</span>
-                    <Badge variant="secondary">{run.avgScore}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">{run.date}</p>
-                  <div className="flex gap-2 text-xs">
-                    <Badge variant="outline" className="bg-secondary/20 text-secondary-foreground border-secondary">
-                      {run.distribution.success} success
-                    </Badge>
-                    <Badge variant="outline" className="bg-accent/20 text-accent-foreground border-accent">
-                      {run.distribution.partial} partial
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className="bg-destructive/20 text-destructive-foreground border-destructive"
-                    >
-                      {run.distribution.failure} fail
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </CardContent>
-        </Card>
+        {/* Test Runs List - Modular Component */}
+        <TestRunsList testRuns={filteredTestRuns} maxItems={5} />
 
-        {/* Latest Conversations */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Latest Conversations</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {filteredConversations.slice(0, 3).map((conv) => {
-              const firstConv = Array.isArray(conv.conversations_summary) ? conv.conversations_summary[0] : null
-              const score = conv.avg_score
-              const outcome = score >= 8 ? "success" : score >= 6 ? "partial" : "failure"
-
-              return (
-                <Card key={conv.conversationid} className="bg-muted/50">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="font-mono text-xs text-muted-foreground">{conv.conversationid}</span>
-                      <Badge
-                        variant={
-                          outcome === "success" ? "default" : outcome === "partial" ? "secondary" : "destructive"
-                        }
-                        className="text-xs"
-                      >
-                        {conv.avg_score}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-foreground font-medium mb-1">{conv.persona_description}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{firstConv?.summary || "No summary"}</p>
-                    <div className="flex items-center gap-2 mt-3">
-                      <Badge variant="outline" className="text-xs">
-                        {conv.personaid}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {conv.avg_turns} turns
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {conv.agentversion}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </CardContent>
-        </Card>
+        {/* Latest Conversations - Modular Component */}
+        <LatestConversations conversations={filteredConversations} maxItems={3} />
       </div>
     </div>
   )

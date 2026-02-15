@@ -1,28 +1,22 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Roboto_Mono } from "next/font/google"
+import { DM_Sans, Space_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
 import { Providers } from "@/components/providers"
 import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 
-const inter = Inter({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-dm-sans",
 })
 
-const robotoMono = Roboto_Mono({
+const spaceMono = Space_Mono({
   subsets: ["latin"],
-  variable: "--font-roboto-mono",
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
 })
 
 export const metadata: Metadata = {
@@ -36,23 +30,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${robotoMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`dark ${dmSans.variable} ${spaceMono.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <Providers>
           <SidebarProvider>
             <AppSidebar />
             <SidebarInset>
-              <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-                <SidebarTrigger className="-ml-1" />
-                <Separator orientation="vertical" className="mr-2 h-4" />
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>AI Agent Testing Dashboard</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </BreadcrumbList>
-                </Breadcrumb>
-              </header>
               <main className="flex-1 overflow-auto">
                 <Suspense fallback={<div className="flex items-center justify-center h-64">Loading...</div>}>
                   {children}
