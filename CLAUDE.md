@@ -5,7 +5,7 @@
 | Need | Tool | Command/Path |
 |------|------|--------------|
 | **Resume Session** | Session State | `_project_specs/session/current-state.md` |
-| **Project Overview** | PRD v3 Index | `_project_specs/PRD-v3-index.md` |
+| **Project Overview** | Project Index | `_project_specs/PROJECT-INDEX.md` |
 | **Implement Feature** | Ralph Spec | `/ralph-spec [phase]` |
 | **Coding Rules** | Claude Bootstrap | Read `.claude/skills/` |
 | **Workflow/Planning** | BMAD Agents | `*workflow-init` |
@@ -159,7 +159,7 @@ Devo iniziare un task?
 
 ### Session & Specs
 - **Resume**: `_project_specs/session/current-state.md`
-- **PRD Index**: `_project_specs/PRD-v3-index.md`
+- **Project Index**: `_project_specs/PROJECT-INDEX.md`
 - **Specs**: `_project_specs/specs/*.md`
 - **Ralph Command**: `.claude/commands/ralph-spec.md`
 - Todos: `_project_specs/todos/active.md`
@@ -207,7 +207,7 @@ _project_specs/session/
 ### Spec-Driven Development (PREFERRED - Claude Bootstrap)
 **Use when**: Hai già la spec e devi implementare
 ```
-1. Read PRD-v3-index.md   → Find pending phase
+1. Read PROJECT-INDEX.md  → Find pending spec
 2. /ralph-spec [phase]    → Auto-generate TDD prompt (CB)
 3. Implement with TDD     → RED → GREEN → VALIDATE (CB)
 4. Manual test            → real-testing skill checklist (CB)
@@ -299,12 +299,15 @@ A Next.js 14 dashboard for analyzing and visualizing AI agent conversation testi
 │   ├── migrations/                 # Database migrations
 │   └── seed.sql                    # Database seed file
 ├── _project_specs/                 # Project specifications
-│   ├── PRD-v3-index.md             # Master index (~2k tokens)
-│   ├── specs/                      # Granular specs per phase
-│   │   ├── _TEMPLATE.md            # Spec template
-│   │   ├── phase-5-n8n.md          # n8n workflow spec
-│   │   └── ui-refactor-minimal.md  # UI refactor spec
-│   ├── features/                   # Feature specs (legacy)
+│   ├── PROJECT-INDEX.md            # Master index (active specs)
+│   ├── specs/                      # Granular specs
+│   │   ├── evaluator-multi-prompt.md    # Dynamic evaluator (E2-E5 pending)
+│   │   ├── evaluator-migration.md       # n8n evaluator migration
+│   │   ├── agentic-refactor-v2.md       # Agent Health Monitor
+│   │   ├── phase-5-n8n.md               # n8n workflows (4 pending)
+│   │   ├── ui-refactor-minimal.md       # UI redesign
+│   │   └── prompt-diff-viewer-rewrite.md # Diff viewer fix
+│   ├── archive/                    # Old PRDs (v2, v3)
 │   ├── todos/                      # Active todos
 │   └── session/                    # Session state
 └── .claude/
