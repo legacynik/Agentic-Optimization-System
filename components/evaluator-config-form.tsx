@@ -177,6 +177,7 @@ export function EvaluatorConfigForm({
         <TabsContent value="prompt" className="space-y-4">
           <SystemPromptEditor
             value={formData.system_prompt_template}
+            criteria={formData.criteria}
             error={errors.system_prompt_template}
             onChange={(value) =>
               setFormData({ ...formData, system_prompt_template: value })

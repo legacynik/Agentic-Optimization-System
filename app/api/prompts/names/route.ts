@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('prompt_versions')
-      .select('prompt_name')
-      .order('prompt_name', { ascending: true })
+      .select('id, prompt_name')
+      .order('created_at', { ascending: false })
       .limit(limit)
 
     if (error) {
@@ -35,14 +35,14 @@ export async function GET(request: NextRequest) {
       return apiError('Failed to fetch prompt names', 'INTERNAL_ERROR', 500, error.message)
     }
 
-    // Deduplicate prompt_names (multiple versions share the same name)
+    // Deduplicate by prompt_name, keeping the most recent version's UUID
     const seen = new Set<string>()
     const unique: { id: string; name: string }[] = []
 
     for (const row of data || []) {
       if (!seen.has(row.prompt_name)) {
         seen.add(row.prompt_name)
-        unique.push({ id: row.prompt_name, name: row.prompt_name })
+        unique.push({ id: row.id, name: row.prompt_name })
       }
     }
 
