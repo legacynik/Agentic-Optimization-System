@@ -3,20 +3,8 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-  LayoutDashboard,
-  MessageSquare,
-  Rocket,
-  Settings,
-  Bot,
-  ChevronRight,
-  FileText,
-  BarChart3,
-  Users,
-  ClipboardCheck,
-  PanelLeftClose,
-  PanelLeft,
-} from "lucide-react"
+import { Bot, PanelLeftClose, PanelLeft } from "lucide-react"
+import { NAV_MAIN, NAV_TESTING, NAV_CONFIG } from "@/lib/navigation"
 
 import {
   Sidebar,
@@ -29,72 +17,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-
-const navMain = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Conversations",
-    url: "/conversations",
-    icon: MessageSquare,
-  },
-  {
-    title: "Executive",
-    url: "/executive",
-    icon: BarChart3,
-  },
-]
-
-const navTesting = [
-  {
-    title: "Test Launcher",
-    url: "/test-launcher",
-    icon: Rocket,
-  },
-  {
-    title: "Agentic Testing",
-    url: "/agentic",
-    icon: Bot,
-    // Note: Battles, Personas, Optimization are all tabs within /agentic
-  },
-]
-
-const navConfig = [
-  {
-    title: "Personas",
-    url: "/personas",
-    icon: Users,
-  },
-  {
-    title: "Prompts",
-    url: "/prompts",
-    icon: FileText,
-  },
-  {
-    title: "Evaluators",
-    url: "/evaluators",
-    icon: ClipboardCheck,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
@@ -126,94 +51,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Main Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Overview</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navMain.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Testing */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Testing</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navTesting.map((item) =>
-                item.items ? (
-                  <Collapsible
-                    key={item.title}
-                    asChild
-                    defaultOpen={isActive(item.url)}
-                    className="group/collapsible"
-                  >
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton tooltip={item.title}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                          <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {item.items.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton asChild isActive={isActive(subItem.url)}>
-                                <Link href={subItem.url}>
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                ) : (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Configuration */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Configuration</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navConfig.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavGroup label="Overview" items={NAV_MAIN} isActive={isActive} />
+        <NavGroup label="Testing" items={NAV_TESTING} isActive={isActive} />
+        <NavGroup label="Configuration" items={NAV_CONFIG} isActive={isActive} />
       </SidebarContent>
 
       <SidebarFooter>
@@ -224,11 +64,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onClick={toggleSidebar}
               tooltip={state === "expanded" ? "Collapse menu" : "Expand menu"}
             >
-              {state === "expanded" ? (
-                <PanelLeftClose className="size-4" />
-              ) : (
-                <PanelLeft className="size-4" />
-              )}
+              {state === "expanded" ? <PanelLeftClose className="size-4" /> : <PanelLeft className="size-4" />}
               <span className="text-xs">v2.4 Lean</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -237,5 +73,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarRail />
     </Sidebar>
+  )
+}
+
+function NavGroup({
+  label,
+  items,
+  isActive,
+}: {
+  label: string
+  items: ReadonlyArray<{ title: string; url: string; icon: React.ComponentType }>
+  isActive: (url: string) => boolean
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                <Link href={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   )
 }

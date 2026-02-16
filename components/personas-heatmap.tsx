@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getHeatmapCellColor } from "@/lib/score-utils"
 
 interface PersonasHeatmapProps {
   data: Array<{
@@ -12,15 +13,7 @@ interface PersonasHeatmapProps {
   error?: string
 }
 
-function getColorIntensity(score: number): string {
-  if (score >= 8) return "bg-emerald-500 text-white font-bold shadow-[0_0_10px_rgba(16,185,129,0.4)]"
-  if (score >= 6) return "bg-yellow-400 text-black font-bold"
-  if (score >= 4) return "bg-orange-500 text-white font-semibold"
-  return "bg-red-500 text-white font-bold"
-}
-
 export function PersonasHeatmap({ data, loading = false, error }: PersonasHeatmapProps) {
-  console.log("[v0] Heatmap rendering with data:", data)
 
   // Loading state
   if (loading) {
@@ -79,7 +72,6 @@ export function PersonasHeatmap({ data, loading = false, error }: PersonasHeatma
 
   try {
     criteria = Object.keys(data[0]).filter((key) => key !== "persona")
-    console.log("[v0] Extracted criteria:", criteria)
 
     if (criteria.length === 0) {
       return (
@@ -108,7 +100,7 @@ export function PersonasHeatmap({ data, loading = false, error }: PersonasHeatma
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-full">
+      <div className="min-w-[800px]">
         {/* Header */}
         <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: `200px repeat(${criteria.length}, 1fr)` }}>
           <div className="text-xs font-medium text-muted-foreground">Persona ID</div>
@@ -134,7 +126,7 @@ export function PersonasHeatmap({ data, loading = false, error }: PersonasHeatma
                 return (
                   <div
                     key={criterion}
-                    className={`text-xs font-semibold rounded px-2 py-3 text-center ${getColorIntensity(score)}`}
+                    className={`text-xs font-semibold rounded px-2 py-3 text-center ${getHeatmapCellColor(score)}`}
                   >
                     {typeof value === "number" ? value.toFixed(1) : "N/A"}
                   </div>

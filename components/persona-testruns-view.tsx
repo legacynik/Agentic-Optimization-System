@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useMemo } from "react"
+import { getScoreBadgeColor } from "@/lib/score-utils"
 
 interface PersonaTestRunsViewProps {
   personaId: string
@@ -22,14 +23,6 @@ interface PersonaTestRunsViewProps {
   error?: string
 }
 
-function getScoreColor(score: number | undefined): string {
-  if (!score) return "bg-muted/30"
-  if (score >= 8) return "bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-  if (score >= 6) return "bg-yellow-400 text-black font-medium"
-  if (score >= 4) return "bg-orange-500 text-white"
-  return "bg-red-500 text-white"
-}
-
 function formatDate(dateString: string): string {
   try {
     const date = new Date(dateString)
@@ -40,7 +33,6 @@ function formatDate(dateString: string): string {
 }
 
 export function PersonaTestRunsView({ personaId, personaName, data, loading = false, error }: PersonaTestRunsViewProps) {
-  console.log("[v0] PersonaTestRunsView rendering with data:", { personaId, personaName, dataLength: data.length })
 
   // Loading state
   if (loading) {
@@ -164,7 +156,7 @@ export function PersonaTestRunsView({ personaId, personaName, data, loading = fa
                 <TableCell className="text-xs">{formatDate(row.test_date)}</TableCell>
                 <TableCell className="text-center">
                   <span
-                    className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getScoreColor(row.avg_score)}`}
+                    className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getScoreBadgeColor(row.avg_score)}`}
                   >
                     {row.avg_score.toFixed(1)}
                   </span>
@@ -174,7 +166,7 @@ export function PersonaTestRunsView({ personaId, personaName, data, loading = fa
                   const score = row.criteriaScores[criterion]
                   return (
                     <TableCell key={criterion} className="text-center">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getScoreColor(score)}`}>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getScoreBadgeColor(score)}`}>
                         {score !== undefined ? score.toFixed(1) : "-"}
                       </span>
                     </TableCell>

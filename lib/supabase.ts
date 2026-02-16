@@ -7,37 +7,21 @@ import { createBrowserClient } from "@supabase/ssr"
 
 let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
-/**
- * Gets the Supabase client singleton
- * Creates new instance only on first call
- */
 export function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  console.log("[Supabase] getSupabase called", {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseAnonKey,
-    hasInstance: !!supabaseInstance
-  })
-
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("[Supabase] Missing environment variables!")
-    console.error("[Supabase] NEXT_PUBLIC_SUPABASE_URL:", supabaseUrl ? "SET" : "MISSING")
-    console.error("[Supabase] NEXT_PUBLIC_SUPABASE_ANON_KEY:", supabaseAnonKey ? "SET" : "MISSING")
-    // Return a client anyway - will fail on query but won't hang
+    console.error("[Supabase] Missing environment variables:", {
+      url: supabaseUrl ? "SET" : "MISSING",
+      key: supabaseAnonKey ? "SET" : "MISSING",
+    })
     return createBrowserClient(supabaseUrl || "", supabaseAnonKey || "")
   }
 
-  if (supabaseInstance) {
-    console.log("[Supabase] Returning existing instance")
-    return supabaseInstance
-  }
+  if (supabaseInstance) return supabaseInstance
 
-  console.log("[Supabase] Creating new client...")
   supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey)
-  console.log("[Supabase] Client created successfully")
-
   return supabaseInstance
 }
 

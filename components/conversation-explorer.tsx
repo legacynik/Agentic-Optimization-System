@@ -55,7 +55,7 @@ export function ConversationExplorer() {
   }
 
   return (
-    <div className="grid grid-cols-[30%_70%] gap-0" style={{ height: "calc(100vh - 200px)" }}>
+    <div className="flex flex-col md:grid md:grid-cols-[320px_1fr] gap-0" style={{ height: "calc(100vh - 200px)" }}>
       {/* LEFT PANEL */}
       <div
         className="border-r-2 border-primary/30 bg-gradient-to-b from-card via-card to-background grid gap-0"

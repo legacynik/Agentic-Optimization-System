@@ -13,8 +13,9 @@ import { EmptyState } from "@/components/dashboard/empty-state"
 import { DashboardError } from "@/components/dashboard/dashboard-error"
 import { TestRunsCard } from "@/components/dashboard/test-runs-card"
 import { LatestConversationsCard } from "@/components/dashboard/latest-conversations-card"
-import { useState, useMemo } from "react"
-import { useDashboardData } from "@/hooks/use-dashboard-data"
+import { useMemo } from "react"
+import { useConversationsQuery, useTestRunsQuery, usePersonasQuery, useHeatmapQuery } from "@/hooks/queries"
+import { useDashboardStore } from "@/stores/dashboard-store"
 import { calculateOutliers } from "@/lib/outliers"
 import { exportDashboardToCSV } from "@/lib/export-csv"
 import { exportDashboardToPDF } from "@/lib/export-pdf"
@@ -27,13 +28,32 @@ import {
 } from "@/lib/dashboard-utils"
 
 export function DashboardContent() {
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null)
-  const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
-  const [scoreRange, setScoreRange] = useState<[number, number]>([0, 10])
-  const [showBookedOnly, setShowBookedOnly] = useState(false)
+  const selectedPersona = useDashboardStore((s) => s.selectedPersona)
+  const setSelectedPersona = useDashboardStore((s) => s.setSelectedPersona)
+  const selectedOutcomes = useDashboardStore((s) => s.selectedOutcomes)
+  const scoreRange = useDashboardStore((s) => s.scoreRange)
+  const setScoreRange = useDashboardStore((s) => s.setScoreRange)
+  const showBookedOnly = useDashboardStore((s) => s.showBookedOnly)
+  const toggleShowBooked = useDashboardStore((s) => s.toggleShowBooked)
 
-  const { data, loading, error } = useDashboardData()
-  const { conversations, testRuns, personas, heatmapData } = data
+  const { data: conversations = [], isLoading: convLoading, error: convError } = useConversationsQuery()
+  const { data: testRuns = [], isLoading: trLoading } = useTestRunsQuery()
+  const { data: personas = [], isLoading: pLoading } = usePersonasQuery()
+  const { data: heatmapData = [], isLoading: hmLoading } = useHeatmapQuery()
+
+  const loading = convLoading || trLoading || pLoading || hmLoading
+  const error = convError ? (convError instanceof Error ? convError.message : "Failed to load data") : null
+
+  const handleOutcomesChange = (outcomes: string[]) => {
+    const store = useDashboardStore.getState()
+    // Sync full array — clear then set
+    store.selectedOutcomes.forEach((o) => {
+      if (!outcomes.includes(o)) store.toggleOutcome(o)
+    })
+    outcomes.forEach((o) => {
+      if (!store.selectedOutcomes.includes(o)) store.toggleOutcome(o)
+    })
+  }
 
   const filteredConversations = useMemo(() => {
     return filterConversations(
@@ -158,11 +178,11 @@ export function DashboardContent() {
         selectedPersona={selectedPersona}
         onPersonaChange={setSelectedPersona}
         selectedOutcomes={selectedOutcomes}
-        onOutcomesChange={setSelectedOutcomes}
+        onOutcomesChange={handleOutcomesChange}
         scoreRange={scoreRange}
         onScoreRangeChange={setScoreRange}
         showBookedOnly={showBookedOnly}
-        onBookedToggle={() => setShowBookedOnly(!showBookedOnly)}
+        onBookedToggle={toggleShowBooked}
         outliers={outliers}
       />
 

@@ -8,19 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { AlertCircle } from "lucide-react"
+import { EvaluatorSelectForm } from "@/components/evaluation/evaluator-select-form"
+import { EvaluationProgress } from "@/components/evaluation/evaluation-progress"
 
 interface EvaluatorConfig {
   id: string
@@ -39,26 +30,17 @@ interface ReEvaluateModalProps {
   onSuccess: () => void
 }
 
-export function ReEvaluateModal({
-  testRunId,
-  open,
-  onOpenChange,
-  onSuccess,
-}: ReEvaluateModalProps) {
+export function ReEvaluateModal({ testRunId, open, onOpenChange, onSuccess }: ReEvaluateModalProps) {
   const [configs, setConfigs] = useState<EvaluatorConfig[]>([])
-  const [selectedConfigId, setSelectedConfigId] = useState<string>("")
+  const [selectedConfigId, setSelectedConfigId] = useState("")
   const [loading, setLoading] = useState(false)
   const [fetchingConfigs, setFetchingConfigs] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<number>(0)
-  const [status, setStatus] = useState<"idle" | "submitting" | "polling" | "complete">(
-    "idle"
-  )
+  const [progress, setProgress] = useState(0)
+  const [status, setStatus] = useState<"idle" | "submitting" | "polling" | "complete">("idle")
 
   useEffect(() => {
-    if (open) {
-      fetchConfigs()
-    }
+    if (open) fetchConfigs()
   }, [open])
 
   async function fetchConfigs() {
@@ -66,23 +48,13 @@ export function ReEvaluateModal({
       setFetchingConfigs(true)
       const response = await fetch("/api/evaluator-configs")
       const result = await response.json()
+      if (result.error) { setError("Failed to load evaluator configs"); return }
 
-      if (result.error) {
-        setError("Failed to load evaluator configs")
-        return
-      }
-
-      // Filter to only active configs
-      const activeConfigs = (result.data || []).filter(
-        (c: EvaluatorConfig) => c.status === "active"
-      )
+      const activeConfigs = (result.data || []).filter((c: EvaluatorConfig) => c.status === "active")
       setConfigs(activeConfigs)
 
-      // Pre-select promoted config if available
       const promoted = activeConfigs.find((c: EvaluatorConfig) => c.is_promoted)
-      if (promoted) {
-        setSelectedConfigId(promoted.id)
-      }
+      if (promoted) setSelectedConfigId(promoted.id)
     } catch (err) {
       console.error("Failed to fetch configs:", err)
       setError("Failed to load evaluator configs")
@@ -92,10 +64,7 @@ export function ReEvaluateModal({
   }
 
   async function handleSubmit() {
-    if (!selectedConfigId) {
-      setError("Please select an evaluator config")
-      return
-    }
+    if (!selectedConfigId) { setError("Please select an evaluator config"); return }
 
     setError(null)
     setLoading(true)
@@ -105,21 +74,11 @@ export function ReEvaluateModal({
       const response = await fetch("/api/evaluations/re-evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          test_run_id: testRunId,
-          evaluator_config_id: selectedConfigId,
-        }),
+        body: JSON.stringify({ test_run_id: testRunId, evaluator_config_id: selectedConfigId }),
       })
-
       const result = await response.json()
 
-      if (result.error) {
-        setError(result.error.message || "Failed to create re-evaluation")
-        setStatus("idle")
-        return
-      }
-
-      // Start polling for completion
+      if (result.error) { setError(result.error.message || "Failed to create re-evaluation"); setStatus("idle"); return }
       setStatus("polling")
       pollEvaluationStatus(result.data.id)
     } catch (err) {
@@ -132,7 +91,7 @@ export function ReEvaluateModal({
   }
 
   async function pollEvaluationStatus(evaluationId: string) {
-    const maxAttempts = 60 // 5 minutes max (5s intervals)
+    const maxAttempts = 60
     let attempts = 0
 
     const interval = setInterval(async () => {
@@ -143,73 +102,37 @@ export function ReEvaluateModal({
         const response = await fetch(`/api/evaluations?test_run_id=${testRunId}`)
         const result = await response.json()
 
-        if (result.error) {
-          clearInterval(interval)
-          setError("Failed to check evaluation status")
-          setStatus("idle")
-          return
-        }
+        if (result.error) { clearInterval(interval); setError("Failed to check evaluation status"); setStatus("idle"); return }
 
-        const evaluation = result.data?.find(
-          (e: { id: string }) => e.id === evaluationId
-        )
-
-        if (!evaluation) {
-          clearInterval(interval)
-          setError("Evaluation not found")
-          setStatus("idle")
-          return
-        }
+        const evaluation = result.data?.find((e: { id: string }) => e.id === evaluationId)
+        if (!evaluation) { clearInterval(interval); setError("Evaluation not found"); setStatus("idle"); return }
 
         if (evaluation.status === "completed") {
           clearInterval(interval)
           setStatus("complete")
           setProgress(100)
-          setTimeout(() => {
-            onSuccess()
-            onOpenChange(false)
-            resetState()
-          }, 1500)
+          setTimeout(() => { onSuccess(); onOpenChange(false); resetState() }, 1500)
         } else if (evaluation.status === "failed") {
-          clearInterval(interval)
-          setError("Evaluation failed")
-          setStatus("idle")
+          clearInterval(interval); setError("Evaluation failed"); setStatus("idle")
         } else if (attempts >= maxAttempts) {
-          clearInterval(interval)
-          setError("Evaluation timeout - please check evaluations list")
-          setStatus("idle")
+          clearInterval(interval); setError("Evaluation timeout - please check evaluations list"); setStatus("idle")
         }
       } catch (err) {
         console.error("Polling error:", err)
-        clearInterval(interval)
-        setError("Failed to check evaluation status")
-        setStatus("idle")
+        clearInterval(interval); setError("Failed to check evaluation status"); setStatus("idle")
       }
-    }, 5000) // Poll every 5 seconds
+    }, 5000)
   }
 
   function resetState() {
-    setSelectedConfigId("")
-    setError(null)
-    setProgress(0)
-    setStatus("idle")
+    setSelectedConfigId(""); setError(null); setProgress(0); setStatus("idle")
   }
 
   function handleClose() {
-    if (status === "polling") {
-      if (
-        !confirm(
-          "Evaluation is in progress. Closing this will not cancel it. Continue?"
-        )
-      ) {
-        return
-      }
-    }
+    if (status === "polling" && !confirm("Evaluation is in progress. Closing this will not cancel it. Continue?")) return
     onOpenChange(false)
     resetState()
   }
-
-  const selectedConfig = configs.find((c) => c.id === selectedConfigId)
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -217,11 +140,9 @@ export function ReEvaluateModal({
         <DialogHeader>
           <DialogTitle>Re-evaluate Test Run</DialogTitle>
           <DialogDescription>
-            Select an evaluator configuration to re-evaluate this test run with
-            different criteria.
+            Select an evaluator configuration to re-evaluate this test run with different criteria.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-4">
           {error && (
             <Alert variant="destructive">
@@ -229,99 +150,18 @@ export function ReEvaluateModal({
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-
-          {status === "complete" && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
-                Re-evaluation completed successfully!
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {status === "polling" && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Evaluating...</span>
-                <span className="text-muted-foreground">{progress.toFixed(0)}%</span>
-              </div>
-              <Progress value={progress} />
-              <p className="text-xs text-muted-foreground">
-                This may take a few minutes. You can close this modal and check the
-                evaluations list later.
-              </p>
-            </div>
-          )}
-
-          {status !== "complete" && status !== "polling" && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="evaluator_config">
-                  Evaluator Configuration <span className="text-destructive">*</span>
-                </Label>
-                {fetchingConfigs ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading configs...
-                  </div>
-                ) : (
-                  <Select
-                    value={selectedConfigId}
-                    onValueChange={setSelectedConfigId}
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select evaluator config" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {configs.map((config) => (
-                        <SelectItem key={config.id} value={config.id}>
-                          <div className="flex items-center gap-2">
-                            {config.name} v{config.version}
-                            {config.is_promoted && (
-                              <Badge variant="default" className="ml-2 text-xs">
-                                Default
-                              </Badge>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {selectedConfig && (
-                <div className="rounded-lg bg-muted p-3 space-y-1 text-sm">
-                  <div className="font-medium">{selectedConfig.name}</div>
-                  {selectedConfig.description && (
-                    <div className="text-muted-foreground">
-                      {selectedConfig.description}
-                    </div>
-                  )}
-                  <div className="text-muted-foreground">
-                    {selectedConfig.criteria.length} criteria
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {status !== "complete" && (
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleClose} disabled={loading}>
-                {status === "polling" ? "Close" : "Cancel"}
-              </Button>
-              {status !== "polling" && (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={loading || !selectedConfigId}
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Start Re-evaluation
-                </Button>
-              )}
-            </div>
+          {(status === "polling" || status === "complete") ? (
+            <EvaluationProgress status={status} progress={progress} onClose={handleClose} />
+          ) : (
+            <EvaluatorSelectForm
+              configs={configs}
+              selectedConfigId={selectedConfigId}
+              onConfigChange={setSelectedConfigId}
+              fetchingConfigs={fetchingConfigs}
+              loading={loading}
+              onSubmit={handleSubmit}
+              onCancel={handleClose}
+            />
           )}
         </div>
       </DialogContent>

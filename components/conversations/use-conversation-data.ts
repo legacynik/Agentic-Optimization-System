@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { fetchPersonasPerformance, fetchUniquePersonas, fetchUniqueCategories } from "@/lib/queries"
+import { useState, useMemo, useCallback, useEffect } from "react"
+import { useConversationsQuery, usePersonasQuery, useCategoriesQuery } from "@/hooks/queries"
 import type { PersonaPerformanceRow } from "@/lib/supabase"
 import { exportConversationsToCSV, exportCriteriaToCSV } from "@/lib/export-csv"
 import { exportConversationsToPDF, exportCriteriaToPDF } from "@/lib/export-pdf"
@@ -19,11 +19,13 @@ interface FilterState {
 }
 
 export function useConversationData(selectedConversations: string[]) {
-  const [conversations, setConversations] = useState<PersonaPerformanceRow[]>([])
-  const [personas, setPersonas] = useState<any[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: conversations = [], isLoading: convLoading, error: convError } = useConversationsQuery()
+  const { data: personas = [], isLoading: pLoading } = usePersonasQuery()
+  const { data: categories = [], isLoading: cLoading } = useCategoriesQuery()
+
+  const loading = convLoading || pLoading || cLoading
+  const error = convError ? (convError instanceof Error ? convError.message : "Failed to load data") : null
+
   const [selectedConversation, setSelectedConversation] = useState<PersonaPerformanceRow | null>(null)
 
   const [filters, setFilters] = useState<FilterState>({
@@ -36,29 +38,12 @@ export function useConversationData(selectedConversations: string[]) {
     turnsRange: [0, 20],
   })
 
+  // Auto-select first conversation when data loads
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true)
-        const [convData, personasData, categoriesData] = await Promise.all([
-          fetchPersonasPerformance(),
-          fetchUniquePersonas(),
-          fetchUniqueCategories(),
-        ])
-        setConversations(convData)
-        setPersonas(personasData)
-        setCategories(categoriesData)
-        if (convData.length > 0) setSelectedConversation(convData[0])
-        setError(null)
-      } catch (err) {
-        console.error("[v0] Error loading conversation data:", err)
-        setError(err instanceof Error ? err.message : "Failed to load data")
-      } finally {
-        setLoading(false)
-      }
+    if (conversations.length > 0 && !selectedConversation) {
+      setSelectedConversation(conversations[0])
     }
-    loadData()
-  }, [])
+  }, [conversations, selectedConversation])
 
   const testRuns = useMemo(() => {
     return Array.from(new Set(conversations.filter(c => c.testrunid).map(c => c.testrunid))).sort()
@@ -67,8 +52,8 @@ export function useConversationData(selectedConversations: string[]) {
   const filteredConversations = useMemo(() => {
     return conversations.filter((conv) => {
       const summary = getConversationSummary(conv)
-      const score = Number.parseFloat(conv.avg_score)
-      const turns = Math.round(Number.parseFloat(conv.avg_turns))
+      const score = Number.parseFloat(String(conv.avg_score))
+      const turns = Math.round(Number.parseFloat(String(conv.avg_turns)))
       const { searchQuery, selectedOutcomes, selectedCategories, selectedPersonas, selectedTestRuns, scoreRange, turnsRange } = filters
 
       const matchesSearch = searchQuery === "" ||
@@ -96,7 +81,7 @@ export function useConversationData(selectedConversations: string[]) {
   }, [conversations, selectedConversations])
 
   const exportHandlers = useMemo(() => {
-    const compareExport = (fn: (convs: PersonaPerformanceRow[], matrix: any) => void) => () => {
+    const compareExport = (fn: (convs: PersonaPerformanceRow[], matrix: ReturnType<typeof buildCriteriaMatrix>) => void) => () => {
       if (selectedConvsData.length >= 2) {
         fn(selectedConvsData, buildCriteriaMatrix(selectedConvsData))
       }
