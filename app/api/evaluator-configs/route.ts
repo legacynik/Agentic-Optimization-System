@@ -39,28 +39,11 @@ interface CreateEvaluatorConfigRequest {
   name: string
   version: string
   description?: string
-  prompt_id: string
+  prompt_version_id: string
   criteria: CriteriaItem[]
   system_prompt_template: string
   success_config?: SuccessConfig
   status?: EvaluatorStatus
-}
-
-/** Evaluator config response structure */
-interface EvaluatorConfigResponse {
-  id: string
-  name: string
-  version: string
-  description: string | null
-  prompt_id: string
-  prompt_name?: string
-  criteria: CriteriaItem[]
-  system_prompt_template: string
-  success_config: SuccessConfig
-  is_promoted: boolean
-  status: EvaluatorStatus
-  created_at: string
-  updated_at: string
 }
 
 // ============================================================================
@@ -120,7 +103,7 @@ function validateCriteria(criteria: unknown): criteria is CriteriaItem[] {
  * Lists evaluator configs with optional filtering.
  *
  * Query params:
- * - prompt_id: Filter by prompt UUID
+ * - prompt_version_id: Filter by prompt version UUID
  * - status: Filter by status ('draft' | 'active' | 'deprecated')
  * - is_promoted: Filter by promotion status
  * - limit: Number of results (default 50, max 200)
@@ -131,15 +114,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
 
     // Parse query parameters
-    const promptId = searchParams.get('prompt_id')
+    const promptVersionId = searchParams.get('prompt_version_id')
     const status = searchParams.get('status')
     const isPromoted = searchParams.get('is_promoted')
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    // Validate prompt_id if provided
-    if (promptId && !isValidUUID(promptId)) {
-      return apiError('Invalid prompt_id format', 'VALIDATION_ERROR', 400)
+    // Validate prompt_version_id if provided
+    if (promptVersionId && !isValidUUID(promptVersionId)) {
+      return apiError('Invalid prompt_version_id format', 'VALIDATION_ERROR', 400)
     }
 
     // Validate status if provided
@@ -158,7 +141,7 @@ export async function GET(request: NextRequest) {
         name,
         version,
         description,
-        prompt_id,
+        prompt_version_id,
         criteria,
         system_prompt_template,
         success_config,
@@ -171,8 +154,8 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1)
 
     // Apply filters
-    if (promptId) {
-      query = query.eq('prompt_id', promptId)
+    if (promptVersionId) {
+      query = query.eq('prompt_version_id', promptVersionId)
     }
     if (status) {
       query = query.eq('status', status)
@@ -192,17 +175,17 @@ export async function GET(request: NextRequest) {
     // Fetch prompt names for all configs
     let transformedData = data
     if (data && data.length > 0) {
-      const promptIds = [...new Set(data.map((c: any) => c.prompt_id))]
-      const { data: prompts } = await supabase
-        .from('prompts')
+      const pvIds = [...new Set(data.map((c: any) => c.prompt_version_id))]
+      const { data: promptVersions } = await supabase
+        .from('prompt_versions')
         .select('id, prompt_name')
-        .in('id', promptIds)
+        .in('id', pvIds)
 
-      const promptMap = new Map(prompts?.map(p => [p.id, p.prompt_name]) || [])
+      const pvMap = new Map(promptVersions?.map(p => [p.id, p.prompt_name]) || [])
 
       transformedData = data.map((config: any) => ({
         ...config,
-        prompt_name: promptMap.get(config.prompt_id) || null
+        prompt_name: pvMap.get(config.prompt_version_id) || null
       }))
     }
 
@@ -231,7 +214,7 @@ export async function GET(request: NextRequest) {
  * Request body:
  * - name: string (required)
  * - version: string (required)
- * - prompt_id: UUID (required)
+ * - prompt_version_id: UUID (required)
  * - criteria: CriteriaItem[] (required)
  * - system_prompt_template: string (required)
  * - description: string (optional)
@@ -251,8 +234,8 @@ export async function POST(request: NextRequest) {
       return apiError('version is required', 'VALIDATION_ERROR', 400)
     }
 
-    if (!body.prompt_id || !isValidUUID(body.prompt_id)) {
-      return apiError('Valid prompt_id is required', 'VALIDATION_ERROR', 400)
+    if (!body.prompt_version_id || !isValidUUID(body.prompt_version_id)) {
+      return apiError('Valid prompt_version_id is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!body.system_prompt_template || body.system_prompt_template.trim() === '') {
@@ -274,22 +257,22 @@ export async function POST(request: NextRequest) {
       return apiError('Invalid status. Must be one of: draft, active, deprecated', 'VALIDATION_ERROR', 400)
     }
 
-    // Check if prompt exists
-    const { data: prompt, error: promptError } = await supabase
-      .from('prompts')
+    // Check if prompt version exists
+    const { data: promptVersion, error: pvError } = await supabase
+      .from('prompt_versions')
       .select('id')
-      .eq('id', body.prompt_id)
+      .eq('id', body.prompt_version_id)
       .single()
 
-    if (promptError || !prompt) {
-      return apiError('Prompt not found', 'NOT_FOUND', 404)
+    if (pvError || !promptVersion) {
+      return apiError('Prompt version not found', 'NOT_FOUND', 404)
     }
 
     // Check for duplicate version for this prompt
     const { data: existing } = await supabase
       .from('evaluator_configs')
       .select('id')
-      .eq('prompt_id', body.prompt_id)
+      .eq('prompt_version_id', body.prompt_version_id)
       .eq('version', body.version)
       .single()
 
@@ -304,7 +287,7 @@ export async function POST(request: NextRequest) {
         name: body.name.trim(),
         version: body.version.trim(),
         description: body.description?.trim() || null,
-        prompt_id: body.prompt_id,
+        prompt_version_id: body.prompt_version_id,
         criteria: body.criteria,
         system_prompt_template: body.system_prompt_template.trim(),
         success_config: body.success_config || { min_score: 7 },

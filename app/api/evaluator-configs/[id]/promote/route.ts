@@ -41,7 +41,7 @@ export async function POST(
     // Step 1: Fetch the evaluator config to get its prompt_id
     const { data: config, error: fetchError } = await supabase
       .from('evaluator_configs')
-      .select('id, name, version, prompt_id, is_promoted, status')
+      .select('id, name, version, prompt_version_id, is_promoted, status')
       .eq('id', id)
       .single()
 
@@ -66,7 +66,7 @@ export async function POST(
         is_promoted: false,
         updated_at: new Date().toISOString()
       })
-      .eq('prompt_id', config.prompt_id)
+      .eq('prompt_version_id', config.prompt_version_id)
       .eq('is_promoted', true)
 
     if (unpromoteError) {
@@ -92,16 +92,16 @@ export async function POST(
 
     console.log(`[evaluator-configs/promote] Promoted config: ${promotedConfig.name} v${promotedConfig.version} (${promotedConfig.id})`)
 
-    // Fetch prompt name for response
-    const { data: prompt } = await supabase
-      .from('prompts')
-      .select('name')
-      .eq('id', promotedConfig.prompt_id)
+    // Fetch prompt version name for response
+    const { data: promptVersion } = await supabase
+      .from('prompt_versions')
+      .select('prompt_name')
+      .eq('id', promotedConfig.prompt_version_id)
       .single()
 
     return apiSuccess({
       ...promotedConfig,
-      prompt_name: prompt?.name || null,
+      prompt_name: promptVersion?.prompt_name || null,
       message: 'Evaluator config promoted successfully'
     })
 

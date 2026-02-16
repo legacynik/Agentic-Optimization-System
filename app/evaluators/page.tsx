@@ -14,7 +14,7 @@ interface EvaluatorConfig {
   name: string
   version: string
   description: string | null
-  prompt_id: string
+  prompt_version_id: string
   prompt_name?: string
   criteria: Array<{
     name: string
@@ -43,7 +43,7 @@ export default function EvaluatorsPage() {
     try {
       setLoading(true)
       const url = filterPromptId
-        ? `/api/evaluator-configs?prompt_id=${filterPromptId}`
+        ? `/api/evaluator-configs?prompt_version_id=${filterPromptId}`
         : "/api/evaluator-configs"
 
       const response = await fetch(url)
@@ -199,7 +199,7 @@ export default function EvaluatorsPage() {
                     <TableCell className="font-medium">{config.name}</TableCell>
                     <TableCell>{config.version}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {config.prompt_name || config.prompt_id}
+                      {config.prompt_name || config.prompt_version_id}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{config.criteria.length} criteria</Badge>

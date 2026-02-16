@@ -12,7 +12,7 @@ interface EvaluatorConfig {
   name: string
   version: string
   description: string | null
-  prompt_id: string
+  prompt_version_id: string
   criteria: Array<{
     name: string
     weight: number
@@ -48,7 +48,7 @@ export function EvaluatorConfigForm({
     name: "",
     version: "1.0",
     description: null,
-    prompt_id: "",
+    prompt_version_id: "",
     criteria: [],
     system_prompt_template: "",
     success_config: {
@@ -90,8 +90,8 @@ export function EvaluatorConfigForm({
     if (!formData.version.trim()) {
       newErrors.version = "Version is required"
     }
-    if (!formData.prompt_id) {
-      newErrors.prompt_id = "Prompt is required"
+    if (!formData.prompt_version_id) {
+      newErrors.prompt_version_id = "Prompt is required"
     }
     if (formData.criteria.length === 0) {
       newErrors.criteria = "At least one criterion is required"

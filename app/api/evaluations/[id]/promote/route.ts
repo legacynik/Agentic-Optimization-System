@@ -5,9 +5,9 @@ const supabase = createSupabaseClient()
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const evaluationId = params.id
+  const { id: evaluationId } = await params
 
   try {
     // Get evaluation to extract test_run_id

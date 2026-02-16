@@ -14,7 +14,7 @@ interface ConfigFormFieldsProps {
     name: string
     version: string
     description: string | null
-    prompt_id: string
+    prompt_version_id: string
     status: "draft" | "active" | "deprecated"
     success_config: {
       min_score: number
@@ -67,12 +67,12 @@ export function ConfigFormFields({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="prompt_id">
+        <Label htmlFor="prompt_version_id">
           Prompt <span className="text-destructive">*</span>
         </Label>
         <Select
-          value={formData.prompt_id}
-          onValueChange={(value) => onChange("prompt_id", value)}
+          value={formData.prompt_version_id}
+          onValueChange={(value) => onChange("prompt_version_id", value)}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a prompt" />
@@ -85,8 +85,8 @@ export function ConfigFormFields({
             ))}
           </SelectContent>
         </Select>
-        {errors.prompt_id && (
-          <p className="text-sm text-destructive">{errors.prompt_id}</p>
+        {errors.prompt_version_id && (
+          <p className="text-sm text-destructive">{errors.prompt_version_id}</p>
         )}
       </div>
 

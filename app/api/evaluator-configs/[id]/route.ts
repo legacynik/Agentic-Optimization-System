@@ -30,11 +30,6 @@ interface CriteriaItem {
   scoring_guide?: string
 }
 
-/** Success config structure */
-interface SuccessConfig {
-  min_score: number
-}
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -110,7 +105,7 @@ export async function GET(
         name,
         version,
         description,
-        prompt_id,
+        prompt_version_id,
         criteria,
         system_prompt_template,
         success_config,
@@ -127,17 +122,16 @@ export async function GET(
       return apiError('Evaluator config not found', 'NOT_FOUND', 404)
     }
 
-    // Fetch prompt name separately
-    const { data: prompt } = await supabase
-      .from('prompts')
-      .select('name')
-      .eq('id', config.prompt_id)
+    // Fetch prompt version name
+    const { data: promptVersion } = await supabase
+      .from('prompt_versions')
+      .select('prompt_name')
+      .eq('id', config.prompt_version_id)
       .single()
 
-    // Transform data to include prompt name
     const transformedConfig = {
       ...config,
-      prompt_name: prompt?.name || null
+      prompt_name: promptVersion?.prompt_name || null
     }
 
     return apiSuccess(transformedConfig)
@@ -174,7 +168,7 @@ export async function PUT(
       return apiError('Invalid evaluator config ID format', 'INVALID_UUID', 400)
     }
 
-    // Define allowed update fields (cannot update prompt_id)
+    // Define allowed update fields (cannot update prompt_version_id)
     const allowedFields = [
       'name', 'version', 'description',
       'criteria', 'system_prompt_template', 'success_config',
@@ -221,7 +215,7 @@ export async function PUT(
       // First get the current config to get its prompt_id
       const { data: currentConfig } = await supabase
         .from('evaluator_configs')
-        .select('prompt_id, version')
+        .select('prompt_version_id, version')
         .eq('id', id)
         .single()
 
@@ -229,7 +223,7 @@ export async function PUT(
         const { data: existing } = await supabase
           .from('evaluator_configs')
           .select('id')
-          .eq('prompt_id', currentConfig.prompt_id)
+          .eq('prompt_version_id', currentConfig.prompt_version_id)
           .eq('version', updateData.version)
           .single()
 

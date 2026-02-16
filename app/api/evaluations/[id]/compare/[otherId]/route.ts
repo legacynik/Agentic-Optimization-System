@@ -5,10 +5,9 @@ const supabase = createSupabaseClient()
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; otherId: string } }
+  { params }: { params: Promise<{ id: string; otherId: string }> }
 ) {
-  const evaluationId1 = params.id
-  const evaluationId2 = params.otherId
+  const { id: evaluationId1, otherId: evaluationId2 } = await params
 
   try {
     // Fetch both evaluations with their battle_evaluations
