@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "lucide-react"
 import type { PersonaPerformanceRow } from "@/lib/supabase"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts"
+import { parseConversationsSummary } from "@/lib/parsers"
 
 interface AppointmentsFunnelProps {
   conversations: PersonaPerformanceRow[]
@@ -15,11 +16,7 @@ export function AppointmentsFunnel({ conversations }: AppointmentsFunnelProps) {
     const total = conversations.length
     const successful = conversations.filter((c) => c.avg_score >= 8).length
     const booked = conversations.filter((conv) => {
-      const summary = Array.isArray(conv.conversations_summary)
-        ? conv.conversations_summary
-        : typeof conv.conversations_summary === "string"
-          ? JSON.parse(conv.conversations_summary || "[]")
-          : []
+      const summary = parseConversationsSummary(conv.conversations_summary)
       return summary.some((s: any) => s.appointment_booked === true)
     }).length
 

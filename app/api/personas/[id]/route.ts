@@ -9,25 +9,11 @@
  * @module api/personas/[id]
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // GET Handler - Get Persona Details
@@ -46,10 +32,7 @@ export async function GET(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid persona ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona ID format', 'INVALID_UUID', 400)
     }
 
     // Fetch persona
@@ -79,10 +62,7 @@ export async function GET(
       .single()
 
     if (personaError || !persona) {
-      return NextResponse.json(
-        { error: 'Persona not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Persona not found', 'NOT_FOUND', 404)
     }
 
     // Fetch associated prompts
@@ -107,7 +87,7 @@ export async function GET(
         : null
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       ...persona,
       associated_prompts: promptAssociations || [],
       stats
@@ -115,10 +95,7 @@ export async function GET(
 
   } catch (error) {
     console.error('[personas/id] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -146,10 +123,7 @@ export async function PATCH(
     const body = await request.json()
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid persona ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona ID format', 'INVALID_UUID', 400)
     }
 
     // Define allowed update fields
@@ -169,20 +143,14 @@ export async function PATCH(
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('No valid fields to update', 'VALIDATION_ERROR', 400)
     }
 
     // Validate difficulty if provided
     if (updateData.difficulty) {
       const validDifficulties = ['easy', 'medium', 'hard', 'extreme']
       if (!validDifficulties.includes(updateData.difficulty as string)) {
-        return NextResponse.json(
-          { error: 'Invalid difficulty', code: 'VALIDATION_ERROR' },
-          { status: 400 }
-        )
+        return apiError('Invalid difficulty', 'VALIDATION_ERROR', 400)
       }
     }
 
@@ -190,10 +158,7 @@ export async function PATCH(
     if (updateData.validation_status) {
       const validStatuses = ['pending', 'validated']
       if (!validStatuses.includes(updateData.validation_status as string)) {
-        return NextResponse.json(
-          { error: 'Invalid validation_status. Must be "pending" or "validated"', code: 'VALIDATION_ERROR' },
-          { status: 400 }
-        )
+        return apiError('Invalid validation_status. Must be "pending" or "validated"', 'VALIDATION_ERROR', 400)
       }
     }
 
@@ -209,29 +174,20 @@ export async function PATCH(
 
     if (error) {
       console.error('[personas/id] Error updating persona:', error)
-      return NextResponse.json(
-        { error: 'Failed to update persona', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to update persona', 'INTERNAL_ERROR', 500, error.message)
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: 'Persona not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Persona not found', 'NOT_FOUND', 404)
     }
 
     console.log(`[personas/id] Updated persona: ${data.name} (${data.id})`)
 
-    return NextResponse.json({ success: true, id: data.id, name: data.name })
+    return apiSuccess({ id: data.id, name: data.name })
 
   } catch (error) {
     console.error('[personas/id] PATCH error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -252,10 +208,7 @@ export async function DELETE(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid persona ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona ID format', 'INVALID_UUID', 400)
     }
 
     // Check if persona exists
@@ -266,10 +219,7 @@ export async function DELETE(
       .single()
 
     if (checkError || !persona) {
-      return NextResponse.json(
-        { error: 'Persona not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Persona not found', 'NOT_FOUND', 404)
     }
 
     // Delete persona (cascade will delete prompt_personas associations)
@@ -280,21 +230,15 @@ export async function DELETE(
 
     if (deleteError) {
       console.error('[personas/id] Error deleting persona:', deleteError)
-      return NextResponse.json(
-        { error: 'Failed to delete persona', code: 'INTERNAL_ERROR', details: deleteError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to delete persona', 'INTERNAL_ERROR', 500, deleteError.message)
     }
 
     console.log(`[personas/id] Deleted persona: ${persona.name} (${persona.id})`)
 
-    return NextResponse.json({ success: true, message: 'Persona deleted' })
+    return apiSuccess({ message: 'Persona deleted' })
 
   } catch (error) {
     console.error('[personas/id] DELETE error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

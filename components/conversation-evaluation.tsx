@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from "recharts"
 import type { PersonaPerformanceRow } from "@/lib/supabase"
@@ -13,6 +14,8 @@ import type { PersonaPerformanceRow } from "@/lib/supabase"
 interface ConversationEvaluationProps {
   conversation: PersonaPerformanceRow
   allConversations?: PersonaPerformanceRow[]
+  loading?: boolean
+  error?: string
 }
 
 function getScoreColor(score: number): string {
@@ -33,18 +36,61 @@ function getProgressColor(score: number): string {
   return "[&>div]:bg-red-600 dark:[&>div]:bg-red-500"
 }
 
-export function ConversationEvaluation({ conversation, allConversations = [] }: ConversationEvaluationProps) {
+export function ConversationEvaluation({ conversation, allConversations = [], loading = false, error }: ConversationEvaluationProps) {
   const [sortBy, setSortBy] = useState<"name" | "score">("score")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [chartView, setChartView] = useState<"all" | "persona" | "global">("all")
 
-  const { personaAvg, globalAvg, criteriaComparison } = useMemo(() => {
-    if (!allConversations || allConversations.length === 0) {
-      return { personaAvg: {}, globalAvg: {}, criteriaComparison: [] }
-    }
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6 bg-gradient-to-br from-background via-background to-muted/10 p-6">
+        <Skeleton className="h-[200px] w-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    )
+  }
 
-    const personaConversations = allConversations.filter((c) => c.personaid === conversation.personaid)
+  // Error state
+  if (error) {
+    return (
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle>Error Loading Evaluation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-destructive">{error}</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Empty state - no criteria
+  if (!conversation.all_criteria_details || conversation.all_criteria_details.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No evaluation criteria available for this conversation.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const { personaAvg, globalAvg, criteriaComparison } = useMemo(() => {
+    try {
+      if (!allConversations || allConversations.length === 0) {
+        return { personaAvg: {}, globalAvg: {}, criteriaComparison: [] }
+      }
+
+      const personaConversations = allConversations.filter((c) => c.personaid === conversation.personaid)
 
     // Calculate persona averages
     const personaCriteriaMap = new Map<string, number[]>()
@@ -79,14 +125,18 @@ export function ConversationEvaluation({ conversation, allConversations = [] }: 
     })
 
     // Build criteria comparison data
-    const criteriaComparison = (conversation.all_criteria_details || []).map((criteria) => ({
-      name: criteria.criteria_name,
-      score: criteria.score,
-      personaAvg: personaAvg[criteria.criteria_name] || 0,
-      globalAvg: globalAvg[criteria.criteria_name] || 0,
-    }))
+      const criteriaComparison = (conversation.all_criteria_details || []).map((criteria) => ({
+        name: criteria.criteria_name,
+        score: criteria.score,
+        personaAvg: personaAvg[criteria.criteria_name] || 0,
+        globalAvg: globalAvg[criteria.criteria_name] || 0,
+      }))
 
-    return { personaAvg, globalAvg, criteriaComparison }
+      return { personaAvg, globalAvg, criteriaComparison }
+    } catch (error) {
+      console.error("[ConversationEvaluation] Error processing data:", error)
+      return { personaAvg: {}, globalAvg: {}, criteriaComparison: [] }
+    }
   }, [conversation, allConversations])
 
   const sortedCriteria = useMemo(() => {

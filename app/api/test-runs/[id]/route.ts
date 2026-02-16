@@ -9,14 +9,12 @@
  * @module api/test-runs/[id]
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
 // Create Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -64,18 +62,6 @@ interface TestRunDetailResponse {
 }
 
 // ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
-
-// ============================================================================
 // GET Handler - Get Test Run Details
 // ============================================================================
 
@@ -93,10 +79,7 @@ export async function GET(
 
     // Validate UUID format
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid test run ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid test run ID format', 'INVALID_UUID', 400)
     }
 
     // Fetch test run with prompt version info
@@ -131,10 +114,7 @@ export async function GET(
       .single()
 
     if (testRunError || !testRun) {
-      return NextResponse.json(
-        { error: 'Test run not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Test run not found', 'NOT_FOUND', 404)
     }
 
     // Fetch prompt version details
@@ -224,14 +204,11 @@ export async function GET(
       analysis_report: testRun.analysis_report
     }
 
-    return NextResponse.json(response)
+    return apiSuccess(response)
 
   } catch (error) {
     console.error('[test-runs/id] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -255,10 +232,7 @@ export async function PATCH(
     const body = await request.json()
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid test run ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid test run ID format', 'INVALID_UUID', 400)
     }
 
     // Only allow updating specific fields
@@ -272,10 +246,7 @@ export async function PATCH(
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('No valid fields to update', 'VALIDATION_ERROR', 400)
     }
 
     const { data, error } = await supabase
@@ -286,27 +257,18 @@ export async function PATCH(
       .single()
 
     if (error) {
-      return NextResponse.json(
-        { error: 'Failed to update test run', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to update test run', 'INTERNAL_ERROR', 500, error.message)
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: 'Test run not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Test run not found', 'NOT_FOUND', 404)
     }
 
-    return NextResponse.json({ success: true, test_run_code: data.test_run_code })
+    return apiSuccess({ test_run_code: data.test_run_code })
 
   } catch (error) {
     console.error('[test-runs/id] PATCH error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -328,10 +290,7 @@ export async function DELETE(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid test run ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid test run ID format', 'INVALID_UUID', 400)
     }
 
     // Check if test run exists and is not running
@@ -342,17 +301,11 @@ export async function DELETE(
       .single()
 
     if (checkError || !testRun) {
-      return NextResponse.json(
-        { error: 'Test run not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Test run not found', 'NOT_FOUND', 404)
     }
 
     if (testRun.status === 'running') {
-      return NextResponse.json(
-        { error: 'Cannot delete a running test. Abort it first.', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Cannot delete a running test. Abort it first.', 'VALIDATION_ERROR', 400)
     }
 
     // Delete test run (cascade will delete battle_results and battle_notes)
@@ -362,21 +315,15 @@ export async function DELETE(
       .eq('id', id)
 
     if (deleteError) {
-      return NextResponse.json(
-        { error: 'Failed to delete test run', code: 'INTERNAL_ERROR', details: deleteError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to delete test run', 'INTERNAL_ERROR', 500, deleteError.message)
     }
 
     console.log(`[test-runs/id] Deleted test run: ${id}`)
 
-    return NextResponse.json({ success: true, message: 'Test run deleted' })
+    return apiSuccess({ message: 'Test run deleted' })
 
   } catch (error) {
     console.error('[test-runs/id] DELETE error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

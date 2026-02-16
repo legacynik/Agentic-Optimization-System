@@ -7,21 +7,11 @@
  * @module api/test-runs/[id]/abort
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
+const supabase = createSupabaseClient()
 
 /**
  * POST /api/test-runs/[id]/abort
@@ -42,10 +32,7 @@ export async function POST(
 
     // Validate UUID format
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid test run ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid test run ID format', 'INVALID_UUID', 400)
     }
 
     // Check if test run exists and is running
@@ -56,21 +43,15 @@ export async function POST(
       .single()
 
     if (checkError || !testRun) {
-      return NextResponse.json(
-        { error: 'Test run not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Test run not found', 'NOT_FOUND', 404)
     }
 
     // Only running or pending tests can be aborted
     if (!['running', 'pending', 'awaiting_review'].includes(testRun.status)) {
-      return NextResponse.json(
-        {
-          error: `Cannot abort test with status "${testRun.status}". Only running, pending, or awaiting_review tests can be aborted.`,
-          code: 'VALIDATION_ERROR',
-          current_status: testRun.status
-        },
-        { status: 400 }
+      return apiError(
+        `Cannot abort test with status "${testRun.status}". Only running, pending, or awaiting_review tests can be aborted.`,
+        'VALIDATION_ERROR',
+        400
       )
     }
 
@@ -86,16 +67,12 @@ export async function POST(
 
     if (updateError) {
       console.error('[test-runs/abort] Error aborting test run:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to abort test run', code: 'INTERNAL_ERROR', details: updateError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to abort test run', 'INTERNAL_ERROR', 500, { details: updateError.message })
     }
 
     console.log(`[test-runs/abort] Aborted test run: ${testRun.test_run_code}`)
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       test_run_id: id,
       test_run_code: testRun.test_run_code,
       message: 'Test run aborted. The n8n workflow will stop at the next Check Abort point.',
@@ -105,9 +82,6 @@ export async function POST(
 
   } catch (error) {
     console.error('[test-runs/abort] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

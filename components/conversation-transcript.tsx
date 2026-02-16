@@ -1,28 +1,89 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Copy } from "lucide-react"
 import { useState } from "react"
 
 interface ConversationTranscriptProps {
   transcript: string
+  loading?: boolean
+  error?: string
 }
 
-export function ConversationTranscript({ transcript }: ConversationTranscriptProps) {
+export function ConversationTranscript({ transcript, loading = false, error }: ConversationTranscriptProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
-  if (!transcript || typeof transcript !== "string") {
+  // Loading state
+  if (loading) {
     return (
-      <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
-        <p className="text-sm text-muted-foreground">No transcript available for this conversation.</p>
+      <div className="h-full overflow-y-auto p-6 space-y-4 bg-gradient-to-br from-background via-background to-muted/10">
+        {/* Skeleton message bubbles alternating left/right */}
+        <div className="flex justify-start">
+          <div className="max-w-[80%] space-y-2">
+            <Skeleton className="h-4 w-[100px]" />
+            <Skeleton className="h-[80px] w-[300px]" />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <div className="max-w-[80%] space-y-2">
+            <Skeleton className="h-4 w-[100px] ml-auto" />
+            <Skeleton className="h-[60px] w-[250px]" />
+          </div>
+        </div>
+        <div className="flex justify-start">
+          <div className="max-w-[80%] space-y-2">
+            <Skeleton className="h-4 w-[100px]" />
+            <Skeleton className="h-[100px] w-[320px]" />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <div className="max-w-[80%] space-y-2">
+            <Skeleton className="h-4 w-[100px] ml-auto" />
+            <Skeleton className="h-[70px] w-[280px]" />
+          </div>
+        </div>
       </div>
     )
   }
 
-  const turns = transcript
-    .split("\n\n")
-    .filter((t) => t.trim())
-    .map((turn, index) => {
+  // Error state
+  if (error) {
+    return (
+      <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle>Error Loading Transcript</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-destructive">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Empty state
+  if (!transcript || typeof transcript !== "string") {
+    return (
+      <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            No transcript available for this conversation.
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  let turns: Array<{ speaker: string; message: string; index: number; isAgent: boolean }>
+
+  try {
+    turns = transcript
+      .split("\n\n")
+      .filter((t) => t.trim())
+      .map((turn, index) => {
       const colonIndex = turn.indexOf(":")
       if (colonIndex === -1) {
         return { speaker: "Unknown", message: turn, index, isAgent: false }
@@ -31,18 +92,39 @@ export function ConversationTranscript({ transcript }: ConversationTranscriptPro
       const speaker = turn.substring(0, colonIndex).trim()
       const message = turn.substring(colonIndex + 1).trim()
 
-      return {
-        speaker,
-        message,
-        index,
-        isAgent: speaker === "Agent",
-      }
-    })
+        return {
+          speaker,
+          message,
+          index,
+          isAgent: speaker === "Agent",
+        }
+      })
+  } catch (parseError) {
+    console.error("[ConversationTranscript] Error parsing transcript:", parseError)
+    return (
+      <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle>Error Parsing Transcript</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-destructive">
+              Failed to parse conversation transcript. The data may be malformed.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (turns.length === 0) {
     return (
       <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
-        <p className="text-sm text-muted-foreground">Transcript is empty.</p>
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Transcript is empty.
+          </CardContent>
+        </Card>
       </div>
     )
   }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Star, StarOff, BarChart3, Loader2, RefreshCw } from "lucide-react"
 import { ReEvaluateModal } from "@/components/re-evaluate-modal"
@@ -33,6 +34,7 @@ interface EvaluationsListProps {
 export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showReEvaluate, setShowReEvaluate] = useState(false)
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null)
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([])
@@ -44,17 +46,20 @@ export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) 
   async function fetchEvaluations() {
     try {
       setLoading(true)
+      setError(null)
       const response = await fetch(`/api/evaluations?test_run_id=${testRunId}`)
       const result = await response.json()
 
       if (result.error) {
         console.error("Error fetching evaluations:", result.error)
+        setError(result.error)
         return
       }
 
       setEvaluations(result.data || [])
     } catch (error) {
       console.error("Failed to fetch evaluations:", error)
+      setError(error instanceof Error ? error.message : "Failed to fetch evaluations")
     } finally {
       setLoading(false)
     }
@@ -123,8 +128,33 @@ export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) 
   if (loading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <CardHeader>
+          <Skeleton className="h-6 w-[200px]" />
+          <Skeleton className="h-4 w-[300px]" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle>Error Loading Evaluations</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-destructive">{error}</p>
+          <Button onClick={fetchEvaluations} variant="outline">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry
+          </Button>
         </CardContent>
       </Card>
     )

@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getSupabase } from "@/lib/supabase"
+import { NextRequest } from "next/server"
+import { apiSuccess, apiError, createSupabaseClient } from "@/lib/api-response"
+
+const supabase = createSupabaseClient()
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string; otherId: string } }
 ) {
-  const supabase = getSupabase()
   const evaluationId1 = params.id
   const evaluationId2 = params.otherId
 
@@ -58,36 +59,19 @@ export async function GET(
       .single()
 
     if (eval1Error || !eval1Data) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: { message: "First evaluation not found", code: "NOT_FOUND" },
-        },
-        { status: 404 }
-      )
+      return apiError("First evaluation not found", "NOT_FOUND", 404)
     }
 
     if (eval2Error || !eval2Data) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: { message: "Second evaluation not found", code: "NOT_FOUND" },
-        },
-        { status: 404 }
-      )
+      return apiError("Second evaluation not found", "NOT_FOUND", 404)
     }
 
     // Verify both evaluations are from the same test_run
     if (eval1Data.test_run_id !== eval2Data.test_run_id) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            message: "Cannot compare evaluations from different test runs",
-            code: "INVALID_COMPARISON",
-          },
-        },
-        { status: 400 }
+      return apiError(
+        "Cannot compare evaluations from different test runs",
+        "INVALID_COMPARISON",
+        400
       )
     }
 
@@ -179,19 +163,10 @@ export async function GET(
       },
     }
 
-    return NextResponse.json({
-      data: comparisonData,
-      error: null,
-    })
+    return apiSuccess(comparisonData)
   } catch (error) {
     console.error("[compare] Unexpected error:", error)
-    return NextResponse.json(
-      {
-        data: null,
-        error: { message: "Internal server error" },
-      },
-      { status: 500 }
-    )
+    return apiError("Internal server error", "INTERNAL_ERROR", 500)
   }
 }
 

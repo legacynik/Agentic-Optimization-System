@@ -2,12 +2,16 @@
 
 import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Lightbulb, TrendingUp, AlertTriangle, CheckCircle2, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import type { PersonaPerformanceRow } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
+import { parseConversationsSummary } from "@/lib/parsers"
 
 interface AIInsightsProps {
   conversations: PersonaPerformanceRow[]
+  loading?: boolean
+  error?: string
 }
 
 type InsightType = "success" | "warning" | "neutral" | "trend"
@@ -19,13 +23,14 @@ interface Insight {
   icon: React.ReactNode
 }
 
-export function AIInsights({ conversations }: AIInsightsProps) {
+export function AIInsights({ conversations, loading = false, error }: AIInsightsProps) {
   const insights = useMemo(() => {
-    if (conversations.length === 0) {
-      return []
-    }
+    try {
+      if (conversations.length === 0) {
+        return []
+      }
 
-    const generatedInsights: Insight[] = []
+      const generatedInsights: Insight[] = []
 
     // 1. Efficiency Trend
     // Compare last 5 conversations vs previous 5
@@ -80,11 +85,7 @@ export function AIInsights({ conversations }: AIInsightsProps) {
 
     // 3. Booking Rate Analysis
     const totalBookings = conversations.filter((conv) => {
-      const summary = Array.isArray(conv.conversations_summary)
-        ? conv.conversations_summary
-        : typeof conv.conversations_summary === "string"
-          ? JSON.parse(conv.conversations_summary || "[]")
-          : []
+      const summary = parseConversationsSummary(conv.conversations_summary)
       return summary.some((s: any) => s.appointment_booked === true)
     }).length
     
@@ -134,8 +135,38 @@ export function AIInsights({ conversations }: AIInsightsProps) {
       })
     }
 
-    return generatedInsights.slice(0, 4)
+      return generatedInsights.slice(0, 4)
+    } catch (insightError) {
+      console.error("[AIInsights] Error generating insights:", insightError)
+      return []
+    }
   }, [conversations])
+
+  // Loading state
+  if (loading) {
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Lightbulb className="h-5 w-5 text-primary" />
+            AI Insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <Skeleton className="h-[80px] w-full" />
+          <Skeleton className="h-[80px] w-full" />
+          <Skeleton className="h-[80px] w-full" />
+          <Skeleton className="h-[80px] w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Error state - render empty to not break layout
+  if (error) {
+    console.error("[AIInsights] Error:", error)
+    return null
+  }
 
   if (insights.length === 0) {
     return null

@@ -3,22 +3,76 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { Play, Pause, RotateCcw, Zap, MessageSquare, Brain, Trophy } from 'lucide-react'
+import { Play, Pause, RotateCcw, Zap, MessageSquare, Brain, Trophy, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface BattleArenaProps {
   testRunId?: string
   onStartBattle?: () => void
+  loading?: boolean
+  error?: string
 }
 
-export function BattleArena({ testRunId, onStartBattle }: BattleArenaProps) {
+export function BattleArena({ testRunId, onStartBattle, loading = false, error }: BattleArenaProps) {
   const [battleStatus, setBattleStatus] = useState<'idle' | 'running' | 'completed'>('idle')
   const [currentTurn, setCurrentTurn] = useState(0)
   const [agentHealth, setAgentHealth] = useState(100)
   const [personaHealth, setPersonaHealth] = useState(100)
   const [messages, setMessages] = useState<Array<{speaker: string, text: string}>>([])
+
+  // Loading state
+  if (loading) {
+    return (
+      <Card className="relative overflow-hidden border-2 border-purple-500/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <Skeleton className="h-8 w-[200px]" />
+              <Skeleton className="h-4 w-[250px] mt-2" />
+            </div>
+            <Skeleton className="h-8 w-[100px]" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          </div>
+          <Skeleton className="h-[200px] w-full" />
+          <div className="flex justify-center">
+            <Skeleton className="h-12 w-[200px]" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle>Error Loading Battle Arena</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-destructive">{error}</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   // Simulated battle progress (replace with real WebSocket connection to N8N)
   useEffect(() => {

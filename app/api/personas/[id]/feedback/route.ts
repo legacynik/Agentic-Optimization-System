@@ -7,13 +7,11 @@
  * @module api/personas/[id]/feedback
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -36,18 +34,6 @@ interface AddFeedbackRequest {
 }
 
 // ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
-
-// ============================================================================
 // GET Handler - List Feedback
 // ============================================================================
 
@@ -64,10 +50,7 @@ export async function GET(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid persona ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona ID format', 'INVALID_UUID', 400)
     }
 
     // Fetch persona with feedback_notes
@@ -78,13 +61,10 @@ export async function GET(
       .single()
 
     if (error || !persona) {
-      return NextResponse.json(
-        { error: 'Persona not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Persona not found', 'NOT_FOUND', 404)
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       persona_id: persona.id,
       persona_name: persona.name,
       validation_status: persona.validation_status,
@@ -94,10 +74,7 @@ export async function GET(
 
   } catch (error) {
     console.error('[personas/feedback] GET error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -125,35 +102,23 @@ export async function POST(
     const body: AddFeedbackRequest = await request.json()
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid persona ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona ID format', 'INVALID_UUID', 400)
     }
 
     // Validate required fields
     if (!body.note || body.note.trim() === '') {
-      return NextResponse.json(
-        { error: 'note is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('note is required', 'VALIDATION_ERROR', 400)
     }
 
     // Validate category if provided
     const validCategories = ['behavior', 'difficulty', 'realism', 'other']
     if (body.category && !validCategories.includes(body.category)) {
-      return NextResponse.json(
-        { error: 'Invalid category', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid category', 'VALIDATION_ERROR', 400)
     }
 
     // Validate from_battle_result_id if provided
     if (body.from_battle_result_id && !isValidUUID(body.from_battle_result_id)) {
-      return NextResponse.json(
-        { error: 'Invalid from_battle_result_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid from_battle_result_id format', 'INVALID_UUID', 400)
     }
 
     // Fetch current persona
@@ -164,10 +129,7 @@ export async function POST(
       .single()
 
     if (fetchError || !persona) {
-      return NextResponse.json(
-        { error: 'Persona not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Persona not found', 'NOT_FOUND', 404)
     }
 
     // If from_battle_result_id provided, get the test_run_id
@@ -206,28 +168,21 @@ export async function POST(
 
     if (updateError) {
       console.error('[personas/feedback] Error adding feedback:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to add feedback', code: 'INTERNAL_ERROR', details: updateError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to add feedback', 'INTERNAL_ERROR', 500, updateError.message)
     }
 
     console.log(`[personas/feedback] Added feedback to persona: ${persona.name} (${persona.id})`)
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       persona_id: persona.id,
       persona_name: persona.name,
       feedback_count: updatedNotes.length,
       validation_status: persona.validation_status
-    }, { status: 201 })
+    }, undefined, 201)
 
   } catch (error) {
     console.error('[personas/feedback] POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -249,10 +204,7 @@ export async function DELETE(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid persona ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona ID format', 'INVALID_UUID', 400)
     }
 
     // Clear feedback_notes
@@ -268,23 +220,16 @@ export async function DELETE(
 
     if (error) {
       console.error('[personas/feedback] Error clearing feedback:', error)
-      return NextResponse.json(
-        { error: 'Failed to clear feedback', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to clear feedback', 'INTERNAL_ERROR', 500, error.message)
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: 'Persona not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Persona not found', 'NOT_FOUND', 404)
     }
 
     console.log(`[personas/feedback] Cleared feedback for persona: ${data.name} (${data.id})`)
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       persona_id: data.id,
       persona_name: data.name,
       message: 'All feedback cleared'
@@ -292,9 +237,6 @@ export async function DELETE(
 
   } catch (error) {
     console.error('[personas/feedback] DELETE error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

@@ -7,25 +7,11 @@
  * @module api/evaluator-configs/[id]/promote
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // POST Handler - Promote Evaluator Config
@@ -49,10 +35,7 @@ export async function POST(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid evaluator config ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid evaluator config ID format', 'INVALID_UUID', 400)
     }
 
     // Step 1: Fetch the evaluator config to get its prompt_id
@@ -64,19 +47,15 @@ export async function POST(
 
     if (fetchError || !config) {
       console.error('[evaluator-configs/promote] Config not found:', fetchError)
-      return NextResponse.json(
-        { error: 'Evaluator config not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Evaluator config not found', 'NOT_FOUND', 404)
     }
 
     // Idempotency check: if already promoted, just return success
     if (config.is_promoted) {
       console.log(`[evaluator-configs/promote] Config already promoted: ${config.name} v${config.version} (${config.id})`)
-      return NextResponse.json({
-        success: true,
-        message: 'Evaluator config already promoted',
-        data: config
+      return apiSuccess({
+        ...config,
+        message: 'Evaluator config already promoted'
       })
     }
 
@@ -92,10 +71,7 @@ export async function POST(
 
     if (unpromoteError) {
       console.error('[evaluator-configs/promote] Error unpromoting other configs:', unpromoteError)
-      return NextResponse.json(
-        { error: 'Failed to unpromote other configs', code: 'INTERNAL_ERROR', details: unpromoteError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to unpromote other configs', 'INTERNAL_ERROR', 500, unpromoteError.message)
     }
 
     // Step 2b: Promote this config
@@ -111,10 +87,7 @@ export async function POST(
 
     if (promoteError || !promotedConfig) {
       console.error('[evaluator-configs/promote] Error promoting config:', promoteError)
-      return NextResponse.json(
-        { error: 'Failed to promote evaluator config', code: 'INTERNAL_ERROR', details: promoteError?.message },
-        { status: 500 }
-      )
+      return apiError('Failed to promote evaluator config', 'INTERNAL_ERROR', 500, promoteError?.message)
     }
 
     console.log(`[evaluator-configs/promote] Promoted config: ${promotedConfig.name} v${promotedConfig.version} (${promotedConfig.id})`)
@@ -126,20 +99,14 @@ export async function POST(
       .eq('id', promotedConfig.prompt_id)
       .single()
 
-    return NextResponse.json({
-      success: true,
-      message: 'Evaluator config promoted successfully',
-      data: {
-        ...promotedConfig,
-        prompt_name: prompt?.name || null
-      }
+    return apiSuccess({
+      ...promotedConfig,
+      prompt_name: prompt?.name || null,
+      message: 'Evaluator config promoted successfully'
     })
 
   } catch (error) {
     console.error('[evaluator-configs/promote] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

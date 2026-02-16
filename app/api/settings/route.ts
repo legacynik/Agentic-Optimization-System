@@ -8,13 +8,10 @@
  * @module api/settings
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -89,10 +86,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[settings] Error fetching configs:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch settings', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to fetch settings', 'INTERNAL_ERROR', 500, error.message)
     }
 
     // Format response with helpful metadata
@@ -108,8 +102,8 @@ export async function GET(request: NextRequest) {
       }
     }))
 
-    return NextResponse.json({
-      data: enrichedConfigs,
+    return apiSuccess({
+      configs: enrichedConfigs,
       total: enrichedConfigs.length,
       summary: {
         configured: enrichedConfigs.filter((c) => c.status.is_configured).length,
@@ -120,10 +114,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[settings] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -173,10 +164,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.workflow_type) {
-      return NextResponse.json(
-        { error: 'workflow_type is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('workflow_type is required', 'VALIDATION_ERROR', 400)
     }
 
     // Validate workflow_type
@@ -185,10 +173,7 @@ export async function POST(request: NextRequest) {
       'analyzer', 'optimizer', 'personas_validator'
     ]
     if (!validTypes.includes(body.workflow_type)) {
-      return NextResponse.json(
-        { error: 'Invalid workflow_type', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid workflow_type', 'VALIDATION_ERROR', 400)
     }
 
     // Validate webhook_url format if provided
@@ -196,10 +181,7 @@ export async function POST(request: NextRequest) {
       try {
         new URL(body.webhook_url)
       } catch {
-        return NextResponse.json(
-          { error: 'Invalid webhook_url format', code: 'VALIDATION_ERROR' },
-          { status: 400 }
-        )
+        return apiError('Invalid webhook_url format', 'VALIDATION_ERROR', 400)
       }
     }
 
@@ -240,16 +222,12 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[settings] Error updating config:', error)
-      return NextResponse.json(
-        { error: 'Failed to update settings', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to update settings', 'INTERNAL_ERROR', 500, error.message)
     }
 
     console.log(`[settings] Updated ${body.workflow_type} config`)
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       workflow_type: data.workflow_type,
       webhook_url: data.webhook_url,
       is_active: data.is_active,
@@ -258,9 +236,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[settings] POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

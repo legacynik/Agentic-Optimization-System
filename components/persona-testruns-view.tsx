@@ -1,5 +1,7 @@
 "use client"
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useMemo } from "react"
 
@@ -16,6 +18,8 @@ interface PersonaTestRunsViewProps {
       score: number
     }>
   }>
+  loading?: boolean
+  error?: string
 }
 
 function getScoreColor(score: number | undefined): string {
@@ -35,55 +39,97 @@ function formatDate(dateString: string): string {
   }
 }
 
-export function PersonaTestRunsView({ personaId, personaName, data }: PersonaTestRunsViewProps) {
+export function PersonaTestRunsView({ personaId, personaName, data, loading = false, error }: PersonaTestRunsViewProps) {
   console.log("[v0] PersonaTestRunsView rendering with data:", { personaId, personaName, dataLength: data.length })
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <Skeleton className="h-6 w-[300px]" />
+          <Skeleton className="h-4 w-[200px] mt-2" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle>Error Loading Test Runs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-destructive">{error}</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const { uniqueCriteria, matrix } = useMemo(() => {
-    // Extract all unique criteria names
-    const criteriaSet = new Set<string>()
-    data.forEach((row) => {
-      row.evaluation_criteria?.forEach((ec) => {
-        criteriaSet.add(ec.criteria_name)
+    try {
+      // Extract all unique criteria names
+      const criteriaSet = new Set<string>()
+      data.forEach((row) => {
+        row.evaluation_criteria?.forEach((ec) => {
+          criteriaSet.add(ec.criteria_name)
+        })
       })
-    })
-    const uniqueCriteria = Array.from(criteriaSet).sort()
+      const uniqueCriteria = Array.from(criteriaSet).sort()
 
-    // Build matrix: testrun × criteria with scores
-    const matrix = data.map((row) => {
-      const criteriaScores: Record<string, number | undefined> = {}
+      // Build matrix: testrun × criteria with scores
+      const matrix = data.map((row) => {
+        const criteriaScores: Record<string, number | undefined> = {}
 
-      row.evaluation_criteria?.forEach((ec) => {
-        criteriaScores[ec.criteria_name] = ec.score
+        row.evaluation_criteria?.forEach((ec) => {
+          criteriaScores[ec.criteria_name] = ec.score
+        })
+
+        return {
+          testrunid: row.testrunid,
+          test_date: row.test_date,
+          avg_score: row.avg_score,
+          avg_turns: row.avg_turns,
+          criteriaScores,
+        }
       })
 
-      return {
-        testrunid: row.testrunid,
-        test_date: row.test_date,
-        avg_score: row.avg_score,
-        avg_turns: row.avg_turns,
-        criteriaScores,
-      }
-    })
+      // Sort by date (most recent first)
+      matrix.sort((a, b) => new Date(b.test_date).getTime() - new Date(a.test_date).getTime())
 
-    // Sort by date (most recent first)
-    matrix.sort((a, b) => new Date(b.test_date).getTime() - new Date(a.test_date).getTime())
-
-    return { uniqueCriteria, matrix }
+      return { uniqueCriteria, matrix }
+    } catch (processingError) {
+      console.error("[PersonaTestRunsView] Error processing data:", processingError)
+      return { uniqueCriteria: [], matrix: [] }
+    }
   }, [data])
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-        No test run data available for this persona
-      </div>
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No test run data available for this persona
+        </CardContent>
+      </Card>
     )
   }
 
   if (uniqueCriteria.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-        No evaluation criteria found for this persona
-      </div>
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No evaluation criteria found for this persona
+        </CardContent>
+      </Card>
     )
   }
 

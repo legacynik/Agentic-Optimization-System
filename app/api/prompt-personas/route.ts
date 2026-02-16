@@ -9,13 +9,11 @@
  * @module api/prompt-personas
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -24,7 +22,7 @@ const supabase = createClient(
 /** Request body for creating an association */
 interface CreateAssociationRequest {
   persona_id: string
-  prompt_version_id: string
+  prompt_name: string
   priority?: number
   is_active?: boolean
 }
@@ -32,7 +30,7 @@ interface CreateAssociationRequest {
 /** Association response with persona details */
 interface AssociationWithPersona {
   persona_id: string
-  prompt_version_id: string
+  prompt_name: string
   is_active: boolean
   priority: number
   created_at: string
@@ -42,18 +40,6 @@ interface AssociationWithPersona {
     difficulty: string | null
     validation_status: string
   }
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
 }
 
 // ============================================================================
@@ -82,18 +68,12 @@ export async function GET(request: NextRequest) {
 
     // At least one filter is required
     if (!promptName && !personaId) {
-      return NextResponse.json(
-        { error: 'Either prompt_name or persona_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Either prompt_name or persona_id is required', 'VALIDATION_ERROR', 400)
     }
 
     // Validate persona_id if provided
     if (personaId && !isValidUUID(personaId)) {
-      return NextResponse.json(
-        { error: 'Invalid persona_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona_id format', 'INVALID_UUID', 400)
     }
 
     // Build query
@@ -129,10 +109,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[prompt-personas] Error fetching associations:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch associations', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to fetch associations', 'INTERNAL_ERROR', 500, error.message)
     }
 
     // Define persona type from query
@@ -173,8 +150,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({
-      data: associations,
+    return apiSuccess({
+      associations,
       total: associations.length,
       prompt_name: promptName,
       persona_id: personaId
@@ -182,10 +159,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[prompt-personas] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -210,24 +184,15 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.persona_id) {
-      return NextResponse.json(
-        { error: 'persona_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('persona_id is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(body.persona_id)) {
-      return NextResponse.json(
-        { error: 'Invalid persona_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona_id format', 'INVALID_UUID', 400)
     }
 
     if (!body.prompt_name || body.prompt_name.trim() === '') {
-      return NextResponse.json(
-        { error: 'prompt_name is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('prompt_name is required', 'VALIDATION_ERROR', 400)
     }
 
     // Verify persona exists
@@ -238,10 +203,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (personaError || !persona) {
-      return NextResponse.json(
-        { error: 'Persona not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Persona not found', 'NOT_FOUND', 404)
     }
 
     // Verify prompt_name exists in prompt_versions
@@ -253,10 +215,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (promptError || !promptVersion) {
-      return NextResponse.json(
-        { error: 'Prompt name not found in prompt_versions', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Prompt name not found in prompt_versions', 'NOT_FOUND', 404)
     }
 
     // Create association
@@ -274,36 +233,26 @@ export async function POST(request: NextRequest) {
     if (createError) {
       // Check if it's a duplicate key error
       if (createError.code === '23505') {
-        return NextResponse.json(
-          { error: 'Association already exists', code: 'VALIDATION_ERROR' },
-          { status: 409 }
-        )
+        return apiError('Association already exists', 'VALIDATION_ERROR', 409)
       }
 
       console.error('[prompt-personas] Error creating association:', createError)
-      return NextResponse.json(
-        { error: 'Failed to create association', code: 'INTERNAL_ERROR', details: createError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to create association', 'INTERNAL_ERROR', 500, createError.message)
     }
 
     console.log(`[prompt-personas] Created association: ${persona.name} -> ${body.prompt_name}`)
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       persona_id: association.persona_id,
       persona_name: persona.name,
       prompt_name: association.prompt_name,
       priority: association.priority,
       is_active: association.is_active
-    }, { status: 201 })
+    }, undefined, 201)
 
   } catch (error) {
     console.error('[prompt-personas] POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -329,17 +278,11 @@ export async function DELETE(request: NextRequest) {
 
     // Validate required params
     if (!personaId || !promptName) {
-      return NextResponse.json(
-        { error: 'Both persona_id and prompt_name are required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Both persona_id and prompt_name are required', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(personaId)) {
-      return NextResponse.json(
-        { error: 'Invalid persona_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona_id format', 'INVALID_UUID', 400)
     }
 
     // Delete association
@@ -351,16 +294,12 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       console.error('[prompt-personas] Error deleting association:', error)
-      return NextResponse.json(
-        { error: 'Failed to delete association', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to delete association', 'INTERNAL_ERROR', 500, error.message)
     }
 
     console.log(`[prompt-personas] Deleted association: ${personaId} -> ${promptName}`)
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       message: 'Association removed',
       persona_id: personaId,
       prompt_name: promptName
@@ -368,10 +307,7 @@ export async function DELETE(request: NextRequest) {
 
   } catch (error) {
     console.error('[prompt-personas] DELETE error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -402,17 +338,11 @@ export async function PATCH(request: NextRequest) {
 
     // Validate required params
     if (!personaId || !promptName) {
-      return NextResponse.json(
-        { error: 'Both persona_id and prompt_name are required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Both persona_id and prompt_name are required', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(personaId)) {
-      return NextResponse.json(
-        { error: 'Invalid persona_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid persona_id format', 'INVALID_UUID', 400)
     }
 
     // Build update data
@@ -426,10 +356,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('No valid fields to update', 'VALIDATION_ERROR', 400)
     }
 
     // Update association
@@ -443,23 +370,16 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       console.error('[prompt-personas] Error updating association:', error)
-      return NextResponse.json(
-        { error: 'Failed to update association', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to update association', 'INTERNAL_ERROR', 500, error.message)
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: 'Association not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Association not found', 'NOT_FOUND', 404)
     }
 
     console.log(`[prompt-personas] Updated association: ${personaId} -> ${promptName}`)
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       persona_id: data.persona_id,
       prompt_name: data.prompt_name,
       priority: data.priority,
@@ -468,9 +388,6 @@ export async function PATCH(request: NextRequest) {
 
   } catch (error) {
     console.error('[prompt-personas] PATCH error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

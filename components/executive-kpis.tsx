@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { CheckCircle2, Calendar, TrendingUp, Zap, ArrowUp, ArrowDown } from "lucide-react"
 import type { PersonaPerformanceRow } from "@/lib/supabase"
+import { parseConversationsSummary } from "@/lib/parsers"
 
 interface ExecutiveKPIsProps {
   conversations: PersonaPerformanceRow[]
@@ -35,11 +36,7 @@ export function ExecutiveKPIs({ conversations }: ExecutiveKPIsProps) {
 
     // Calculate total appointments (if conversations have appointment field)
     const totalAppointments = conversations.reduce((sum, conv) => {
-      const summary = Array.isArray(conv.conversations_summary)
-        ? conv.conversations_summary
-        : typeof conv.conversations_summary === "string"
-          ? JSON.parse(conv.conversations_summary || "[]")
-          : []
+      const summary = parseConversationsSummary(conv.conversations_summary)
       const hasAppointment = summary.some((s: any) => s.appointment_booked === true)
       return sum + (hasAppointment ? 1 : 0)
     }, 0)

@@ -27,6 +27,16 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts.claude/
+next-env.d.ts
+
+# OS files
+.DS_Store
+**/.DS_Store
+
+# test artifacts
+playwright-report/
+test-results/
+
+.claude/
 _bmad/
 _bmad-output/

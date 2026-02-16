@@ -7,15 +7,13 @@
  * @module api/n8n/trigger
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
 import { randomUUID } from 'crypto'
+import { isValidUUID } from '@/lib/validation'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
 
 // Create Supabase client for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -44,14 +42,6 @@ interface TriggerWorkflowResponse {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
 
 /**
  * Gets webhook URL for a workflow type from workflow_configs table
@@ -121,29 +111,21 @@ export async function POST(request: NextRequest) {
 
     const validWorkflowTypes: WorkflowType[] = ['optimizer', 'analyzer', 'personas_generator', 'personas_validator']
     if (!body.workflow_type || !validWorkflowTypes.includes(body.workflow_type)) {
-      return NextResponse.json(
-        {
-          error: 'Invalid workflow_type. Must be one of: optimizer, analyzer, personas_generator, personas_validator',
-          code: 'VALIDATION_ERROR'
-        },
-        { status: 400 }
+      return apiError(
+        'Invalid workflow_type. Must be one of: optimizer, analyzer, personas_generator, personas_validator',
+        'VALIDATION_ERROR',
+        400
       )
     }
 
     // Validate test_run_id for optimizer and analyzer workflows
     if (['optimizer', 'analyzer'].includes(body.workflow_type)) {
       if (!body.test_run_id) {
-        return NextResponse.json(
-          { error: 'test_run_id is required for optimizer/analyzer workflows', code: 'VALIDATION_ERROR' },
-          { status: 400 }
-        )
+        return apiError('test_run_id is required for optimizer/analyzer workflows', 'VALIDATION_ERROR', 400)
       }
 
       if (!isValidUUID(body.test_run_id)) {
-        return NextResponse.json(
-          { error: 'test_run_id must be a valid UUID', code: 'INVALID_UUID' },
-          { status: 400 }
-        )
+        return apiError('test_run_id must be a valid UUID', 'INVALID_UUID', 400)
       }
 
       // Verify test run exists
@@ -154,18 +136,12 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (testRunError || !testRun) {
-        return NextResponse.json(
-          { error: 'Test run not found', code: 'NOT_FOUND' },
-          { status: 404 }
-        )
+        return apiError('Test run not found', 'NOT_FOUND', 404)
       }
 
       // For optimizer, require analysis_report to exist
       if (body.workflow_type === 'optimizer' && !testRun.analysis_report) {
-        return NextResponse.json(
-          { error: 'Test run must have analysis_report before optimization', code: 'NO_ANALYSIS' },
-          { status: 400 }
-        )
+        return apiError('Test run must have analysis_report before optimization', 'NO_ANALYSIS', 400)
       }
     }
 
@@ -176,12 +152,10 @@ export async function POST(request: NextRequest) {
     const webhookUrl = await getWebhookUrl(body.workflow_type)
 
     if (!webhookUrl) {
-      return NextResponse.json(
-        {
-          error: `No webhook URL configured for workflow: ${body.workflow_type}. Configure in workflow_configs table.`,
-          code: 'NO_WEBHOOK_URL'
-        },
-        { status: 400 }
+      return apiError(
+        `No webhook URL configured for workflow: ${body.workflow_type}. Configure in workflow_configs table.`,
+        'NO_WEBHOOK_URL',
+        400
       )
     }
 
@@ -216,13 +190,11 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error(`[n8n/trigger] Webhook failed with status ${response.status}:`, errorText)
-      return NextResponse.json(
-        {
-          error: 'Failed to trigger workflow',
-          code: 'WEBHOOK_FAILED',
-          details: `HTTP ${response.status}`
-        },
-        { status: 502 }
+      return apiError(
+        'Failed to trigger workflow',
+        'WEBHOOK_FAILED',
+        502,
+        { httpStatus: response.status }
       )
     }
 
@@ -242,13 +214,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`[n8n/trigger] Successfully triggered ${body.workflow_type} workflow: ${executionId}`)
 
-    return NextResponse.json(responseData, { status: 200 })
+    return apiSuccess(responseData)
 
   } catch (error) {
     console.error('[n8n/trigger] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

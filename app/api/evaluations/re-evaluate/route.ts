@@ -7,13 +7,11 @@
  * @module api/evaluations/re-evaluate
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -23,18 +21,6 @@ const supabase = createClient(
 interface ReEvaluateRequest {
   test_run_id: string
   evaluator_config_id: string
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
 }
 
 // ============================================================================
@@ -67,32 +53,20 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.test_run_id) {
-      return NextResponse.json(
-        { error: 'test_run_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('test_run_id is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!body.evaluator_config_id) {
-      return NextResponse.json(
-        { error: 'evaluator_config_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('evaluator_config_id is required', 'VALIDATION_ERROR', 400)
     }
 
     // Validate UUID formats
     if (!isValidUUID(body.test_run_id)) {
-      return NextResponse.json(
-        { error: 'Invalid test_run_id format', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid test_run_id format', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(body.evaluator_config_id)) {
-      return NextResponse.json(
-        { error: 'Invalid evaluator_config_id format', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid evaluator_config_id format', 'VALIDATION_ERROR', 400)
     }
 
     // Step 1: Validate test_run exists and is completed
@@ -104,19 +78,14 @@ export async function POST(request: NextRequest) {
 
     if (testRunError || !testRun) {
       console.error('[evaluations/re-evaluate] Test run not found:', testRunError)
-      return NextResponse.json(
-        { error: 'Test run not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Test run not found', 'NOT_FOUND', 404)
     }
 
     if (testRun.status !== 'completed') {
-      return NextResponse.json(
-        {
-          error: `Cannot re-evaluate test run with status '${testRun.status}'. Only completed test runs can be re-evaluated.`,
-          code: 'INVALID_STATUS'
-        },
-        { status: 400 }
+      return apiError(
+        `Cannot re-evaluate test run with status '${testRun.status}'. Only completed test runs can be re-evaluated.`,
+        'INVALID_STATUS',
+        400
       )
     }
 
@@ -129,10 +98,7 @@ export async function POST(request: NextRequest) {
 
     if (configError || !evaluatorConfig) {
       console.error('[evaluations/re-evaluate] Evaluator config not found:', configError)
-      return NextResponse.json(
-        { error: 'Evaluator config not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Evaluator config not found', 'NOT_FOUND', 404)
     }
 
     // Optional: Warn if evaluator config is deprecated (but allow it)
@@ -151,9 +117,8 @@ export async function POST(request: NextRequest) {
     // If evaluation already exists, return it (idempotent)
     if (existingEvaluation) {
       console.log(`[evaluations/re-evaluate] Evaluation already exists: ${existingEvaluation.id}`)
-      return NextResponse.json({
-        data: existingEvaluation,
-        error: null,
+      return apiSuccess({
+        ...existingEvaluation,
         message: 'Evaluation already exists for this test run and evaluator config'
       })
     }
@@ -176,25 +141,18 @@ export async function POST(request: NextRequest) {
 
     if (createError || !newEvaluation) {
       console.error('[evaluations/re-evaluate] Error creating evaluation:', createError)
-      return NextResponse.json(
-        { error: 'Failed to create evaluation', code: 'INTERNAL_ERROR', details: createError?.message },
-        { status: 500 }
-      )
+      return apiError('Failed to create evaluation', 'INTERNAL_ERROR', 500)
     }
 
     console.log(`[evaluations/re-evaluate] Created evaluation: ${newEvaluation.id} for test_run ${body.test_run_id} with evaluator ${evaluatorConfig.name} v${evaluatorConfig.version}`)
 
-    return NextResponse.json({
-      data: newEvaluation,
-      error: null,
+    return apiSuccess({
+      ...newEvaluation,
       message: 'Evaluation created successfully. It will be processed by the evaluation workflow.'
-    }, { status: 201 })
+    }, undefined, 201)
 
   } catch (error) {
     console.error('[evaluations/re-evaluate] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

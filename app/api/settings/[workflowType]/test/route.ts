@@ -7,13 +7,10 @@
  * @module api/settings/[workflowType]/test
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -58,10 +55,7 @@ export async function POST(
     ]
 
     if (!validTypes.includes(workflowType as WorkflowType)) {
-      return NextResponse.json(
-        { error: 'Invalid workflow type', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid workflow type', 'VALIDATION_ERROR', 400)
     }
 
     // Get webhook URL (from body override or from config)
@@ -75,10 +69,7 @@ export async function POST(
         .single()
 
       if (error || !config) {
-        return NextResponse.json(
-          { error: 'Workflow config not found', code: 'NOT_FOUND' },
-          { status: 404 }
-        )
+        return apiError('Workflow config not found', 'NOT_FOUND', 404)
       }
 
       webhookUrl = config.webhook_url
@@ -86,28 +77,14 @@ export async function POST(
 
     // Validate URL
     if (!webhookUrl || webhookUrl.trim() === '') {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'No webhook URL configured',
-          code: 'NOT_CONFIGURED'
-        },
-        { status: 400 }
-      )
+      return apiError('No webhook URL configured', 'NOT_CONFIGURED', 400)
     }
 
     // Validate URL format
     try {
       new URL(webhookUrl)
     } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid webhook URL format',
-          code: 'INVALID_URL'
-        },
-        { status: 400 }
-      )
+      return apiError('Invalid webhook URL format', 'INVALID_URL', 400)
     }
 
     // Test the webhook
@@ -172,7 +149,7 @@ export async function POST(
 
     console.log(`[settings/test] Tested ${workflowType} webhook: ${testResult.success ? 'OK' : 'FAILED'}`)
 
-    return NextResponse.json({
+    return apiSuccess({
       workflow_type: workflowType,
       webhook_url: webhookUrl,
       ...testResult
@@ -180,9 +157,6 @@ export async function POST(
 
   } catch (error) {
     console.error('[settings/test] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

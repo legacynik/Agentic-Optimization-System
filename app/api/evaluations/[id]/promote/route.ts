@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getSupabase } from "@/lib/supabase"
+import { NextRequest } from "next/server"
+import { apiSuccess, apiError, createSupabaseClient } from "@/lib/api-response"
+
+const supabase = createSupabaseClient()
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabase = getSupabase()
   const evaluationId = params.id
 
   try {
@@ -17,26 +18,15 @@ export async function POST(
       .single()
 
     if (fetchError || !evaluation) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: { message: "Evaluation not found", code: "NOT_FOUND" },
-        },
-        { status: 404 }
-      )
+      return apiError("Evaluation not found", "NOT_FOUND", 404)
     }
 
     // Check if evaluation is completed
     if (evaluation.status !== "completed") {
-      return NextResponse.json(
-        {
-          data: null,
-          error: {
-            message: "Can only promote completed evaluations",
-            code: "INVALID_STATUS",
-          },
-        },
-        { status: 400 }
+      return apiError(
+        "Can only promote completed evaluations",
+        "INVALID_STATUS",
+        400
       )
     }
 
@@ -50,13 +40,7 @@ export async function POST(
 
     if (unpromoteError) {
       console.error("[promote] Unpromote error:", unpromoteError)
-      return NextResponse.json(
-        {
-          data: null,
-          error: { message: "Failed to unpromote existing evaluations" },
-        },
-        { status: 500 }
-      )
+      return apiError("Failed to unpromote existing evaluations", "INTERNAL_ERROR", 500)
     }
 
     // Step 2: Promote this evaluation
@@ -69,27 +53,12 @@ export async function POST(
 
     if (promoteError || !promoted) {
       console.error("[promote] Promote error:", promoteError)
-      return NextResponse.json(
-        {
-          data: null,
-          error: { message: "Failed to promote evaluation" },
-        },
-        { status: 500 }
-      )
+      return apiError("Failed to promote evaluation", "INTERNAL_ERROR", 500)
     }
 
-    return NextResponse.json({
-      data: promoted,
-      error: null,
-    })
+    return apiSuccess(promoted)
   } catch (error) {
     console.error("[promote] Unexpected error:", error)
-    return NextResponse.json(
-      {
-        data: null,
-        error: { message: "Internal server error" },
-      },
-      { status: 500 }
-    )
+    return apiError("Internal server error", "INTERNAL_ERROR", 500)
   }
 }

@@ -582,3 +582,57 @@ const result = configs.map(c => ({ ...c, prompt_name: promptMap.get(c.prompt_id)
 **References**:
 - `tests/dashboard.spec.ts` - Test implementation
 - `waitForDashboardLoad()` helper function
+
+---
+
+## [2026-02-16] Fix evaluator_configs FK: prompt_version_id instead of prompts table
+
+**Decision**: Alter evaluator_configs to reference prompt_versions(id) instead of creating a new prompts table
+
+**Context**: Migration 006 created evaluator_configs with `prompt_id UUID NOT NULL REFERENCES prompts(id)` but no `prompts` table exists. The project uses `prompt_versions` as the prompt entity.
+
+**Options Considered**:
+1. Create a `prompts` table derived from DISTINCT prompt_name in prompt_versions
+2. Alter evaluator_configs to reference prompt_versions(id) instead
+
+**Choice**: Option 2 — reference prompt_versions(id)
+
+**Reasoning**:
+- `prompt_versions` is the central entity throughout the schema
+- `test_runs.prompt_version_id` already references `prompt_versions(id)`
+- Creating a separate `prompts` table adds unnecessary indirection
+- Column renamed to `prompt_version_id` for consistency with rest of schema
+
+**References**:
+- `supabase/migrations/010_fix_evaluator_fk_and_indexes.sql` - Corrective migration
+- `_project_specs/schema-reference.md` - Updated with evaluator schema
+
+---
+
+## [2026-02-16] Standardized API Response Format
+
+**Decision**: All 21 API routes use one consistent response envelope
+
+**Context**: Repo review found 5 different response formats across routes. Frontend had to handle `{data, error}`, `{data, pagination}`, `{success, ...}`, direct payload, and `{data: {nested}}`.
+
+**Format Chosen**:
+```json
+{
+  "success": true/false,
+  "data": T | null,
+  "error": { "message": "...", "code": "...", "details?": "..." } | null,
+  "pagination?": { "total": N, "limit": N, "offset": N, "has_more": bool }
+}
+```
+
+**Implementation**: `lib/api-response.ts` with `apiSuccess()`, `apiError()`, `createSupabaseClient()` helpers
+
+**Reasoning**:
+- Frontend can use one consistent parser for all API calls
+- Error codes are machine-readable, messages are human-readable
+- Pagination is optional and only present when applicable
+- `success` boolean enables quick checks without inspecting nested fields
+
+**References**:
+- `lib/api-response.ts` - Helper functions
+- `_project_specs/REPO-REVIEW-2026-02-16.md` - Section 3

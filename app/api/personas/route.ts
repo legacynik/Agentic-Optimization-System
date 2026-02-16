@@ -8,13 +8,11 @@
  * @module api/personas
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -56,18 +54,6 @@ interface PersonaResponse {
   validated_by_human: boolean
   created_at: string
   updated_at: string
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
 }
 
 // ============================================================================
@@ -145,28 +131,19 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[personas] Error fetching personas:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch personas', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to fetch personas', 'INTERNAL_ERROR', 500, error.message)
     }
 
-    return NextResponse.json({
-      data,
-      pagination: {
-        total: count,
-        limit,
-        offset,
-        has_more: (offset + limit) < (count || 0)
-      }
+    return apiSuccess(data, {
+      total: count,
+      limit,
+      offset,
+      has_more: (offset + limit) < (count || 0)
     })
 
   } catch (error) {
     console.error('[personas] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -196,26 +173,17 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.name || body.name.trim() === '') {
-      return NextResponse.json(
-        { error: 'name is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('name is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!body.personaprompt || body.personaprompt.trim() === '') {
-      return NextResponse.json(
-        { error: 'personaprompt is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('personaprompt is required', 'VALIDATION_ERROR', 400)
     }
 
     // Validate difficulty if provided
     const validDifficulties: Difficulty[] = ['easy', 'medium', 'hard', 'extreme']
     if (body.difficulty && !validDifficulties.includes(body.difficulty)) {
-      return NextResponse.json(
-        { error: 'Invalid difficulty. Must be one of: easy, medium, hard, extreme', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid difficulty. Must be one of: easy, medium, hard, extreme', 'VALIDATION_ERROR', 400)
     }
 
     // Generate legacy personaid if needed
@@ -244,21 +212,15 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       console.error('[personas] Error creating persona:', createError)
-      return NextResponse.json(
-        { error: 'Failed to create persona', code: 'INTERNAL_ERROR', details: createError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to create persona', 'INTERNAL_ERROR', 500, createError.message)
     }
 
     console.log(`[personas] Created persona: ${persona.name} (${persona.id})`)
 
-    return NextResponse.json(persona, { status: 201 })
+    return apiSuccess(persona, undefined, 201)
 
   } catch (error) {
     console.error('[personas] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

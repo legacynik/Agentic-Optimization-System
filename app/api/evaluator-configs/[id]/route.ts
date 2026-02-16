@@ -9,13 +9,11 @@
  * @module api/evaluator-configs/[id]
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -40,14 +38,6 @@ interface SuccessConfig {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
 
 /**
  * Validates criteria array structure
@@ -109,10 +99,7 @@ export async function GET(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid evaluator config ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid evaluator config ID format', 'INVALID_UUID', 400)
     }
 
     // Fetch config
@@ -137,10 +124,7 @@ export async function GET(
 
     if (configError || !config) {
       console.error('[evaluator-configs/id] Error fetching config:', configError)
-      return NextResponse.json(
-        { error: 'Evaluator config not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Evaluator config not found', 'NOT_FOUND', 404)
     }
 
     // Fetch prompt name separately
@@ -156,14 +140,11 @@ export async function GET(
       prompt_name: prompt?.name || null
     }
 
-    return NextResponse.json({ data: transformedConfig })
+    return apiSuccess(transformedConfig)
 
   } catch (error) {
     console.error('[evaluator-configs/id] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -190,10 +171,7 @@ export async function PUT(
     const body = await request.json()
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid evaluator config ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid evaluator config ID format', 'INVALID_UUID', 400)
     }
 
     // Define allowed update fields (cannot update prompt_id)
@@ -212,22 +190,13 @@ export async function PUT(
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { error: 'No valid fields to update', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('No valid fields to update', 'VALIDATION_ERROR', 400)
     }
 
     // Validate criteria if provided
     if (updateData.criteria !== undefined) {
       if (!validateCriteria(updateData.criteria)) {
-        return NextResponse.json(
-          {
-            error: 'Invalid criteria format. Must be non-empty array with items containing at least "name" field',
-            code: 'VALIDATION_ERROR'
-          },
-          { status: 400 }
-        )
+        return apiError('Invalid criteria format. Must be non-empty array with items containing at least "name" field', 'VALIDATION_ERROR', 400)
       }
     }
 
@@ -235,10 +204,7 @@ export async function PUT(
     if (updateData.status) {
       const validStatuses: EvaluatorStatus[] = ['draft', 'active', 'deprecated']
       if (!validStatuses.includes(updateData.status as EvaluatorStatus)) {
-        return NextResponse.json(
-          { error: 'Invalid status. Must be one of: draft, active, deprecated', code: 'VALIDATION_ERROR' },
-          { status: 400 }
-        )
+        return apiError('Invalid status. Must be one of: draft, active, deprecated', 'VALIDATION_ERROR', 400)
       }
     }
 
@@ -246,10 +212,7 @@ export async function PUT(
     if (updateData.success_config) {
       const config = updateData.success_config as Record<string, unknown>
       if (typeof config.min_score !== 'number') {
-        return NextResponse.json(
-          { error: 'success_config.min_score must be a number', code: 'VALIDATION_ERROR' },
-          { status: 400 }
-        )
+        return apiError('success_config.min_score must be a number', 'VALIDATION_ERROR', 400)
       }
     }
 
@@ -271,10 +234,7 @@ export async function PUT(
           .single()
 
         if (existing) {
-          return NextResponse.json(
-            { error: 'An evaluator config with this version already exists for this prompt', code: 'DUPLICATE' },
-            { status: 409 }
-          )
+          return apiError('An evaluator config with this version already exists for this prompt', 'DUPLICATE', 409)
         }
       }
     }
@@ -291,29 +251,20 @@ export async function PUT(
 
     if (error) {
       console.error('[evaluator-configs/id] Error updating config:', error)
-      return NextResponse.json(
-        { error: 'Failed to update evaluator config', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to update evaluator config', 'INTERNAL_ERROR', 500, error.message)
     }
 
     if (!data) {
-      return NextResponse.json(
-        { error: 'Evaluator config not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Evaluator config not found', 'NOT_FOUND', 404)
     }
 
     console.log(`[evaluator-configs/id] Updated config: ${data.name} v${data.version} (${data.id})`)
 
-    return NextResponse.json({ data })
+    return apiSuccess(data)
 
   } catch (error) {
     console.error('[evaluator-configs/id] PUT error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -335,10 +286,7 @@ export async function DELETE(
     const { id } = await params
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid evaluator config ID format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid evaluator config ID format', 'INVALID_UUID', 400)
     }
 
     // Check if config exists
@@ -349,17 +297,11 @@ export async function DELETE(
       .single()
 
     if (checkError || !config) {
-      return NextResponse.json(
-        { error: 'Evaluator config not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Evaluator config not found', 'NOT_FOUND', 404)
     }
 
     if (config.status === 'deprecated') {
-      return NextResponse.json(
-        { error: 'Evaluator config is already deprecated', code: 'ALREADY_DEPRECATED' },
-        { status: 400 }
-      )
+      return apiError('Evaluator config is already deprecated', 'ALREADY_DEPRECATED', 400)
     }
 
     // Soft delete: set status to 'deprecated'
@@ -373,24 +315,15 @@ export async function DELETE(
 
     if (updateError) {
       console.error('[evaluator-configs/id] Error deprecating config:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to deprecate evaluator config', code: 'INTERNAL_ERROR', details: updateError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to deprecate evaluator config', 'INTERNAL_ERROR', 500, updateError.message)
     }
 
     console.log(`[evaluator-configs/id] Deprecated config: ${config.name} v${config.version} (${config.id})`)
 
-    return NextResponse.json({
-      success: true,
-      message: 'Evaluator config deprecated successfully'
-    })
+    return apiSuccess({ message: 'Evaluator config deprecated successfully' })
 
   } catch (error) {
     console.error('[evaluator-configs/id] DELETE error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

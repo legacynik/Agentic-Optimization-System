@@ -7,13 +7,11 @@
  * @module api/battle-notes
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -38,18 +36,6 @@ interface BattleNoteResponse {
   category: NoteCategory
   created_by: string | null
   created_at: string
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
 }
 
 // ============================================================================
@@ -80,25 +66,16 @@ export async function GET(request: NextRequest) {
 
     // At least one filter is required
     if (!battleResultId && !testRunId) {
-      return NextResponse.json(
-        { error: 'Either battle_result_id or test_run_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Either battle_result_id or test_run_id is required', 'VALIDATION_ERROR', 400)
     }
 
     // Validate UUIDs
     if (battleResultId && !isValidUUID(battleResultId)) {
-      return NextResponse.json(
-        { error: 'Invalid battle_result_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid battle_result_id format', 'INVALID_UUID', 400)
     }
 
     if (testRunId && !isValidUUID(testRunId)) {
-      return NextResponse.json(
-        { error: 'Invalid test_run_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid test_run_id format', 'INVALID_UUID', 400)
     }
 
     // Build query
@@ -129,19 +106,13 @@ export async function GET(request: NextRequest) {
         .eq('test_run_id', testRunId)
 
       if (battleError) {
-        return NextResponse.json(
-          { error: 'Failed to fetch battle results', code: 'INTERNAL_ERROR' },
-          { status: 500 }
-        )
+        return apiError('Failed to fetch battle results', 'INTERNAL_ERROR', 500)
       }
 
       const battleResultIds = battleResults?.map((br) => br.id) || []
 
       if (battleResultIds.length === 0) {
-        return NextResponse.json({
-          data: [],
-          pagination: { total: 0, limit, offset, has_more: false }
-        })
+        return apiSuccess([], { total: 0, limit, offset, has_more: false })
       }
 
       query = query.in('battle_result_id', battleResultIds)
@@ -155,28 +126,19 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[battle-notes] Error fetching notes:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch notes', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to fetch notes', 'INTERNAL_ERROR', 500, error.message)
     }
 
-    return NextResponse.json({
-      data,
-      pagination: {
-        total: count,
-        limit,
-        offset,
-        has_more: (offset + limit) < (count || 0)
-      }
+    return apiSuccess(data, {
+      total: count,
+      limit,
+      offset,
+      has_more: (offset + limit) < (count || 0)
     })
 
   } catch (error) {
     console.error('[battle-notes] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -201,33 +163,21 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.battle_result_id) {
-      return NextResponse.json(
-        { error: 'battle_result_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('battle_result_id is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(body.battle_result_id)) {
-      return NextResponse.json(
-        { error: 'Invalid battle_result_id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid battle_result_id format', 'INVALID_UUID', 400)
     }
 
     if (!body.note || body.note.trim() === '') {
-      return NextResponse.json(
-        { error: 'note is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('note is required', 'VALIDATION_ERROR', 400)
     }
 
     // Validate category
     const validCategories: NoteCategory[] = ['issue', 'suggestion', 'positive', 'question']
     if (!body.category || !validCategories.includes(body.category)) {
-      return NextResponse.json(
-        { error: 'category must be one of: issue, suggestion, positive, question', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('category must be one of: issue, suggestion, positive, question', 'VALIDATION_ERROR', 400)
     }
 
     // Verify battle_result exists
@@ -238,10 +188,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (checkError || !battleResult) {
-      return NextResponse.json(
-        { error: 'Battle result not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Battle result not found', 'NOT_FOUND', 404)
     }
 
     // Create note
@@ -258,28 +205,22 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       console.error('[battle-notes] Error creating note:', createError)
-      return NextResponse.json(
-        { error: 'Failed to create note', code: 'INTERNAL_ERROR', details: createError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to create note', 'INTERNAL_ERROR', 500, createError.message)
     }
 
     console.log(`[battle-notes] Created note for battle ${body.battle_result_id}: ${body.category}`)
 
-    return NextResponse.json({
+    return apiSuccess({
       id: note.id,
       battle_result_id: note.battle_result_id,
       test_run_id: battleResult.test_run_id,
       category: note.category,
       created_at: note.created_at
-    }, { status: 201 })
+    }, undefined, 201)
 
   } catch (error) {
     console.error('[battle-notes] POST error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -301,17 +242,11 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json(
-        { error: 'id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('id is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid id format', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('Invalid id format', 'INVALID_UUID', 400)
     }
 
     // Delete note
@@ -322,21 +257,15 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       console.error('[battle-notes] Error deleting note:', error)
-      return NextResponse.json(
-        { error: 'Failed to delete note', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to delete note', 'INTERNAL_ERROR', 500, error.message)
     }
 
     console.log(`[battle-notes] Deleted note: ${id}`)
 
-    return NextResponse.json({ success: true, message: 'Note deleted' })
+    return apiSuccess({ message: 'Note deleted' })
 
   } catch (error) {
     console.error('[battle-notes] DELETE error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

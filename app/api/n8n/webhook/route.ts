@@ -9,13 +9,11 @@
  * @module api/n8n/webhook
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { isValidUUID } from '@/lib/validation'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions (per PRD v2.4 API Contracts)
@@ -129,14 +127,6 @@ function verifyN8nSecret(request: NextRequest): boolean {
   }
 
   return true
-}
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
 }
 
 // ============================================================================
@@ -448,10 +438,7 @@ export async function POST(request: NextRequest) {
     // ========================================================================
 
     if (!verifyN8nSecret(request)) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
+      return apiError('Unauthorized', 'UNAUTHORIZED', 401)
     }
 
     // ========================================================================
@@ -462,27 +449,18 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!payload.workflow_type) {
-      return NextResponse.json(
-        { error: 'Missing workflow_type', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Missing workflow_type', 'VALIDATION_ERROR', 400)
     }
 
     if (!payload.status) {
-      return NextResponse.json(
-        { error: 'Missing status', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Missing status', 'VALIDATION_ERROR', 400)
     }
 
     // Validate test_run_id if required for this workflow type
     const workflowsRequiringTestRunId: WorkflowType[] = ['test_runner', 'evaluator', 'analyzer', 'optimizer']
     if (workflowsRequiringTestRunId.includes(payload.workflow_type)) {
       if (!payload.test_run_id || !isValidUUID(payload.test_run_id)) {
-        return NextResponse.json(
-          { error: 'Invalid or missing test_run_id', code: 'INVALID_UUID' },
-          { status: 400 }
-        )
+        return apiError('Invalid or missing test_run_id', 'INVALID_UUID', 400)
       }
     }
 
@@ -536,8 +514,7 @@ export async function POST(request: NextRequest) {
     // Return Success
     // ========================================================================
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       message: 'Webhook processed successfully',
       workflow_type: payload.workflow_type,
       status: payload.status
@@ -545,10 +522,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[n8n/webhook] Error processing webhook:', error)
-    return NextResponse.json(
-      { error: 'Webhook processing failed', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Webhook processing failed', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -562,7 +536,7 @@ export async function POST(request: NextRequest) {
  * Health check endpoint for n8n to verify webhook is reachable.
  */
 export async function GET() {
-  return NextResponse.json({
+  return apiSuccess({
     status: 'ok',
     message: 'n8n webhook endpoint is ready',
     timestamp: new Date().toISOString()

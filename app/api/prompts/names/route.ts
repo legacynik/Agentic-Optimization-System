@@ -6,13 +6,10 @@
  * @module api/prompts/names
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 interface PromptName {
   id: string
@@ -40,10 +37,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[prompts/names] Error fetching prompts:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch prompts', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to fetch prompts', 'INTERNAL_ERROR', 500, error.message)
     }
 
     // Transform prompt_name to name for consistent API response
@@ -52,12 +46,9 @@ export async function GET(request: NextRequest) {
       name: p.prompt_name
     }))
 
-    return NextResponse.json({ data: transformed })
+    return apiSuccess(transformed)
   } catch (error) {
     console.error('[prompts/names] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

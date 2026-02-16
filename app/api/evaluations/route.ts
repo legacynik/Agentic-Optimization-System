@@ -7,13 +7,11 @@
  * @module api/evaluations
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -44,18 +42,6 @@ interface EvaluationResponse {
 }
 
 // ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Validates UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
-
-// ============================================================================
 // GET Handler - List Evaluations for Test Run
 // ============================================================================
 
@@ -80,17 +66,11 @@ export async function GET(request: NextRequest) {
     const testRunId = searchParams.get('test_run_id')
 
     if (!testRunId) {
-      return NextResponse.json(
-        { error: 'test_run_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('test_run_id is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(testRunId)) {
-      return NextResponse.json(
-        { error: 'Invalid test_run_id format', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid test_run_id format', 'VALIDATION_ERROR', 400)
     }
 
     // Fetch evaluations with evaluator_config join
@@ -118,10 +98,7 @@ export async function GET(request: NextRequest) {
 
     if (evaluationsError) {
       console.error('[evaluations] Error fetching evaluations:', evaluationsError)
-      return NextResponse.json(
-        { error: 'Failed to fetch evaluations', code: 'INTERNAL_ERROR', details: evaluationsError.message },
-        { status: 500 }
-      )
+      return apiError('Failed to fetch evaluations', 'INTERNAL_ERROR', 500)
     }
 
     // Get battle_evaluations counts for each evaluation
@@ -164,16 +141,10 @@ export async function GET(request: NextRequest) {
       error_message: evaluation.error_message
     })) || []
 
-    return NextResponse.json({
-      data: transformedData,
-      error: null
-    })
+    return apiSuccess(transformedData)
 
   } catch (error) {
     console.error('[evaluations] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }

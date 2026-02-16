@@ -1,6 +1,7 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import type { PersonaPerformanceRow } from "./supabase"
+import { parseConversationsSummary } from "@/lib/parsers"
 
 export async function exportExecutiveToPDF(conversations: PersonaPerformanceRow[]) {
   const doc = new jsPDF()
@@ -19,11 +20,7 @@ export async function exportExecutiveToPDF(conversations: PersonaPerformanceRow[
   const successRate = total > 0 ? ((successful / total) * 100).toFixed(0) : "0"
 
   const totalAppointments = conversations.reduce((sum, conv) => {
-    const summary = Array.isArray(conv.conversations_summary)
-      ? conv.conversations_summary
-      : typeof conv.conversations_summary === "string"
-        ? JSON.parse(conv.conversations_summary || "[]")
-        : []
+    const summary = parseConversationsSummary(conv.conversations_summary)
     const hasAppointment = summary.some((s: any) => s.appointment === true)
     return sum + (hasAppointment ? 1 : 0)
   }, 0)

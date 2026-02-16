@@ -8,14 +8,12 @@
  * @module api/test-runs
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest } from 'next/server'
+import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { isValidUUID } from '@/lib/validation'
 
 // Create Supabase client with service key for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = createSupabaseClient()
 
 // ============================================================================
 // Type Definitions
@@ -64,16 +62,6 @@ interface CreateTestRunResponse {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Validates UUID format
- * @param uuid - String to validate
- * @returns true if valid UUID format
- */
-function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  return uuidRegex.test(uuid)
-}
 
 /**
  * Generates a unique test run code
@@ -267,28 +255,19 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[test-runs] Error fetching test runs:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch test runs', code: 'INTERNAL_ERROR', details: error.message },
-        { status: 500 }
-      )
+      return apiError('Failed to fetch test runs', 'INTERNAL_ERROR', 500, error.message)
     }
 
-    return NextResponse.json({
-      data,
-      pagination: {
-        total: count,
-        limit,
-        offset,
-        has_more: (offset + limit) < (count || 0)
-      }
+    return apiSuccess(data, {
+      total: count,
+      limit,
+      offset,
+      has_more: (offset + limit) < (count || 0)
     })
 
   } catch (error) {
     console.error('[test-runs] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
 
@@ -318,35 +297,23 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.prompt_version_id) {
-      return NextResponse.json(
-        { error: 'prompt_version_id is required', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('prompt_version_id is required', 'VALIDATION_ERROR', 400)
     }
 
     if (!isValidUUID(body.prompt_version_id)) {
-      return NextResponse.json(
-        { error: 'prompt_version_id must be a valid UUID', code: 'INVALID_UUID' },
-        { status: 400 }
-      )
+      return apiError('prompt_version_id must be a valid UUID', 'INVALID_UUID', 400)
     }
 
     // Validate mode
     const validModes: TestMode[] = ['single', 'full_cycle_with_review']
     if (!body.mode || !validModes.includes(body.mode)) {
-      return NextResponse.json(
-        { error: 'mode must be "single" or "full_cycle_with_review"', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('mode must be "single" or "full_cycle_with_review"', 'VALIDATION_ERROR', 400)
     }
 
     // Validate tool_scenario_id if provided
     const validScenarios: ToolScenarioId[] = ['happy_path', 'calendar_full', 'booking_fails', 'partial_availability']
     if (body.tool_scenario_id && !validScenarios.includes(body.tool_scenario_id as ToolScenarioId)) {
-      return NextResponse.json(
-        { error: 'Invalid tool_scenario_id', code: 'VALIDATION_ERROR' },
-        { status: 400 }
-      )
+      return apiError('Invalid tool_scenario_id', 'VALIDATION_ERROR', 400)
     }
 
     // ========================================================================
@@ -360,10 +327,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (promptError || !promptVersion) {
-      return NextResponse.json(
-        { error: 'Prompt version not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      )
+      return apiError('Prompt version not found', 'NOT_FOUND', 404)
     }
 
     // ========================================================================
@@ -373,13 +337,7 @@ export async function POST(request: NextRequest) {
     const personaIds = await getPersonasForPrompt(promptVersion.prompt_name)
 
     if (personaIds.length === 0) {
-      return NextResponse.json(
-        {
-          error: 'No validated personas found for this prompt. Associate and validate personas first.',
-          code: 'NO_PERSONAS'
-        },
-        { status: 400 }
-      )
+      return apiError('No validated personas found for this prompt. Associate and validate personas first.', 'NO_PERSONAS', 400)
     }
 
     // ========================================================================
@@ -411,10 +369,7 @@ export async function POST(request: NextRequest) {
 
     if (createError || !testRun) {
       console.error('[test-runs] Error creating test run:', createError)
-      return NextResponse.json(
-        { error: 'Failed to create test run', code: 'INTERNAL_ERROR', details: createError?.message },
-        { status: 500 }
-      )
+      return apiError('Failed to create test run', 'INTERNAL_ERROR', 500, createError?.message)
     }
 
     // ========================================================================
@@ -455,13 +410,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`[test-runs] Created test run ${testRun.test_run_code} for prompt ${promptVersion.prompt_name} v${promptVersion.version}`)
 
-    return NextResponse.json(response, { status: 201 })
+    return apiSuccess(response, undefined, 201)
 
   } catch (error) {
     console.error('[test-runs] Unexpected error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
