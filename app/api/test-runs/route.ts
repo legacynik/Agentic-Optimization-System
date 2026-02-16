@@ -75,13 +75,55 @@ function generateTestRunCode(): string {
 }
 
 /**
- * Fetches validated personas for a prompt
- * Uses created_for_prompt column in personas table (simpler than junction table)
+ * Fetches validated personas for a prompt version via junction table.
+ * Looks up prompt_personas by prompt_id (from prompt_versions or prompts table),
+ * then filters personas by validation_status='validated'.
  *
- * @param promptName - The prompt name to look up
- * @returns Array of persona UUIDs
+ * Falls back to legacy created_for_prompt if no junction entries found.
  */
-async function getPersonasForPrompt(promptName: string): Promise<string[]> {
+async function getPersonasForPrompt(promptVersionId: string, promptName: string): Promise<string[]> {
+  // Try junction table first: prompt_version → prompt_id → prompt_personas
+  const { data: pv } = await supabase
+    .from('prompt_versions')
+    .select('prompt_id')
+    .eq('id', promptVersionId)
+    .single()
+
+  let promptId = pv?.prompt_id
+
+  // If prompt_id not set on version, look up prompts table by name
+  if (!promptId) {
+    const { data: prompt } = await supabase
+      .from('prompts')
+      .select('id')
+      .eq('prompt_name', promptName)
+      .single()
+    promptId = prompt?.id
+  }
+
+  if (promptId) {
+    const { data: junctionData, error: junctionError } = await supabase
+      .from('prompt_personas')
+      .select('persona_id')
+      .eq('prompt_id', promptId)
+      .eq('is_active', true)
+
+    if (!junctionError && junctionData && junctionData.length > 0) {
+      // Filter to validated personas only
+      const personaIds = junctionData.map(j => j.persona_id)
+      const { data: validated } = await supabase
+        .from('personas')
+        .select('id')
+        .in('id', personaIds)
+        .eq('validation_status', 'validated')
+
+      if (validated && validated.length > 0) {
+        return validated.map(p => p.id)
+      }
+    }
+  }
+
+  // Fallback: legacy created_for_prompt field
   const { data, error } = await supabase
     .from('personas')
     .select('id')
@@ -334,7 +376,7 @@ export async function POST(request: NextRequest) {
     // Get Associated Personas (validated only)
     // ========================================================================
 
-    const personaIds = await getPersonasForPrompt(promptVersion.prompt_name)
+    const personaIds = await getPersonasForPrompt(body.prompt_version_id, promptVersion.prompt_name)
 
     if (personaIds.length === 0) {
       return apiError('No validated personas found for this prompt. Associate and validate personas first.', 'NO_PERSONAS', 400)

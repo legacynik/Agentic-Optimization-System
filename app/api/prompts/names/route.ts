@@ -1,7 +1,7 @@
 /**
  * API Route: /api/prompts/names
  *
- * Returns list of prompts with id and prompt_name for dropdown selection.
+ * Returns distinct prompt names from prompt_versions for dropdown selection.
  *
  * @module api/prompts/names
  */
@@ -11,15 +11,10 @@ import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
 
 const supabase = createSupabaseClient()
 
-interface PromptName {
-  id: string
-  name: string
-}
-
 /**
  * GET /api/prompts/names
  *
- * Returns list of available prompts with id and name.
+ * Returns distinct prompt_name values from prompt_versions table.
  *
  * Query params:
  * - limit: Maximum number of prompts to return (default 100)
@@ -30,23 +25,28 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500)
 
     const { data, error } = await supabase
-      .from('prompts')
-      .select('id, prompt_name')
+      .from('prompt_versions')
+      .select('prompt_name')
       .order('prompt_name', { ascending: true })
       .limit(limit)
 
     if (error) {
-      console.error('[prompts/names] Error fetching prompts:', error)
-      return apiError('Failed to fetch prompts', 'INTERNAL_ERROR', 500, error.message)
+      console.error('[prompts/names] Error fetching prompt names:', error)
+      return apiError('Failed to fetch prompt names', 'INTERNAL_ERROR', 500, error.message)
     }
 
-    // Transform prompt_name to name for consistent API response
-    const transformed: PromptName[] = (data || []).map((p: any) => ({
-      id: p.id,
-      name: p.prompt_name
-    }))
+    // Deduplicate prompt_names (multiple versions share the same name)
+    const seen = new Set<string>()
+    const unique: { id: string; name: string }[] = []
 
-    return apiSuccess(transformed)
+    for (const row of data || []) {
+      if (!seen.has(row.prompt_name)) {
+        seen.add(row.prompt_name)
+        unique.push({ id: row.prompt_name, name: row.prompt_name })
+      }
+    }
+
+    return apiSuccess(unique)
   } catch (error) {
     console.error('[prompts/names] Unexpected error:', error)
     return apiError('Internal server error', 'INTERNAL_ERROR', 500)
