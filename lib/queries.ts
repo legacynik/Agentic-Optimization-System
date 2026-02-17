@@ -163,7 +163,7 @@ export async function fetchHeatmapData(): Promise<HeatmapRow[]> {
   })
 }
 
-export async function updateConversationNotes(conversationId: number, notes: string): Promise<void> {
+export async function updateConversationNotes(conversationId: string, notes: string): Promise<void> {
   return withRetry(async () => {
     const supabase = getSupabase()
     const { error: updateError } = await supabase

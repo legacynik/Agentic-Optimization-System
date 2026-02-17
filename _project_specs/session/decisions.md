@@ -636,3 +636,34 @@ const result = configs.map(c => ({ ...c, prompt_name: promptMap.get(c.prompt_id)
 **References**:
 - `lib/api-response.ts` - Helper functions
 - `_project_specs/REPO-REVIEW-2026-02-16.md` - Section 3
+
+---
+
+## [2026-02-17] Max Turns Cap — Battle Agent Runaway Prevention
+
+**Decision**: Implement configurable max_turns cap across the full chain API → Test RUNNER → Battle Agent
+
+**Context**: Test run `26259dce` had a battle with "Antonio Chiaccerone" that ran 1800 turns (timeout at 348s). The Battle Agent Code node had `Array(30).fill({})` hardcoded — 30 loops = up to 60 conversation turns. Neither the API nor the RUNNER passed `max_turns`. The `workflow_configs.config.max_turns` (40) existed but was unused.
+
+**Options Considered**:
+1. Hardcode a lower number in the Code node (quick, fragile)
+2. Pass max_turns through the full chain from config (robust, configurable)
+
+**Choice**: Option 2 — configurable through full chain
+
+**Implementation**:
+1. **API** (`app/api/test-runs/route.ts`): reads `workflow_configs.config.max_turns` (default 50), passes in webhook payload
+2. **Test RUNNER** (`XmpBhcUxsRpxAYPN`): Validate Input extracts max_turns → Set Test Run stores it → Execute Workflow forwards to Battle Agent
+3. **Battle Agent** (`Z35cpvwXt7Xy4Mgi`): new `max_turns` workflow input → Init Battle stores it → Code node uses `Math.ceil(maxTurns / 2)` loop iterations (each loop = 2 turns: agent + persona)
+
+**Math**: `max_turns: 40` → 20 loop iterations → max 40 conversation turns (vs previous 60)
+
+**Trade-offs**:
+- Requires all 3 layers to be updated together (done)
+- Backward compatible: Battle Agent defaults to 50 if max_turns not passed
+
+**References**:
+- `app/api/test-runs/route.ts` - API webhook payload
+- n8n `XmpBhcUxsRpxAYPN` - Test RUNNER (Validate Input, Set Test Run, Execute Workflow nodes)
+- n8n `Z35cpvwXt7Xy4Mgi` - Battle Agent (trigger, Init Battle, Code nodes)
+- `workflow_configs.config.max_turns` - Configurable via Settings page

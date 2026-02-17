@@ -162,10 +162,10 @@ async function triggerN8nWorkflow(
   toolMocksOverride?: Record<string, unknown>,
   maxIterations?: number
 ): Promise<boolean> {
-  // Get webhook URL from workflow_configs or env
+  // Get webhook URL and config (including max_turns) from workflow_configs
   const { data: config } = await supabase
     .from('workflow_configs')
-    .select('webhook_url')
+    .select('webhook_url, config')
     .eq('workflow_type', 'test_runner')
     .single()
 
@@ -191,6 +191,7 @@ async function triggerN8nWorkflow(
         tool_scenario_id: toolScenarioId,
         tool_mocks_override: toolMocksOverride,
         max_iterations: maxIterations || (mode === 'full_cycle_with_review' ? 5 : 1),
+        max_turns: (config?.config as Record<string, unknown>)?.max_turns ?? 50,
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/n8n/webhook`,
         timestamp: Date.now()
       })

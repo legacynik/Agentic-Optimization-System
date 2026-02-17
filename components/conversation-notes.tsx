@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { updateConversationNotes } from '@/lib/queries'
 
 interface ConversationNotesProps {
-  conversationId: number
+  conversationId: string
   initialNotes?: string
 }
 

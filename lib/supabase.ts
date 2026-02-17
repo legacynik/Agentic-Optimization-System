@@ -26,7 +26,7 @@ export function getSupabase() {
 }
 
 export type PersonaPerformanceRow = {
-  conversationid: number
+  conversationid: string
   personaid: string
   persona_description: string
   persona_category: string
@@ -40,10 +40,10 @@ export type PersonaPerformanceRow = {
   all_criteria_details: Array<{
     criteria_name: string
     score: number
-    conversation_id: number
+    conversation_id: string
   }>
   conversations_summary: Array<{
-    conversationid: number
+    conversationid: string
     outcome: "success" | "partial" | "failure"
     score: number
     summary: string
