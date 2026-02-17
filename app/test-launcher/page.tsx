@@ -41,6 +41,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Eye,
   Loader2,
   Play,
   Rocket,
@@ -208,8 +209,7 @@ export default function TestLauncherPage() {
   }
 
   function handleViewResults(testRunId: string) {
-    // Navigate to results page or open modal
-    window.location.href = `/conversations?test_run_id=${testRunId}`
+    window.location.href = `/test-runs/${testRunId}`
   }
 
   const selectedPromptData = prompts.find((p) => p.id === selectedPrompt)
@@ -483,18 +483,23 @@ export default function TestLauncherPage() {
                         <TableHead>Progress</TableHead>
                         <TableHead>Score</TableHead>
                         <TableHead>Started</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {!testRuns || testRuns.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                             No test runs yet. Launch a test to get started.
                           </TableCell>
                         </TableRow>
                       ) : (
                         testRuns.map((run) => (
-                          <TableRow key={run.id}>
+                          <TableRow
+                            key={run.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleViewResults(run.id)}
+                          >
                             <TableCell className="font-mono text-xs">{run.test_run_code}</TableCell>
                             <TableCell>
                               <Badge variant="outline">
@@ -521,6 +526,12 @@ export default function TestLauncherPage() {
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">
                               {new Date(run.started_at).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs gap-1">
+                                <Eye className="h-3 w-3" />
+                                Details
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         ))
