@@ -146,6 +146,63 @@ export async function POST(request: NextRequest) {
 
     console.log(`[evaluations/re-evaluate] Created evaluation: ${newEvaluation.id} for test_run ${body.test_run_id} with evaluator ${evaluatorConfig.name} v${evaluatorConfig.version}`)
 
+    // Step 5: Trigger n8n evaluator workflow
+    const { data: webhookConfig } = await supabase
+      .from('workflow_configs')
+      .select('webhook_url, is_active')
+      .eq('workflow_type', 'evaluator')
+      .single()
+
+    if (webhookConfig?.webhook_url && webhookConfig.is_active) {
+      try {
+        const triggerPayload = {
+          test_run_id: body.test_run_id,
+          evaluation_id: newEvaluation.id,
+          evaluator_config_id: body.evaluator_config_id,
+          triggered_by: 'manual',
+          callback_url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/n8n/webhook`,
+          timestamp: Date.now()
+        }
+
+        const webhookResponse = await fetch(webhookConfig.webhook_url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-n8n-secret': process.env.N8N_SECRET || ''
+          },
+          body: JSON.stringify(triggerPayload)
+        })
+
+        if (!webhookResponse.ok) {
+          console.error('[evaluations/re-evaluate] n8n webhook failed:', webhookResponse.status)
+          await supabase
+            .from('evaluations')
+            .update({ status: 'failed', error_message: `n8n webhook returned ${webhookResponse.status}` })
+            .eq('id', newEvaluation.id)
+        } else {
+          console.log(`[evaluations/re-evaluate] n8n evaluator triggered for evaluation ${newEvaluation.id}`)
+          await supabase
+            .from('evaluations')
+            .update({ status: 'running', started_at: new Date().toISOString() })
+            .eq('id', newEvaluation.id)
+        }
+      } catch (webhookError) {
+        console.error('[evaluations/re-evaluate] Failed to trigger n8n:', webhookError)
+        await supabase
+          .from('evaluations')
+          .update({
+            status: 'failed',
+            error_message: webhookError instanceof Error ? webhookError.message : 'n8n webhook unreachable'
+          })
+          .eq('id', newEvaluation.id)
+      }
+    } else {
+      await supabase
+        .from('evaluations')
+        .update({ status: 'failed', error_message: 'No evaluator webhook configured. Check Settings.' })
+        .eq('id', newEvaluation.id)
+    }
+
     return apiSuccess({
       ...newEvaluation,
       message: 'Evaluation created successfully. It will be processed by the evaluation workflow.'

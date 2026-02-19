@@ -4,6 +4,51 @@ Log di tutte le modifiche applicate ai workflow n8n.
 
 ---
 
+### [2026-02-19] is_promoted Fix
+- **Evaluator workflow** "Fetch Evaluator Config" node now filters `WHERE is_promoted = true`
+- Previously: picked latest by `created_at`, ignoring promoted flag
+- Impact: Correct evaluator config now used for re-evaluations
+
+---
+
+## [2026-02-18] - Phase 5 Closed — Deferred Items Documented
+
+### Deferred
+- REQ-5.6 (Check Abort #2): Abort #1 sufficient, deferred as optimization
+- REQ-5.7 (x-n8n-secret on callbacks): Single-user internal tool, not needed
+- REQ-5.8 (Tool Mocking): Tools tested live, mocking adds no value
+
+### Notes
+- Phase 5 marked COMPLETE with 3 items intentionally deferred
+- All core requirements implemented and E2E validated
+
+---
+
+## [2026-02-17] - E2E Validation + Critical Bug Fixes
+
+### Battle Agent (Z35cpvwXt7Xy4Mgi)
+- [x] **Max turns cap** — New `max_turns` workflow input, Code node uses `Math.ceil(maxTurns / 2)` loop iterations
+  - Default: 50, configurable via `workflow_configs.config.max_turns`
+  - Passed through full chain: API → Test RUNNER → Battle Agent
+  - Fixed: RUN-H9C had 1 battle at 1800 turns (infinite loop)
+
+### Evaluator (202JEX5zm3VlrUT8)
+- [x] **Parser rewrite** — Robust JSON extraction: handles markdown fences, trailing commas, type coercion
+  - 0 fallback rate (was 2/13 in first E2E test)
+- [x] **Gemini Flash 3 upgrade** — Judge Agent model upgraded for larger context windows
+- [x] **Post-loop Analyzer rewrite** — PG Aggregate + LLM Analyzer with Playbook-driven prompt
+  - Generates analysis report: strengths, weaknesses, suggestions per persona
+
+### Test RUNNER (XmpBhcUxsRpxAYPN)
+- [x] **REQ-5.9: Status completed** — Sets `test_runs.status = 'completed'` after all battles + evaluation
+- [x] **Max turns forwarding** — Reads from `workflow_configs.config.max_turns`, passes to Battle Agent
+
+### E2E Test Results
+- **RUN-H9C** (first): 10 battles, 9 success + 1 timeout (1800 turns), avg 6.28 — exposed 3 critical bugs
+- **RUN-J90** (second): 10/10 success, 0 timeout, max 43 turns, avg 6.78 — all fixes validated
+
+---
+
 ## [2026-01-20] - Test Battle Agent v2.0 Architecture Update
 
 ### Test Battle Agent (Z35cpvwXt7Xy4Mgi) - REFACTORED ✅
@@ -224,11 +269,11 @@ When Executed → Init Battle → Code (30 loops) → Loop Over Items
 - [x] **Loop + Insert** - Personas and prompt_personas associations
 - [x] **Respond to Webhook** - JSON response with results
 
-### Still Pending
-- [ ] x-n8n-secret header on HTTP callbacks (security)
-- [ ] Check Abort #2 (after LLM call) in Battle Agent
-- [ ] Tool Mocking implementation in Battle Agent
-- [ ] Update test_run status to 'completed' at end
+### Resolved / Deferred (Feb 2026)
+- [x] Update test_run status to 'completed' at end — DONE (Feb 17)
+- [~] x-n8n-secret header on HTTP callbacks — DEFERRED (single-user, not needed)
+- [~] Check Abort #2 (after LLM call) in Battle Agent — DEFERRED (abort #1 sufficient)
+- [~] Tool Mocking implementation in Battle Agent — DEFERRED (test live instead)
 
 ---
 

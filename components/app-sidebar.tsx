@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Bot, PanelLeftClose, PanelLeft } from "lucide-react"
-import { NAV_MAIN, NAV_TESTING, NAV_CONFIG } from "@/lib/navigation"
+import { NAV_DASHBOARD, NAV_TESTING, NAV_CONFIG, NAV_INTELLIGENCE } from "@/lib/navigation"
 
 import {
   Sidebar,
@@ -51,9 +51,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavGroup label="Overview" items={NAV_MAIN} isActive={isActive} />
+        <NavGroup label="Dashboard" items={NAV_DASHBOARD} isActive={isActive} />
         <NavGroup label="Testing" items={NAV_TESTING} isActive={isActive} />
         <NavGroup label="Configuration" items={NAV_CONFIG} isActive={isActive} />
+        <NavGroup label="Intelligence" items={NAV_INTELLIGENCE} isActive={isActive} />
       </SidebarContent>
 
       <SidebarFooter>

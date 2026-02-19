@@ -1,219 +1,235 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Activity, TrendingUp, CheckCircle2, Calendar } from "lucide-react"
-import { PersonasHeatmap } from "@/components/personas-heatmap"
-import { PersonaTestRunsView } from "@/components/persona-testruns-view"
-import { FilterBar } from "@/components/filter-bar"
-import { ExportMenu } from "@/components/export-menu"
-import { AIInsights } from "@/components/ai-insights"
-import { SimpleTrends } from "@/components/simple-trends"
-import { KPICard } from "@/components/dashboard/kpi-card"
-import { EmptyState } from "@/components/dashboard/empty-state"
-import { DashboardError } from "@/components/dashboard/dashboard-error"
-import { TestRunsCard } from "@/components/dashboard/test-runs-card"
-import { LatestConversationsCard } from "@/components/dashboard/latest-conversations-card"
-import { useMemo } from "react"
-import { useConversationsQuery, useTestRunsQuery, usePersonasQuery, useHeatmapQuery } from "@/hooks/queries"
-import { useDashboardStore } from "@/stores/dashboard-store"
-import { calculateOutliers } from "@/lib/outliers"
-import { exportDashboardToCSV } from "@/lib/export-csv"
-import { exportDashboardToPDF } from "@/lib/export-pdf"
-import { exportDashboardToJSON } from "@/lib/export-json"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  filterConversations,
-  calculateKPIs,
-  buildPersonaTestRunsData,
-  buildExportKPIs,
-} from "@/lib/dashboard-utils"
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+} from "recharts"
+import { Activity, Target, TrendingUp, Timer, ExternalLink } from "lucide-react"
+
+interface DashboardStats {
+  totalRuns: number
+  avgScore: number | null
+  successRate: number
+  avgTurns: number
+}
+
+interface ScoreTrend {
+  date: string
+  score: number
+  testRunCode: string
+}
+
+interface CriteriaAvg {
+  name: string
+  avgScore: number
+}
+
+interface TestRunRow {
+  id: string
+  test_run_code: string
+  status: string
+  overall_score: number | null
+  success_count: number
+  failure_count: number
+  timeout_count: number
+  started_at: string
+  prompt_name: string
+  prompt_version: string
+}
+
+const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  completed: "default",
+  running: "secondary",
+  pending: "outline",
+  failed: "destructive",
+  aborted: "destructive",
+  evaluating: "secondary",
+  battles_completed: "secondary",
+}
 
 export function DashboardContent() {
-  const selectedPersona = useDashboardStore((s) => s.selectedPersona)
-  const setSelectedPersona = useDashboardStore((s) => s.setSelectedPersona)
-  const selectedOutcomes = useDashboardStore((s) => s.selectedOutcomes)
-  const scoreRange = useDashboardStore((s) => s.scoreRange)
-  const setScoreRange = useDashboardStore((s) => s.setScoreRange)
-  const showBookedOnly = useDashboardStore((s) => s.showBookedOnly)
-  const toggleShowBooked = useDashboardStore((s) => s.toggleShowBooked)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [trend, setTrend] = useState<ScoreTrend[]>([])
+  const [criteria, setCriteria] = useState<CriteriaAvg[]>([])
+  const [runs, setRuns] = useState<TestRunRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const { data: conversations = [], isLoading: convLoading, error: convError } = useConversationsQuery()
-  const { data: testRuns = [], isLoading: trLoading } = useTestRunsQuery()
-  const { data: personas = [], isLoading: pLoading } = usePersonasQuery()
-  const { data: heatmapData = [], isLoading: hmLoading } = useHeatmapQuery()
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/dashboard/stats').then(r => r.json()),
+      fetch('/api/dashboard/trend').then(r => r.json()),
+      fetch('/api/dashboard/criteria').then(r => r.json()),
+      fetch('/api/test-runs?limit=10&order=desc').then(r => r.json()),
+    ]).then(([statsRes, trendRes, criteriaRes, runsRes]) => {
+      setStats(statsRes.data)
+      setTrend(trendRes.data || [])
+      setCriteria(criteriaRes.data || [])
+      setRuns(runsRes.data || [])
+    }).catch(() => {
+      setError('Failed to load dashboard data. Please refresh the page.')
+    }).finally(() => setLoading(false))
+  }, [])
 
-  const loading = convLoading || trLoading || pLoading || hmLoading
-  const error = convError ? (convError instanceof Error ? convError.message : "Failed to load data") : null
+  if (loading) return <DashboardSkeleton />
 
-  const handleOutcomesChange = (outcomes: string[]) => {
-    const store = useDashboardStore.getState()
-    // Sync full array — clear then set
-    store.selectedOutcomes.forEach((o) => {
-      if (!outcomes.includes(o)) store.toggleOutcome(o)
-    })
-    outcomes.forEach((o) => {
-      if (!store.selectedOutcomes.includes(o)) store.toggleOutcome(o)
-    })
-  }
-
-  const filteredConversations = useMemo(() => {
-    return filterConversations(
-      conversations,
-      selectedPersona,
-      selectedOutcomes,
-      scoreRange,
-      showBookedOnly
-    )
-  }, [conversations, selectedPersona, selectedOutcomes, scoreRange, showBookedOnly])
-
-  const outliers = useMemo(() => {
-    const scores = filteredConversations.map((row) => row.avg_score)
-    return calculateOutliers(scores)
-  }, [filteredConversations])
-
-  const kpis = useMemo(() => {
-    return calculateKPIs(filteredConversations)
-  }, [filteredConversations])
-
-  const filteredTestRuns = useMemo(() => {
-    const testrunIds = new Set(filteredConversations.map((c) => c.testrunid))
-    return testRuns.filter((run) => testrunIds.has(run.id))
-  }, [testRuns, filteredConversations])
-
-  const filteredHeatmapData = useMemo(() => {
-    if (selectedPersona === null) return heatmapData
-    const selectedPersonaDescription = personas.find((p) => p.id === selectedPersona)?.name
-    if (!selectedPersonaDescription) return heatmapData
-    return heatmapData.filter((row) => row.persona.includes(selectedPersonaDescription.split("...")[0]))
-  }, [heatmapData, selectedPersona, personas])
-
-  const personaTestRunsData = useMemo(() => {
-    return buildPersonaTestRunsData(filteredConversations, selectedPersona)
-  }, [filteredConversations, selectedPersona])
-
-  const handleExportCSV = () => {
-    const exportKpis = buildExportKPIs(kpis)
-    exportDashboardToCSV(filteredConversations, exportKpis)
-  }
-
-  const handleExportPDF = () => {
-    const exportKpis = buildExportKPIs(kpis)
-    exportDashboardToPDF(filteredConversations, exportKpis)
-  }
-
-  const handleExportJSON = () => {
-    const exportKpis = buildExportKPIs(kpis)
-    exportDashboardToJSON(filteredConversations, exportKpis, {
-      selectedPersona,
-      selectedOutcomes,
-      scoreRange,
-      showBookedOnly,
-    })
-  }
-
-  if (loading) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Loading dashboard data...</p>
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-destructive">{error}</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
-
-  if (error) return <DashboardError error={error} />
-  if (!loading && conversations.length === 0) return <EmptyState />
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Overview of your AI agent testing performance
-          </p>
-        </div>
-        <ExportMenu
-          onExportCSV={handleExportCSV}
-          onExportPDF={handleExportPDF}
-          onExportJSON={handleExportJSON}
-        />
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KPICard title="Total Runs" value={stats?.totalRuns ?? 0} icon={<Activity className="h-5 w-5" />} />
+        <KPICard title="Avg Score" value={stats?.avgScore?.toFixed(1) ?? '—'} icon={<Target className="h-5 w-5" />} />
+        <KPICard title="Success Rate" value={`${stats?.successRate?.toFixed(0) ?? 0}%`} icon={<TrendingUp className="h-5 w-5" />} />
+        <KPICard title="Avg Turns" value={stats?.avgTurns?.toFixed(1) ?? '—'} icon={<Timer className="h-5 w-5" />} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard
-          title="Total Tests"
-          value={kpis.totalConversations}
-          description={`Across ${filteredTestRuns.length} test runs`}
-          icon={Activity}
-        />
-        <KPICard
-          title="Avg Score"
-          value={kpis.avgScore}
-          description="Out of 10.0"
-          icon={TrendingUp}
-        />
-        <KPICard
-          title="Success Rate"
-          value={`${kpis.successRate}%`}
-          description="Score >= 8"
-          icon={CheckCircle2}
-        />
-        <KPICard
-          title="Appointments"
-          value={kpis.totalAppointments}
-          description={
-            kpis.totalConversations > 0
-              ? `${((kpis.totalAppointments / kpis.totalConversations) * 100).toFixed(1)}% booking rate`
-              : "No data"
-          }
-          icon={Calendar}
-        />
+      {/* Charts row */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Score Trend */}
+        <Card>
+          <CardHeader><CardTitle>Score Trend</CardTitle></CardHeader>
+          <CardContent>
+            {trend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={trend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis domain={[0, 10]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No completed runs yet</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Criteria Radar */}
+        <Card>
+          <CardHeader><CardTitle>Criteria Breakdown</CardTitle></CardHeader>
+          <CardContent>
+            {criteria.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <RadarChart data={criteria}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="name" />
+                  <PolarRadiusAxis domain={[0, 10]} />
+                  <Radar dataKey="avgScore" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">No evaluation data yet</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AIInsights conversations={filteredConversations} />
-        <SimpleTrends conversations={filteredConversations} />
-      </div>
-
-      <FilterBar
-        personas={personas}
-        selectedPersona={selectedPersona}
-        onPersonaChange={setSelectedPersona}
-        selectedOutcomes={selectedOutcomes}
-        onOutcomesChange={handleOutcomesChange}
-        scoreRange={scoreRange}
-        onScoreRangeChange={setScoreRange}
-        showBookedOnly={showBookedOnly}
-        onBookedToggle={toggleShowBooked}
-        outliers={outliers}
-      />
-
+      {/* Recent Test Runs */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            {selectedPersona !== null ? "Persona Performance History" : "Personas Performance"}
-          </CardTitle>
-          <CardDescription>
-            {selectedPersona !== null
-              ? "Historical test results for selected persona"
-              : "Performance heatmap across all personas and criteria"}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <CardTitle>Recent Test Runs</CardTitle>
+            <Link href="/test-runs" className="text-sm text-primary hover:underline">View all</Link>
+          </div>
         </CardHeader>
-        <CardContent>
-          {selectedPersona !== null ? (
-            <PersonaTestRunsView
-              personaId={selectedPersona}
-              personaName={personas.find((p) => p.id === selectedPersona)?.name || selectedPersona}
-              data={personaTestRunsData}
-            />
-          ) : (
-            <PersonasHeatmap data={filteredHeatmapData} />
-          )}
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Prompt</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>S / F / T</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Detail</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {runs.length > 0 ? runs.map(run => (
+                <TableRow key={run.id}>
+                  <TableCell className="font-mono">{run.test_run_code}</TableCell>
+                  <TableCell>{run.prompt_name} v{run.prompt_version}</TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant[run.status] || "outline"}>{run.status}</Badge>
+                  </TableCell>
+                  <TableCell>{run.overall_score?.toFixed(1) ?? '—'}</TableCell>
+                  <TableCell>
+                    <span className="text-green-600">{run.success_count}</span>
+                    {' / '}
+                    <span className="text-red-600">{run.failure_count}</span>
+                    {' / '}
+                    <span className="text-yellow-600">{run.timeout_count}</span>
+                  </TableCell>
+                  <TableCell>{new Date(run.started_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-right">
+                    <Link href={`/test-runs/${run.id}`}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No test runs yet
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+    </div>
+  )
+}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <TestRunsCard testRuns={filteredTestRuns} />
-        <LatestConversationsCard conversations={filteredConversations} />
+function KPICard({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) {
+  return (
+    <Card>
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className="text-muted-foreground">{icon}</div>
+        <div>
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="p-6 space-y-6">
+      <Skeleton className="h-8 w-[150px]" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
       </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        <Skeleton className="h-[300px]" />
+        <Skeleton className="h-[300px]" />
+      </div>
+      <Skeleton className="h-[300px]" />
     </div>
   )
 }

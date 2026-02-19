@@ -88,7 +88,7 @@ async function fetchTestRun(testRunId: string): Promise<TestRun> {
     throw new Error('Failed to fetch test run')
   }
   const raw = await res.json()
-  return normalizeTestRun(raw)
+  return normalizeTestRun(raw.data)
 }
 
 // Abort test run
