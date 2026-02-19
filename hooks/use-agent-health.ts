@@ -16,6 +16,7 @@ export interface OutcomeDistribution {
   success: number
   partial: number
   failure: number
+  timeout: number
 }
 
 /** Agent health data structure */
@@ -42,6 +43,9 @@ interface TestRunWithPrompt {
   overall_score: number | null
   success_count: number
   failure_count: number
+  timeout_count: number
+  /** Array of persona UUIDs — length equals total battles planned for the run */
+  personas_tested: string[] | null
   completed_at: string | null
   started_at: string
   prompt_versions: {
@@ -178,15 +182,25 @@ async function fetchAgentHealth(promptName: string): Promise<AgentHealth> {
     }))
     .reverse()
 
-  // Calculate outcomes from latest run
+  // Calculate outcomes from latest run.
+  // partial = total_battles - success - failure - timeout
+  // total_battles is the number of personas assigned to the run.
   const latestRun = completedRuns[0]
+  const successCount = latestRun.success_count || 0
+  const failureCount = latestRun.failure_count || 0
+  const timeoutCount = latestRun.timeout_count || 0
+  const totalBattles = latestRun.personas_tested?.length ?? null
+  const partialCount =
+    totalBattles !== null
+      ? Math.max(0, totalBattles - successCount - failureCount - timeoutCount)
+      : 0
+
   const outcomes: OutcomeDistribution = {
-    success: latestRun.success_count || 0,
-    partial: 0, // Will be calculated from total - success - failure
-    failure: latestRun.failure_count || 0,
+    success: successCount,
+    partial: partialCount,
+    failure: failureCount,
+    timeout: timeoutCount,
   }
-  // Estimate partial as remaining (if we have that data)
-  // For now, use success and failure counts directly
 
   return {
     currentScore,

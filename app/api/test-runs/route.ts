@@ -270,6 +270,7 @@ export async function GET(request: NextRequest) {
         success_count,
         failure_count,
         timeout_count,
+        personas_tested,
         tool_scenario_id,
         awaiting_review,
         last_heartbeat_at,

@@ -88,6 +88,23 @@ export async function updatePromptVersion(
 }
 
 /**
+ * Deletes a draft prompt version
+ */
+export async function deletePromptVersion(id: string): Promise<{ deleted: boolean }> {
+  const response = await fetch(`/api/prompt-versions/${id}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    const err = await response.json()
+    throw new Error(err.error?.message || 'Failed to delete prompt version')
+  }
+
+  const result = await response.json()
+  return result.data
+}
+
+/**
  * Wrapper that shows toast on error
  */
 export async function safeApiCall<T>(

@@ -233,6 +233,11 @@ async function handleEvaluatorCallback(payload: N8nCallbackPayload): Promise<voi
       .eq('id', test_run_id)
       .single()
 
+    // Build analysis fields if the evaluator includes analysis in its completed payload
+    const analysisFields = result?.analysis
+      ? { analysis_report: result.analysis, analyzed_at: new Date().toISOString() }
+      : {}
+
     if (testRun?.mode === 'full_cycle_with_review') {
       // Pause for human review
       await supabase
@@ -240,7 +245,8 @@ async function handleEvaluatorCallback(payload: N8nCallbackPayload): Promise<voi
         .update({
           status: 'awaiting_review',
           awaiting_review: true,
-          review_requested_at: new Date().toISOString()
+          review_requested_at: new Date().toISOString(),
+          ...analysisFields
         })
         .eq('id', test_run_id)
 
@@ -252,7 +258,8 @@ async function handleEvaluatorCallback(payload: N8nCallbackPayload): Promise<voi
         .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
-          overall_score: result?.average_score || null
+          overall_score: result?.average_score || null,
+          ...analysisFields
         })
         .eq('id', test_run_id)
     }
@@ -267,7 +274,10 @@ async function handleEvaluatorCallback(payload: N8nCallbackPayload): Promise<voi
 }
 
 /**
- * Handles analyzer workflow callbacks
+ * Handles analyzer workflow callbacks.
+ * Note: The analyzer runs AFTER the evaluator and intentionally overwrites
+ * analysis_report with a richer analysis that includes failure_patterns,
+ * strengths, and weaknesses extracted from the evaluation data.
  */
 async function handleAnalyzerCallback(payload: N8nCallbackPayload): Promise<void> {
   const { test_run_id, status, result } = payload
@@ -286,7 +296,9 @@ async function handleAnalyzerCallback(payload: N8nCallbackPayload): Promise<void
       .update({
         failure_patterns: analysis.failure_patterns || null,
         strengths: analysis.strengths || null,
-        weaknesses: analysis.weaknesses || null
+        weaknesses: analysis.weaknesses || null,
+        analysis_report: result.analysis || null,
+        analyzed_at: new Date().toISOString()
       })
       .eq('id', test_run_id)
   }

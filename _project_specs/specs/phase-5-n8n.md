@@ -1,12 +1,13 @@
 ---
 phase: 5
 name: "n8n Workflows Implementation"
-status: partial
+status: complete
 created: 2026-01-23
-last_updated: 2026-01-23
-last_tested: 2026-01-20
-tested_by: nic
-pending_items: 4
+last_updated: 2026-02-18
+last_tested: 2026-02-18
+tested_by: nic + claude
+pending_items: 0
+deferred_items: 3
 blockers: []
 ---
 
@@ -26,10 +27,10 @@ This phase implements the n8n workflow modifications required to support the PRD
 - [x] REQ-5.3: Battles Evaluator with test_run_id filter (AUDIT FIX)
 - [x] REQ-5.4: Personas Generator v2 with webhook + validation
 - [x] REQ-5.5: Check Abort #1 (before LLM call) in Runner
-- [ ] REQ-5.6: Check Abort #2 (after LLM call) in Battle Agent
-- [ ] REQ-5.7: x-n8n-secret header on HTTP callbacks
-- [ ] REQ-5.8: Tool Mocking implementation in Battle Agent
-- [ ] REQ-5.9: Update test_run status to 'completed' at end
+- [x] REQ-5.9: Update test_run status to 'completed' at end
+- [~] REQ-5.6: Check Abort #2 (after LLM call) — **DEFERRED**: Abort #1 sufficient, abort works (slightly slower)
+- [~] REQ-5.7: x-n8n-secret header on callbacks — **DEFERRED**: Dev mode accepts without, single-user internal tool
+- [~] REQ-5.8: Tool Mocking in Battle Agent — **DEFERRED**: Tools work live, mocking adds no value vs live testing
 
 ### Nice to Have (defer)
 - [ ] OPT-5.1: Heartbeat updates during long battles
@@ -52,10 +53,10 @@ This phase implements the n8n workflow modifications required to support the PRD
 - [x] AC-5.3: Battle results stored in `battle_results` table (not `turns`)
 - [x] AC-5.4: Evaluator filters by test_run_id
 - [x] AC-5.5: Personas generated with correct prompt association
-- [ ] AC-5.6: Abort request stops battle within 5 seconds
-- [ ] AC-5.7: Callbacks include x-n8n-secret header
-- [ ] AC-5.8: Tool scenarios return mocked responses
-- [ ] AC-5.9: test_runs.status = 'completed' after all battles
+- [x] AC-5.9: test_runs.status = 'completed' after all battles
+- [~] AC-5.6: Abort request stops battle within 5 seconds — DEFERRED
+- [~] AC-5.7: Callbacks include x-n8n-secret header — DEFERRED
+- [~] AC-5.8: Tool scenarios return mocked responses — DEFERRED
 
 ## Manual Test Script
 
@@ -127,36 +128,21 @@ Actual: [fill after testing]
 Status: ⏳ NOT TESTED
 ```
 
-## Pending Implementation Details
+## Deferred Items (2026-02-18)
 
-### REQ-5.6: Check Abort #2
-```
-Location: Battle Agent workflow, after AI Agent node
-Add: Postgres node querying test_runs.abort_requested
-Add: IF node to exit if abort_requested = true
-Flow: AI Agent → Check Abort → IF abort → Exit gracefully
-```
+The following items were evaluated and intentionally deferred as non-blocking for production use:
 
-### REQ-5.7: x-n8n-secret Header
-```
-Location: All HTTP Request nodes doing callbacks
-Add: Header "x-n8n-secret" = {{$env.N8N_SECRET}}
-Nodes: Update Status callback, Evaluator callback
-```
+### REQ-5.6: Check Abort #2 — DEFERRED
+**Rationale**: Abort #1 (before LLM call) already works. Adding a second check after LLM response would make abort ~5s faster but adds workflow complexity. Current abort is functional.
 
-### REQ-5.8: Tool Mocking
-```
-Location: Battle Agent, before/during AI Agent tool calls
-Design: Code node that intercepts tool calls and returns mock
-Source: lib/tool-scenarios.ts has the mock definitions
-```
+### REQ-5.7: x-n8n-secret Header — DEFERRED
+**Rationale**: Single-user internal tool. Dev mode accepts requests without header. Adding auth on callbacks is an enterprise concern, not needed for current use case.
 
-### REQ-5.9: Status Completed
-```
-Location: Test RUNNER, after Evaluator completes
-Add: Postgres UPDATE test_runs SET status = 'completed'
-Condition: Only if all battles finished successfully
-```
+### REQ-5.8: Tool Mocking — DEFERRED
+**Rationale**: Tools will be tested live in production. Mocking happy_path/error scenarios adds artificial testing that doesn't reflect real behavior. Better to test with actual tool integrations.
+
+### REQ-5.9: Status Completed — DONE (2026-02-17)
+Implemented in Test RUNNER. Verified in E2E tests (RUN-H9C, RUN-J90).
 
 ## Dependencies
 

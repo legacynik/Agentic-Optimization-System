@@ -57,13 +57,13 @@ STEP 8          STEP 7           STEP 6            STEP 5
 
 ### Cosa Manca (NON bloccante per il flow)
 
-| Gap | Impatto | Workaround | Priorita |
-|-----|---------|------------|----------|
+| Gap | Impatto | Workaround | Stato |
+|-----|---------|------------|-------|
 | No UI per prompt_personas manuale | Basso | Usa n8n Generate (auto-link) | P3 |
-| Tool mocking Battle Agent | Medio | Testa prompt senza tools | P2 |
+| ~~Tool mocking Battle Agent~~ | — | Tools testati live | **DEFERRED** |
 | Optimizer n8n non testato | Basso | Ottimizza manualmente con Playbook | P3 |
-| Check Abort #2 | Basso | Abort funziona (piu lento) | P3 |
-| x-n8n-secret su callbacks | Basso | Dev mode accetta senza | P3 |
+| ~~Check Abort #2~~ | — | Abort #1 funziona | **DEFERRED** |
+| ~~x-n8n-secret su callbacks~~ | — | Single-user, dev mode ok | **DEFERRED** |
 | Playwright tests (5 failing) | Nessuno | Non bloccano flow | P4 |
 | Unit tests (0%) | Nessuno | Non bloccano flow | P4 |
 

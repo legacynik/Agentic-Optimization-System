@@ -129,6 +129,7 @@ Devo iniziare un task?
 - **Brainstorming/Analisi**: USA SEMPRE `mcp__sequential-thinking__sequentialthinking`
 - **Docs librerie**: Query Context7
 - **Supabase**: Use Supabase MCP tools for database operations
+- **REGOLA SUBAGENT**: Quando usi MCP tools che consumano molti token (n8n workflows, ricerche estese, Supabase queries complesse) o fai ricerche nel codebase, usa SEMPRE subagent (Task tool) per proteggere il context window principale. Questo è FONDAMENTALE per evitare di esaurire il contesto.
 
 ### UI Components (shadcn/ui)
 - **REGOLA OBBLIGATORIA**: Quando pianifichi o implementi componenti UI, usa SEMPRE shadcn/ui

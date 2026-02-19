@@ -499,6 +499,42 @@ SELECT
 
 ---
 
+## LLM Prompts — NEEDS_OPTIMIZATION
+
+> These prompts exist in n8n workflows and work for the current use case.
+> Flagged for review/optimization when test infrastructure matures.
+
+### PROMPT 1: Judge Agent — Conversation Evaluator (Evaluator workflow)
+- **Workflow**: `202JEX5zm3VlrUT8`
+- **Node**: `Judge Agent` (id: `0e06ff5e-4163-4c63-b2ce-9c9ce3453354`)
+- **Type**: `@n8n/n8n-nodes-langchain.agent` v1.6
+- **Status**: `NEEDS_OPTIMIZATION`
+- **Issue**: Entirely hardcoded for Italian B2B voice agent (call center QA supervisor). Criteria are domain-specific: "Italiano Autentico", "Discovery Socratica", "Pitch dell'Audit", "Gestione Obiezioni", etc. Output schema is rigid with Italian-only fields.
+- **System prompt** (summary): `# SYSTEM PROMPT - EVALUATOR AGENTE VOCALE v4.1 — Sei un supervisore QA severo e analitico per un call center. Il tuo unico compito è valutare la trascrizione di una chiamata, rispettando le seguenti regole fond...`
+- **User prompt** (summary): `CONVERSAZIONE DA VALUTARE: {{ $json.full_transcript }} — CONTESTO AGGIUNTIVO: Persona Category, Description, Outcome, Turni totali, Pattern rilevati, Discovery Quality. Valuta la conversazione secondo i criteri specificati.`
+- **Risk**: Only works for Italian B2B voice agent evaluation. Not generic — criteria, scoring rules, and output JSON schema are all domain-specific. Cannot be reused for other agent types without full rewrite.
+
+### PROMPT 2: LLM Analyzer — Test Run Analysis (Evaluator workflow)
+- **Workflow**: `202JEX5zm3VlrUT8`
+- **Node**: `LLM Analyzer` (id: `0d03d4ab-13a7-4925-b65f-3e311ea55da8`)
+- **Type**: `@n8n/n8n-nodes-langchain.chainLlm` v1.9
+- **Status**: `NEEDS_OPTIMIZATION`
+- **Issue**: System message explicitly says "Italian B2B AI voice agents". User prompt asks for pattern analysis with structured JSON output but has no output parser — relies on LLM producing valid JSON with a Code node to clean it up after.
+- **System prompt** (summary): `You are a Voice Agent Performance Analyst. You analyze battle test results for Italian B2B AI voice agents. Your analysis must be: Evidence-based, Actionable, Prioritized, Concise. Output valid JSON only.`
+- **User prompt** (summary): `Analyze this test run and identify patterns in failures: DATA: {{ JSON.stringify($json.analysis_context) }} — Return JSON with summary, top_issues (title/severity/description/evidence/affected_personas), strengths, suggestions (id/label/priority/action/section/text/addresses). Max 5 items per array.`
+- **Risk**: Hardcoded to Italian B2B domain. No n8n output parser — fragile JSON extraction via post-processing Code node. Evidence field asks for "actual quote" but LLM may hallucinate quotes from truncated transcripts.
+
+### PROMPT 3: LLM Optimize — Prompt Optimizer (Optimizer workflow)
+- **Workflow**: `honcSigslEtpoVqy`
+- **Node**: `LLM Optimize` (id: `llm-optimize`)
+- **Type**: `@n8n/n8n-nodes-langchain.chainLlm` v1.9
+- **Status**: `NEEDS_OPTIMIZATION`
+- **Issue**: Very simple prompt with no guardrails, no structured output, no output parser. Just "output the new complete prompt" as raw text. No validation that the output is actually a valid prompt or preserves required structure.
+- **Current prompt** (summary): `Sei un esperto di prompt engineering. Ottimizza il prompt basandoti sui suggerimenti e feedback. Output il nuovo prompt COMPLETO, non solo le modifiche. PROMPT ATTUALE: {{ context.prompt_text }} ANALYSIS REPORT: {{ analysis_report }} SUGGESTIONS: {{ selected_suggestions }} FEEDBACK UMANO: {{ human_feedback || 'Nessuno' }} Genera il nuovo prompt ottimizzato. Rispondi SOLO con il testo del nuovo prompt, niente altro.`
+- **Risk**: No guardrails — may produce unparseable output, drop critical sections of the original prompt, or inject unwanted patterns. No structured output format. No validation. Raw text response stored directly as new prompt version.
+
+---
+
 ## Notes
 
 - Spec derivata da Party Mode brainstorming (extended)

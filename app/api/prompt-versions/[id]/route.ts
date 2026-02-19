@@ -121,3 +121,56 @@ export async function PATCH(
     return apiError('Internal server error', 'INTERNAL_ERROR', 500)
   }
 }
+
+// ============================================================================
+// DELETE Handler
+// ============================================================================
+
+/**
+ * DELETE /api/prompt-versions/[id]
+ *
+ * Deletes a prompt version. Only drafts can be deleted.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    if (!isValidUUID(id)) {
+      return apiError('Invalid prompt version ID format', 'INVALID_UUID', 400)
+    }
+
+    // Atomic delete: status guard in the same query to prevent TOCTOU race
+    const { data: deleted, error: deleteError } = await supabase
+      .from('prompt_versions')
+      .delete()
+      .eq('id', id)
+      .eq('status', 'draft')
+      .select('id, prompt_name, version')
+      .single()
+
+    if (deleteError || !deleted) {
+      // Could be not found OR not a draft — check which
+      const { data: existing } = await supabase
+        .from('prompt_versions')
+        .select('id, status')
+        .eq('id', id)
+        .single()
+
+      if (!existing) {
+        return apiError('Prompt version not found', 'NOT_FOUND', 404)
+      }
+      return apiError('Only draft versions can be deleted', 'NOT_DRAFT', 400)
+    }
+
+    console.log(`[prompt-versions/id] Deleted draft: ${deleted.prompt_name} ${deleted.version} (${id})`)
+
+    return apiSuccess({ deleted: true, id })
+
+  } catch (error) {
+    console.error('[prompt-versions/id] Unexpected error:', error)
+    return apiError('Internal server error', 'INTERNAL_ERROR', 500)
+  }
+}

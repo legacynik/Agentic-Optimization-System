@@ -32,6 +32,7 @@ export interface OutcomeDistribution {
   success: number
   partial: number
   failure: number
+  timeout: number
 }
 
 interface HealthMonitorProps {
@@ -129,12 +130,13 @@ function Sparkline({ data, color }: { data: ScorePoint[]; color: string }) {
  * Outcome bars component showing success/partial/failure distribution
  */
 function OutcomeBars({ outcomes }: { outcomes: OutcomeDistribution }) {
-  const total = outcomes.success + outcomes.partial + outcomes.failure
+  const total = outcomes.success + outcomes.partial + outcomes.failure + outcomes.timeout
   if (total === 0) return null
 
   const successPct = Math.round((outcomes.success / total) * 100)
   const partialPct = Math.round((outcomes.partial / total) * 100)
   const failurePct = Math.round((outcomes.failure / total) * 100)
+  const timeoutPct = Math.round((outcomes.timeout / total) * 100)
 
   return (
     <div className="space-y-2">
@@ -158,6 +160,12 @@ function OutcomeBars({ outcomes }: { outcomes: OutcomeDistribution }) {
               style={{ width: `${failurePct}%` }}
             />
           )}
+          {timeoutPct > 0 && (
+            <div
+              className="h-full bg-gray-400"
+              style={{ width: `${timeoutPct}%` }}
+            />
+          )}
         </div>
       </div>
       <div className="flex justify-between text-xs">
@@ -170,6 +178,11 @@ function OutcomeBars({ outcomes }: { outcomes: OutcomeDistribution }) {
         <span className="text-rose-600 dark:text-rose-400">
           Failure: {failurePct}%
         </span>
+        {timeoutPct > 0 && (
+          <span className="text-gray-500 dark:text-gray-400">
+            Timeout: {timeoutPct}%
+          </span>
+        )}
       </div>
     </div>
   )

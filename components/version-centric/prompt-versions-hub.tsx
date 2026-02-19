@@ -28,13 +28,17 @@ import {
   ChevronUp,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Check,
+  Trash2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import {
   fetchPromptVersions,
   createPromptVersion,
+  updatePromptVersion,
+  deletePromptVersion,
   safeApiCall,
   type PromptVersionAPI
 } from './prompt-versions/api-actions'
@@ -164,6 +168,36 @@ export function PromptVersionsHub() {
       await loadVersions()
     }
     setCreating(false)
+  }
+
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+
+  const handleApproveDraft = async (version: PromptVersionAPI) => {
+    setActionLoadingId(version.id)
+    try {
+      const result = await safeApiCall(() =>
+        updatePromptVersion(version.id, { status: 'testing' })
+      )
+      if (result) {
+        toast.success(`Approved ${version.prompt_name} ${version.version} → testing`)
+        await loadVersions()
+      }
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleDiscardDraft = async (version: PromptVersionAPI) => {
+    setActionLoadingId(version.id)
+    try {
+      const result = await safeApiCall(() => deletePromptVersion(version.id))
+      if (result) {
+        toast.success(`Discarded draft ${version.prompt_name} ${version.version}`)
+        await loadVersions()
+      }
+    } finally {
+      setActionLoadingId(null)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -376,6 +410,8 @@ export function PromptVersionsHub() {
                             className={`cursor-pointer transition-all hover:shadow-md ${
                               selectedPrompt === version.id
                                 ? 'border-purple-500 shadow-lg'
+                                : version.status === 'draft'
+                                ? 'border-dashed border-yellow-500/60'
                                 : ''
                             }`}
                             onClick={() => setSelectedPrompt(version.id)}
@@ -435,19 +471,60 @@ export function PromptVersionsHub() {
 
                               {/* Action Buttons */}
                               <div className="flex gap-2 mt-4">
-                                <Button size="sm" variant="outline">
-                                  <TestTube className="w-4 h-4 mr-1" />
-                                  Run Test
-                                </Button>
-                                {idx === 0 && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-purple-600 border-purple-600 hover:bg-purple-50"
-                                  >
-                                    <Sparkles className="w-4 h-4 mr-1" />
-                                    Optimize
-                                  </Button>
+                                {version.status === 'draft' ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                                      disabled={actionLoadingId === version.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleApproveDraft(version)
+                                      }}
+                                    >
+                                      {actionLoadingId === version.id ? (
+                                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                      ) : (
+                                        <Check className="w-4 h-4 mr-1" />
+                                      )}
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                      disabled={actionLoadingId === version.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDiscardDraft(version)
+                                      }}
+                                    >
+                                      {actionLoadingId === version.id ? (
+                                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="w-4 h-4 mr-1" />
+                                      )}
+                                      Discard
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button size="sm" variant="outline">
+                                      <TestTube className="w-4 h-4 mr-1" />
+                                      Run Test
+                                    </Button>
+                                    {idx === 0 && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                                      >
+                                        <Sparkles className="w-4 h-4 mr-1" />
+                                        Optimize
+                                      </Button>
+                                    )}
+                                  </>
                                 )}
                                 <Button size="sm" variant="ghost">
                                   <ArrowRight className="w-4 h-4" />
