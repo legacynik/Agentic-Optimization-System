@@ -36,19 +36,34 @@ export async function GET() {
       .from('battle_evaluations')
       .select('criteria_scores')
       .eq('evaluation_id', latestEval.id)
+      .not('criteria_scores', 'is', null)
 
     if (battleError) return apiError('Failed to fetch criteria', 'INTERNAL_ERROR', 500)
-    if (!battleEvals?.length) return apiSuccess([])
+
+    // If latest evaluation has no criteria data, try to find one that does
+    if (!battleEvals?.length) {
+      const { data: fallbackEvals } = await supabase
+        .from('battle_evaluations')
+        .select('criteria_scores')
+        .not('criteria_scores', 'is', null)
+        .limit(50)
+
+      if (!fallbackEvals?.length) return apiSuccess([])
+      // Use fallback data
+      battleEvals.push(...fallbackEvals)
+    }
 
     // Aggregate criteria scores across all battles
+    // criteria_scores is an array of {criteria_name, score, notes}
     const criteriaMap = new Map<string, number[]>()
     for (const be of battleEvals) {
       if (!be.criteria_scores) continue
-      const scores = be.criteria_scores as Record<string, number>
-      for (const [name, score] of Object.entries(scores)) {
-        if (typeof score !== 'number') continue
-        if (!criteriaMap.has(name)) criteriaMap.set(name, [])
-        criteriaMap.get(name)!.push(score)
+      const scores = be.criteria_scores as Array<{ criteria_name: string; score: number; notes?: string }>
+      if (!Array.isArray(scores)) continue
+      for (const entry of scores) {
+        if (typeof entry.score !== 'number' || !entry.criteria_name) continue
+        if (!criteriaMap.has(entry.criteria_name)) criteriaMap.set(entry.criteria_name, [])
+        criteriaMap.get(entry.criteria_name)!.push(entry.score)
       }
     }
 

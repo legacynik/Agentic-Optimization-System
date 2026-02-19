@@ -31,8 +31,7 @@ interface TestRunRow {
   timeout_count: number
   started_at: string
   completed_at: string | null
-  prompt_name: string
-  prompt_version: string
+  prompt_versions: { prompt_name: string; version: string }
 }
 
 export default function TestRunsPage() {
@@ -95,7 +94,7 @@ export default function TestRunsPage() {
                 {filteredRuns.map(run => (
                   <TableRow key={run.id}>
                     <TableCell className="font-mono">{run.test_run_code}</TableCell>
-                    <TableCell>{run.prompt_name} v{run.prompt_version}</TableCell>
+                    <TableCell>{run.prompt_versions?.prompt_name} v{run.prompt_versions?.version}</TableCell>
                     <TableCell>
                       <Badge variant={statusVariant[run.status] || "outline"}>{run.status}</Badge>
                     </TableCell>

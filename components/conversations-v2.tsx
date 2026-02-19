@@ -332,10 +332,18 @@ function parseTranscript(transcript: unknown): TranscriptMessage[] {
   if (Array.isArray(transcript)) {
     return transcript as TranscriptMessage[]
   }
+  // Handle { messages: [...] } wrapper format
+  if (transcript && typeof transcript === 'object' && 'messages' in transcript) {
+    const msgs = (transcript as { messages: unknown }).messages
+    if (Array.isArray(msgs)) return msgs as TranscriptMessage[]
+  }
   if (typeof transcript === 'string') {
     try {
       const parsed = JSON.parse(transcript)
       if (Array.isArray(parsed)) return parsed as TranscriptMessage[]
+      if (parsed && typeof parsed === 'object' && 'messages' in parsed && Array.isArray(parsed.messages)) {
+        return parsed.messages as TranscriptMessage[]
+      }
       return [{ role: 'system', content: transcript }]
     } catch {
       return [{ role: 'system', content: transcript }]
