@@ -10,11 +10,11 @@ CHECKPOINT RULES (from session-management skill):
 *Last updated: 2026-02-19T19*
 
 ## Active Task
-Agentic Refactor v2 — ALL TASKS COMPLETE (T1-T6)
+Housekeeping — Playwright tests fixed
 
 ## Current Status
-- **Phase**: Agentic Refactor v2 — DONE
-- **Progress**: T1 ✅ T2 ✅ T3 ✅ T4 ✅ T5 ✅ T6 ✅
+- **Phase**: Housekeeping
+- **Progress**: PROJECT-INDEX updated ✅, Playwright tests 0 failures ✅
 - **Blockers**: None
 
 ## Completed This Session

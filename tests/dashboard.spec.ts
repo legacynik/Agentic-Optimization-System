@@ -38,15 +38,15 @@ test.describe('Dashboard Structure (No Data Required)', () => {
   });
 
   test('should display loading state initially', async ({ page }) => {
-    // Either shows loading message OR data has already loaded
-    const loadingText = page.getByText('Loading dashboard data...');
+    // Either shows skeleton loading OR data has already loaded with heading
     const dashboardHeading = page.getByRole('heading', { name: 'Dashboard', level: 1 });
+    const skeleton = page.locator('[data-slot="skeleton"]').first();
 
     // One of these should be visible
-    const isLoading = await loadingText.isVisible().catch(() => false);
+    const hasSkeleton = await skeleton.isVisible().catch(() => false);
     const isLoaded = await dashboardHeading.isVisible().catch(() => false);
 
-    expect(isLoading || isLoaded).toBeTruthy();
+    expect(hasSkeleton || isLoaded).toBeTruthy();
   });
 
   test('should have main content area', async ({ page }) => {
@@ -72,17 +72,16 @@ test.describe('Sidebar Navigation', () => {
     await expect(page.getByText('AI Agent Testing')).toBeVisible();
   });
 
-  test('should display Overview navigation section', async ({ page }) => {
-    await expect(page.getByText('Overview')).toBeVisible();
+  test('should display Dashboard navigation section', async ({ page }) => {
+    await expect(page.locator('[data-sidebar="group-label"]').filter({ hasText: 'Dashboard' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Dashboard', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Conversations' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Executive' })).toBeVisible();
   });
 
   test('should display Testing navigation section', async ({ page }) => {
-    await expect(page.getByText('Testing').first()).toBeVisible();
+    await expect(page.locator('[data-sidebar="group-label"]').filter({ hasText: 'Testing' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Test Launcher' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Agentic Testing' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Test Runs' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Conversations' })).toBeVisible();
   });
 
   test('should display Configuration navigation section', async ({ page }) => {
@@ -126,14 +125,15 @@ test.describe('Sidebar Navigation', () => {
     await page.getByRole('link', { name: 'Conversations' }).click();
     await page.waitForLoadState('domcontentloaded');
 
-    // Navigate back to Dashboard - use sidebar-specific locator
-    await page.locator('[data-sidebar="menu-button"]').filter({ hasText: 'Dashboard' }).first().click();
+    // Navigate back to Dashboard - click the nav link (not the header)
+    // The header has "AI Agent Testing" + "Dashboard" subtitle, so filter precisely
+    await page.getByRole('link', { name: 'Dashboard', exact: true }).click();
     await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL('/');
   });
 
   test('should navigate to Evaluators page', async ({ page }) => {
-    await page.getByRole('link', { name: 'Evaluators' }).click();
+    await page.getByRole('link', { name: 'Evaluators', exact: true }).click();
     await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL(/\/evaluators/);
   });

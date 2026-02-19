@@ -58,6 +58,7 @@ Fasi originali (PRD v2-v3) completate e validate:
 | Agentic Refactor v2 (Phases 1-5) | DB columns, API endpoints, 5 components, page rewrite, hooks | Feb 2026 |
 | Agentic Refactor v2 (Phase 7 partial) | Evaluator post-loop analyzer (PG Aggregate + LLM + Save Report) | Feb 2026 |
 | Prompt Optimizer Workflow | n8n workflow JSON created (ID: honcSigslEtpoVqy) | Jan 2026 |
+| Agentic Refactor v2 (T1-T6) | Webhook fix, partial count, optimizer deploy, LLM prompts, draft approval, E2E test | Feb 2026 |
 
 > Dettagli storici in `archive/PRD-v3-index.md` e `archive/PRD-n8n-integration-v2.md`
 
@@ -67,21 +68,7 @@ Fasi originali (PRD v2-v3) completate e validate:
 
 Specs attive con lavoro pendente, in ordine di priorità:
 
-### 1. Agentic Refactor v2 — Remaining Work
-
-**File**: [agentic-refactor-v2.md](specs/agentic-refactor-v2.md)
-**Status**: IN PROGRESS (~70% done, ~3-4h remaining)
-**Source**: Party Mode Brainstorming (Jan 24)
-
-Already done: DB columns, API endpoints, 5 agentic components, page rewrite, hooks, evaluator post-loop analyzer, optimizer JSON.
-
-Remaining:
-- FIX: Webhook handler not persisting `analysis_report` (circular dependency with optimizer trigger)
-- FIX: `use-agent-health` partial outcome count hardcoded to 0
-- VERIFY: Optimizer workflow deployment + `workflow_configs` row
-- VALIDATE: LLM prompts in n8n (analyzer + optimizer) — flagged NEEDS_OPTIMIZATION
-- WIRE: Draft approval flow (create draft → diff → approve/discard)
-- E2E: Full flow test
+*(Nessuna spec attiva al momento — Agentic Refactor v2 completato)*
 
 ---
 
@@ -120,7 +107,7 @@ Fix layout issues: horizontal scroll, text wrapping, panel scroll, edit mode.
 | Task | Priority | Notes |
 |------|----------|-------|
 | Remove .backup files | LOW | dashboard-overview.tsx.backup, filter-bar.tsx.backup |
-| Fix Playwright tests | MEDIUM | 5 failing (evaluator), 8 skipped (/evaluations page) |
+| Fix Playwright tests | DONE | 22 passed, 25 skipped, 0 failed |
 | Add unit tests | LOW | Vitest + RTL, currently 0% |
 | Setup CI/CD | LOW | No GitHub Actions |
 
