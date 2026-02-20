@@ -9,6 +9,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Plus, Edit, Trash2, Star, StarOff } from "lucide-react"
 import { EvaluatorConfigForm } from "@/components/evaluator-config-form"
 
+interface CriteriaTaxonomy {
+  core: string[]
+  domain: string[]
+  weights: Record<string, number>
+}
+
 interface EvaluatorConfig {
   id: string
   name: string
@@ -16,12 +22,11 @@ interface EvaluatorConfig {
   description: string | null
   prompt_version_id: string
   prompt_name?: string
-  criteria: Array<{
-    name: string
-    weight: number
-    description: string
-    scoring_guide?: string
-  }>
+  criteria: CriteriaTaxonomy
+  llm_config: {
+    judge: { model: string; provider: string; fallback: string }
+    analyzer: { model: string; provider: string; fallback: string }
+  } | null
   status: "draft" | "active" | "deprecated"
   is_promoted: boolean
   created_at: string
@@ -201,7 +206,9 @@ export default function EvaluatorsPage() {
                       {config.prompt_name || config.prompt_version_id}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{config.criteria.length} criteria</Badge>
+                      <Badge variant="outline">
+                        {(config.criteria?.core?.length || 0) + (config.criteria?.domain?.length || 0)} criteria
+                      </Badge>
                     </TableCell>
                     <TableCell>{getStatusBadge(config.status)}</TableCell>
                     <TableCell>

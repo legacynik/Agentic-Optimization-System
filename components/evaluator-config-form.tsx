@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CriteriaEditor } from "@/components/criteria-editor"
+import { CriteriaEditor, CriteriaTaxonomy } from "@/components/criteria-editor"
 import { ConfigFormFields } from "@/components/evaluator/config-form-fields"
 import { SystemPromptEditor } from "@/components/evaluator/system-prompt-editor"
+import { LlmConfigEditor, LlmConfig } from "@/components/evaluator/llm-config-editor"
 import { FormActions } from "@/components/evaluator/form-actions"
 
 interface EvaluatorConfig {
@@ -13,12 +14,8 @@ interface EvaluatorConfig {
   version: string
   description: string | null
   prompt_version_id: string
-  criteria: Array<{
-    name: string
-    weight: number
-    description: string
-    scoring_guide?: string
-  }>
+  criteria: CriteriaTaxonomy
+  llm_config: LlmConfig | null
   system_prompt_template: string
   success_config: {
     min_score: number
@@ -38,6 +35,24 @@ interface Prompt {
   name: string
 }
 
+const DEFAULT_LLM_CONFIG: LlmConfig = {
+  judge: { model: "gemini-2.5-flash", provider: "google", fallback: "gemini-2.0-flash" },
+  analyzer: { model: "gemini-2.5-flash", provider: "google", fallback: "gemini-2.0-flash" },
+}
+
+const DEFAULT_CRITERIA: CriteriaTaxonomy = {
+  core: [
+    "brevita_risposte",
+    "una_domanda_per_turno",
+    "mantenimento_flusso",
+    "tono_naturale",
+    "gestione_chiusura",
+    "adattamento_persona",
+  ],
+  domain: [],
+  weights: {},
+}
+
 export function EvaluatorConfigForm({
   config,
   onSuccess,
@@ -49,7 +64,8 @@ export function EvaluatorConfigForm({
     version: "1.0",
     description: null,
     prompt_version_id: "",
-    criteria: [],
+    criteria: DEFAULT_CRITERIA,
+    llm_config: DEFAULT_LLM_CONFIG,
     system_prompt_template: "",
     success_config: {
       min_score: 8.0,
@@ -93,7 +109,7 @@ export function EvaluatorConfigForm({
     if (!formData.prompt_version_id) {
       newErrors.prompt_version_id = "Prompt is required"
     }
-    if (formData.criteria.length === 0) {
+    if (formData.criteria.core.length === 0 && formData.criteria.domain.length === 0) {
       newErrors.criteria = "At least one criterion is required"
     }
     if (!formData.system_prompt_template.trim()) {
@@ -146,12 +162,22 @@ export function EvaluatorConfigForm({
     setFormData({ ...formData, [field]: value })
   }
 
+  // Build flat criteria list for system prompt preview
+  const criteriaForPreview = [
+    ...formData.criteria.core,
+    ...formData.criteria.domain,
+  ].map((name) => ({
+    name,
+    weight: formData.criteria.weights[name] ?? 1.0,
+  }))
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs defaultValue="basic" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic">Basic Info</TabsTrigger>
           <TabsTrigger value="criteria">Criteria</TabsTrigger>
+          <TabsTrigger value="llm">LLM Config</TabsTrigger>
           <TabsTrigger value="prompt">System Prompt</TabsTrigger>
         </TabsList>
 
@@ -174,10 +200,17 @@ export function EvaluatorConfigForm({
           )}
         </TabsContent>
 
+        <TabsContent value="llm" className="space-y-4">
+          <LlmConfigEditor
+            config={formData.llm_config || DEFAULT_LLM_CONFIG}
+            onChange={(llm_config) => setFormData({ ...formData, llm_config })}
+          />
+        </TabsContent>
+
         <TabsContent value="prompt" className="space-y-4">
           <SystemPromptEditor
             value={formData.system_prompt_template}
-            criteria={formData.criteria}
+            criteriaNames={criteriaForPreview}
             error={errors.system_prompt_template}
             onChange={(value) =>
               setFormData({ ...formData, system_prompt_template: value })

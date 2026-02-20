@@ -89,10 +89,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 2: Validate evaluator_config exists
+    // Step 2: Validate evaluator_config exists and fetch criteria + llm_config for snapshot
     const { data: evaluatorConfig, error: configError } = await supabase
       .from('evaluator_configs')
-      .select('id, name, version, status')
+      .select('id, name, version, status, criteria, llm_config')
       .eq('id', body.evaluator_config_id)
       .single()
 
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Step 4: Create new evaluation
+    // Step 4: Create new evaluation with criteria + llm_config snapshots (T4)
     const { data: newEvaluation, error: createError } = await supabase
       .from('evaluations')
       .insert({
@@ -134,7 +134,9 @@ export async function POST(request: NextRequest) {
         triggered_by: 'manual',
         success_count: 0,
         failure_count: 0,
-        partial_count: 0
+        partial_count: 0,
+        criteria_snapshot: evaluatorConfig.criteria,
+        llm_config_snapshot: evaluatorConfig.llm_config
       })
       .select()
       .single()

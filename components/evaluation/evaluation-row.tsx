@@ -17,6 +17,7 @@ interface Evaluation {
   failure_count: number
   partial_count: number
   battles_evaluated: number
+  model_used: string | null
   created_at: string
   completed_at: string | null
 }
@@ -55,6 +56,15 @@ export function EvaluationRow({ evaluation, isSelected, canSelect, onCompareTogg
       <TableCell><Badge variant="destructive">{evaluation.failure_count}</Badge></TableCell>
       <TableCell><Badge variant="secondary">{evaluation.partial_count}</Badge></TableCell>
       <TableCell>{evaluation.battles_evaluated}</TableCell>
+      <TableCell>
+        {evaluation.model_used ? (
+          <Badge variant="outline" className="text-xs font-mono">
+            {evaluation.model_used}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-xs">-</span>
+        )}
+      </TableCell>
       <TableCell>
         {evaluation.is_promoted ? (
           <Badge variant="default"><Star className="mr-1 h-3 w-3 fill-current" />Default</Badge>

@@ -11,10 +11,7 @@ export async function GET(
 
   try {
     // Fetch both evaluations with their battle_evaluations
-    const { data: eval1Data, error: eval1Error } = await supabase
-      .from("evaluations")
-      .select(
-        `
+    const evalSelect = `
         id,
         test_run_id,
         evaluator_config:evaluator_configs(name, version),
@@ -22,6 +19,9 @@ export async function GET(
         success_count,
         failure_count,
         partial_count,
+        model_used,
+        criteria_snapshot,
+        llm_config_snapshot,
         battle_evaluations(
           battle_result_id,
           score,
@@ -30,30 +30,16 @@ export async function GET(
           battle_result:battle_results(persona_id, personas(id, name))
         )
       `
-      )
+
+    const { data: eval1Data, error: eval1Error } = await supabase
+      .from("evaluations")
+      .select(evalSelect)
       .eq("id", evaluationId1)
       .single()
 
     const { data: eval2Data, error: eval2Error } = await supabase
       .from("evaluations")
-      .select(
-        `
-        id,
-        test_run_id,
-        evaluator_config:evaluator_configs(name, version),
-        overall_score,
-        success_count,
-        failure_count,
-        partial_count,
-        battle_evaluations(
-          battle_result_id,
-          score,
-          criteria_scores,
-          outcome,
-          battle_result:battle_results(persona_id, personas(id, name))
-        )
-      `
-      )
+      .select(evalSelect)
       .eq("id", evaluationId2)
       .single()
 
@@ -125,6 +111,11 @@ export async function GET(
     if (scoreDelta > 0.1) betterEvaluation = "b"
     else if (scoreDelta < -0.1) betterEvaluation = "a"
 
+    // Build criteria snapshot diff (T4)
+    const snapshotA = (eval1Data as any).criteria_snapshot
+    const snapshotB = (eval2Data as any).criteria_snapshot
+    const criteriaSnapshotDiff = buildSnapshotDiff(snapshotA, snapshotB)
+
     const comparisonData = {
       evaluation_a: {
         id: eval1Data.id,
@@ -133,6 +124,8 @@ export async function GET(
         overall_score: eval1Data.overall_score || 0,
         success_rate: successRate1,
         criteria_avg: eval1CriteriaAvg,
+        model_used: (eval1Data as any).model_used || null,
+        criteria_snapshot: snapshotA || null,
       },
       evaluation_b: {
         id: eval2Data.id,
@@ -141,6 +134,8 @@ export async function GET(
         overall_score: eval2Data.overall_score || 0,
         success_rate: successRate2,
         criteria_avg: eval2CriteriaAvg,
+        model_used: (eval2Data as any).model_used || null,
+        criteria_snapshot: snapshotB || null,
       },
       deltas: {
         overall_score: {
@@ -153,6 +148,7 @@ export async function GET(
         },
         criteria: criteriaDeltas,
       },
+      criteria_snapshot_diff: criteriaSnapshotDiff,
       per_persona: perPersona,
       verdict: {
         better_evaluation: betterEvaluation,
@@ -230,6 +226,53 @@ function calculateCriteriaDeltas(
   }
 
   return deltas.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+}
+
+/**
+ * Compares two criteria snapshots and returns a diff of what changed.
+ * Works with the new taxonomy format: { core: string[], domain: string[], weights: Record<string, number> }
+ */
+function buildSnapshotDiff(
+  snapshotA: any,
+  snapshotB: any
+): {
+  same_config: boolean
+  added_criteria: string[]
+  removed_criteria: string[]
+  weight_changes: Array<{ name: string; a: number; b: number }>
+} | null {
+  if (!snapshotA || !snapshotB) return null
+
+  const allCriteriaA = [...(snapshotA.core || []), ...(snapshotA.domain || [])]
+  const allCriteriaB = [...(snapshotB.core || []), ...(snapshotB.domain || [])]
+
+  const setA = new Set(allCriteriaA)
+  const setB = new Set(allCriteriaB)
+
+  const added = allCriteriaB.filter((c: string) => !setA.has(c))
+  const removed = allCriteriaA.filter((c: string) => !setB.has(c))
+
+  const weightsA = snapshotA.weights || {}
+  const weightsB = snapshotB.weights || {}
+  const allWeightKeys = new Set([...Object.keys(weightsA), ...Object.keys(weightsB)])
+
+  const weightChanges: Array<{ name: string; a: number; b: number }> = []
+  for (const key of allWeightKeys) {
+    const wA = weightsA[key] ?? 1.0
+    const wB = weightsB[key] ?? 1.0
+    if (Math.abs(wA - wB) > 0.01) {
+      weightChanges.push({ name: key, a: wA, b: wB })
+    }
+  }
+
+  const sameConfig = added.length === 0 && removed.length === 0 && weightChanges.length === 0
+
+  return {
+    same_config: sameConfig,
+    added_criteria: added,
+    removed_criteria: removed,
+    weight_changes: weightChanges,
+  }
 }
 
 function calculatePerPersonaComparison(

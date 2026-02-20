@@ -7,31 +7,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Eye, EyeOff } from "lucide-react"
 
-interface Criterion {
+interface CriteriaNameWeight {
   name: string
   weight: number
-  description: string
-  scoring_guide?: string
 }
 
 interface SystemPromptEditorProps {
   value: string
-  criteria: Criterion[]
+  criteriaNames: CriteriaNameWeight[]
   error?: string
   onChange: (value: string) => void
 }
 
-function buildCriteriaSection(criteria: Criterion[]): string {
+function buildCriteriaSection(criteria: CriteriaNameWeight[]): string {
   if (criteria.length === 0) return "(no criteria defined)"
   return criteria
     .map(
       (c, i) =>
-        `${i + 1}. **${c.name}** (weight: ${c.weight})\n   ${c.description}${c.scoring_guide ? `\n   Scoring guide: ${c.scoring_guide}` : ""}`
+        `${i + 1}. **${c.name}** (weight: ${c.weight})`
     )
     .join("\n")
 }
 
-function buildScoresTemplate(criteria: Criterion[]): string {
+function buildScoresTemplate(criteria: CriteriaNameWeight[]): string {
   if (criteria.length === 0) return "{}"
   const obj: Record<string, number> = {}
   for (const c of criteria) {
@@ -42,7 +40,7 @@ function buildScoresTemplate(criteria: Criterion[]): string {
 
 export function SystemPromptEditor({
   value,
-  criteria,
+  criteriaNames,
   error,
   onChange,
 }: SystemPromptEditorProps) {
@@ -51,9 +49,9 @@ export function SystemPromptEditor({
   const interpolated = useMemo(() => {
     if (!value) return ""
     return value
-      .replace(/\{\{CRITERIA_SECTION\}\}/g, buildCriteriaSection(criteria))
-      .replace(/\{\{SCORES_TEMPLATE\}\}/g, buildScoresTemplate(criteria))
-  }, [value, criteria])
+      .replace(/\{\{CRITERIA_SECTION\}\}/g, buildCriteriaSection(criteriaNames))
+      .replace(/\{\{SCORES_TEMPLATE\}\}/g, buildScoresTemplate(criteriaNames))
+  }, [value, criteriaNames])
 
   return (
     <div className="space-y-4">

@@ -81,7 +81,9 @@ export function EvaluatorSelectForm({
           {selectedConfig.description && (
             <div className="text-muted-foreground">{selectedConfig.description}</div>
           )}
-          <div className="text-muted-foreground">{selectedConfig.criteria.length} criteria</div>
+          <div className="text-muted-foreground">
+            {(selectedConfig.criteria?.core?.length || 0) + (selectedConfig.criteria?.domain?.length || 0)} criteria
+          </div>
         </div>
       )}
 

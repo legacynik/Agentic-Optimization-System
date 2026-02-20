@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
         success_count,
         failure_count,
         partial_count,
+        model_used,
         started_at,
         completed_at,
         created_at,

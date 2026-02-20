@@ -22,12 +22,17 @@ const supabase = createSupabaseClient()
 /** Valid evaluator config statuses */
 type EvaluatorStatus = 'draft' | 'active' | 'deprecated'
 
-/** Criteria item structure */
-interface CriteriaItem {
-  name: string
-  weight?: number
-  description?: string
-  scoring_guide?: string
+/** Criteria taxonomy format */
+interface CriteriaTaxonomy {
+  core: string[]
+  domain: string[]
+  weights: Record<string, number>
+}
+
+/** LLM config for model selection */
+interface LlmConfig {
+  judge: { model: string; provider: string; fallback: string }
+  analyzer: { model: string; provider: string; fallback: string }
 }
 
 // ============================================================================
@@ -35,46 +40,58 @@ interface CriteriaItem {
 // ============================================================================
 
 /**
- * Validates criteria array structure
+ * Validates criteria taxonomy format
  */
-function validateCriteria(criteria: unknown): criteria is CriteriaItem[] {
-  if (!Array.isArray(criteria)) {
+function validateCriteria(criteria: unknown): criteria is CriteriaTaxonomy {
+  if (typeof criteria !== 'object' || criteria === null || Array.isArray(criteria)) {
     return false
   }
 
-  if (criteria.length === 0) {
-    return false
+  const obj = criteria as Record<string, unknown>
+
+  if (!Array.isArray(obj.core) || obj.core.length === 0) return false
+  if (!obj.core.every((item: unknown) => typeof item === 'string' && item.trim() !== '')) return false
+
+  if (!Array.isArray(obj.domain)) return false
+  if (!obj.domain.every((item: unknown) => typeof item === 'string' && item.trim() !== '')) return false
+
+  if (typeof obj.weights !== 'object' || obj.weights === null || Array.isArray(obj.weights)) return false
+  for (const value of Object.values(obj.weights as Record<string, unknown>)) {
+    if (typeof value !== 'number') return false
   }
 
-  return criteria.every(item => {
-    if (typeof item !== 'object' || item === null) {
-      return false
-    }
+  return true
+}
 
-    const criteriaItem = item as Record<string, unknown>
+/**
+ * Validates LLM config structure
+ */
+function validateLlmConfig(config: unknown): config is LlmConfig {
+  if (typeof config !== 'object' || config === null) return false
+  const obj = config as Record<string, unknown>
 
-    // name is required
-    if (typeof criteriaItem.name !== 'string' || criteriaItem.name.trim() === '') {
-      return false
-    }
+  for (const role of ['judge', 'analyzer']) {
+    const rc = obj[role] as Record<string, unknown> | undefined
+    if (!rc || typeof rc !== 'object') return false
+    if (typeof rc.model !== 'string' || typeof rc.provider !== 'string' || typeof rc.fallback !== 'string') return false
+  }
+  return true
+}
 
-    // weight is optional but must be number if present
-    if (criteriaItem.weight !== undefined && typeof criteriaItem.weight !== 'number') {
-      return false
-    }
+/**
+ * REQ-T2.7: Validates criteria names against criteria_definitions table.
+ */
+async function findUnknownCriteriaNames(criteria: CriteriaTaxonomy): Promise<string[]> {
+  const allNames = [...criteria.core, ...criteria.domain]
+  if (allNames.length === 0) return []
 
-    // description is optional but must be string if present
-    if (criteriaItem.description !== undefined && typeof criteriaItem.description !== 'string') {
-      return false
-    }
+  const { data: definitions } = await supabase
+    .from('criteria_definitions')
+    .select('name')
+    .in('name', allNames)
 
-    // scoring_guide is optional but must be string if present
-    if (criteriaItem.scoring_guide !== undefined && typeof criteriaItem.scoring_guide !== 'string') {
-      return false
-    }
-
-    return true
-  })
+  const knownNames = new Set((definitions || []).map((d: { name: string }) => d.name))
+  return allNames.filter(name => !knownNames.has(name))
 }
 
 // ============================================================================
@@ -107,6 +124,7 @@ export async function GET(
         description,
         prompt_version_id,
         criteria,
+        llm_config,
         system_prompt_template,
         success_config,
         is_promoted,
@@ -171,7 +189,7 @@ export async function PUT(
     // Define allowed update fields (cannot update prompt_version_id)
     const allowedFields = [
       'name', 'version', 'description',
-      'criteria', 'system_prompt_template', 'success_config',
+      'criteria', 'llm_config', 'system_prompt_template', 'success_config',
       'status', 'is_promoted'
     ]
 
@@ -190,7 +208,19 @@ export async function PUT(
     // Validate criteria if provided
     if (updateData.criteria !== undefined) {
       if (!validateCriteria(updateData.criteria)) {
-        return apiError('Invalid criteria format. Must be non-empty array with items containing at least "name" field', 'VALIDATION_ERROR', 400)
+        return apiError('Invalid criteria format. Must be { core: string[], domain: string[], weights: Record<string, number> }', 'VALIDATION_ERROR', 400)
+      }
+      // REQ-T2.7: Validate criteria names exist in DB
+      const unknownNames = await findUnknownCriteriaNames(updateData.criteria as CriteriaTaxonomy)
+      if (unknownNames.length > 0) {
+        return apiError(`Unknown criteria names: ${unknownNames.join(', ')}. All names must exist in criteria_definitions.`, 'VALIDATION_ERROR', 400)
+      }
+    }
+
+    // Validate llm_config if provided
+    if (updateData.llm_config !== undefined) {
+      if (!validateLlmConfig(updateData.llm_config)) {
+        return apiError('Invalid llm_config format. Must have judge and analyzer with model, provider, fallback', 'VALIDATION_ERROR', 400)
       }
     }
 

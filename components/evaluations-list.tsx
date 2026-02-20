@@ -23,6 +23,7 @@ interface Evaluation {
   failure_count: number
   partial_count: number
   battles_evaluated: number
+  model_used: string | null
   created_at: string
   completed_at: string | null
 }
@@ -149,6 +150,7 @@ export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) 
                   <TableHead>Failure</TableHead>
                   <TableHead>Partial</TableHead>
                   <TableHead>Battles</TableHead>
+                  <TableHead>Model</TableHead>
                   <TableHead>Promoted</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>

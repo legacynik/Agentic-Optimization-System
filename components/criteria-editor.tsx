@@ -1,239 +1,272 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useCallback } from "react"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Lock, Plus, Info } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
-interface Criterion {
+/** Criteria taxonomy format matching the API */
+export interface CriteriaTaxonomy {
+  core: string[]
+  domain: string[]
+  weights: Record<string, number>
+}
+
+/** Definition from criteria_definitions table */
+interface CriteriaDefinition {
+  id: string
   name: string
-  weight: number
   description: string
-  scoring_guide?: string
+  scoring_guide: string | null
+  category: "core" | "domain"
+  domain_type: string | null
+  weight_default: number
 }
 
 interface CriteriaEditorProps {
-  criteria: Criterion[]
-  onChange: (criteria: Criterion[]) => void
+  criteria: CriteriaTaxonomy
+  onChange: (criteria: CriteriaTaxonomy) => void
 }
 
 export function CriteriaEditor({ criteria, onChange }: CriteriaEditorProps) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [definitions, setDefinitions] = useState<CriteriaDefinition[]>([])
+  const [loading, setLoading] = useState(true)
 
-  function addCriterion() {
-    onChange([
-      ...criteria,
-      {
-        name: "",
-        weight: 1.0,
-        description: "",
-        scoring_guide: "",
-      },
-    ])
-    setExpandedIndex(criteria.length) // Expand the newly added criterion
-  }
+  useEffect(() => {
+    fetchDefinitions()
+  }, [])
 
-  function removeCriterion(index: number) {
-    onChange(criteria.filter((_, i) => i !== index))
-    if (expandedIndex === index) {
-      setExpandedIndex(null)
+  async function fetchDefinitions() {
+    try {
+      const response = await fetch("/api/criteria-definitions")
+      const result = await response.json()
+      if (result.data) {
+        setDefinitions(result.data)
+      }
+    } catch (error) {
+      console.error("Failed to fetch criteria definitions:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  function updateCriterion(index: number, field: keyof Criterion, value: string | number) {
-    const updated = [...criteria]
-    updated[index] = { ...updated[index], [field]: value }
-    onChange(updated)
+  const coreDefs = definitions.filter((d) => d.category === "core")
+  const domainDefs = definitions.filter((d) => d.category === "domain")
+
+  // Group domain criteria by domain_type
+  const domainGroups = domainDefs.reduce<Record<string, CriteriaDefinition[]>>(
+    (acc, def) => {
+      const key = def.domain_type || "general"
+      if (!acc[key]) acc[key] = []
+      acc[key].push(def)
+      return acc
+    },
+    {}
+  )
+
+  const toggleDomainCriterion = useCallback(
+    (name: string, checked: boolean) => {
+      const newDomain = checked
+        ? [...criteria.domain, name]
+        : criteria.domain.filter((n) => n !== name)
+
+      // Clean up weights for removed criteria
+      const newWeights = { ...criteria.weights }
+      if (!checked) {
+        delete newWeights[name]
+      }
+
+      onChange({ ...criteria, domain: newDomain, weights: newWeights })
+    },
+    [criteria, onChange]
+  )
+
+  const updateWeight = useCallback(
+    (name: string, weight: number) => {
+      const newWeights = { ...criteria.weights }
+      if (weight === 1.0) {
+        delete newWeights[name] // 1.0 is default, no need to store
+      } else {
+        newWeights[name] = weight
+      }
+      onChange({ ...criteria, weights: newWeights })
+    },
+    [criteria, onChange]
+  )
+
+  const getWeight = (name: string): number => {
+    return criteria.weights[name] ?? 1.0
   }
 
-  function moveCriterion(index: number, direction: "up" | "down") {
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === criteria.length - 1)
-    ) {
-      return
-    }
-
-    const newIndex = direction === "up" ? index - 1 : index + 1
-    const updated = [...criteria]
-    const temp = updated[index]
-    updated[index] = updated[newIndex]
-    updated[newIndex] = temp
-
-    onChange(updated)
-
-    // Update expanded index to follow the moved item
-    if (expandedIndex === index) {
-      setExpandedIndex(newIndex)
-    } else if (expandedIndex === newIndex) {
-      setExpandedIndex(index)
-    }
+  if (loading) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        Loading criteria catalog...
+      </div>
+    )
   }
 
-  function toggleExpanded(index: number) {
-    setExpandedIndex(expandedIndex === index ? null : index)
-  }
+  const allSelected = [...criteria.core, ...criteria.domain]
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <TooltipProvider>
+      <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold">Evaluation Criteria</h3>
           <p className="text-sm text-muted-foreground">
-            Add and configure criteria for this evaluator
+            Core criteria are always included. Select domain-specific criteria
+            and adjust weights.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {allSelected.length} criteria selected (
+            {criteria.core.length} core + {criteria.domain.length} domain)
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={addCriterion}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Criterion
-        </Button>
-      </div>
 
-      {criteria.length === 0 ? (
+        {/* Core Criteria — locked, always included */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-center text-muted-foreground">
-              No criteria defined yet. Click "Add Criterion" to get started.
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              Core Criteria
+              <Badge variant="secondary" className="text-xs">
+                Always included
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {coreDefs.map((def) => (
+                <CriterionRow
+                  key={def.name}
+                  definition={def}
+                  weight={getWeight(def.name)}
+                  onWeightChange={(w) => updateWeight(def.name, w)}
+                  locked
+                  selected
+                />
+              ))}
+              {coreDefs.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No core criteria found in catalog.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Domain Criteria — selectable per config */}
+        {Object.entries(domainGroups).map(([domainType, defs]) => (
+          <Card key={domainType}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Plus className="h-4 w-4 text-muted-foreground" />
+                Domain: {domainType.replace(/_/g, " ")}
+                <Badge variant="outline" className="text-xs">
+                  {defs.filter((d) => criteria.domain.includes(d.name)).length}/
+                  {defs.length} selected
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {defs.map((def) => (
+                  <CriterionRow
+                    key={def.name}
+                    definition={def}
+                    weight={getWeight(def.name)}
+                    onWeightChange={(w) => updateWeight(def.name, w)}
+                    selected={criteria.domain.includes(def.name)}
+                    onToggle={(checked) =>
+                      toggleDomainCriterion(def.name, checked)
+                    }
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </TooltipProvider>
+  )
+}
+
+/** Single criterion row with checkbox, name, description tooltip, and weight input */
+function CriterionRow({
+  definition,
+  weight,
+  onWeightChange,
+  locked,
+  selected,
+  onToggle,
+}: {
+  definition: CriteriaDefinition
+  weight: number
+  onWeightChange: (w: number) => void
+  locked?: boolean
+  selected: boolean
+  onToggle?: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center gap-3 py-1.5">
+      {locked ? (
+        <div className="w-5 h-5 flex items-center justify-center">
+          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
       ) : (
-        <div className="space-y-2">
-          {criteria.map((criterion, index) => (
-            <Card key={index}>
-              <Collapsible
-                open={expandedIndex === index}
-                onOpenChange={() => toggleExpanded(index)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 w-5 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          moveCriterion(index, "up")
-                        }}
-                        disabled={index === 0}
-                      >
-                        <ChevronUp className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 w-5 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          moveCriterion(index, "down")
-                        }}
-                        disabled={index === criteria.length - 1}
-                      >
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
-                    </div>
+        <Checkbox
+          checked={selected}
+          onCheckedChange={(checked) => onToggle?.(checked === true)}
+        />
+      )}
 
-                    <CollapsibleTrigger asChild>
-                      <div className="flex-1 flex items-center gap-3 cursor-pointer">
-                        <GripVertical className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                          <CardTitle className="text-base">
-                            {criterion.name || `Criterion ${index + 1}`}
-                          </CardTitle>
-                          <CardDescription className="text-xs">
-                            Weight: {criterion.weight} • {criterion.description || "No description"}
-                          </CardDescription>
-                        </div>
-                        <ChevronDown
-                          className={`h-5 w-5 text-muted-foreground transition-transform ${
-                            expandedIndex === index ? "rotate-180" : ""
-                          }`}
-                        />
-                      </div>
-                    </CollapsibleTrigger>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-medium truncate">
+            {definition.name.replace(/_/g, " ")}
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs">
+              <p className="text-sm">{definition.description}</p>
+              {definition.scoring_guide && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {definition.scoring_guide}
+                </p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+          {definition.category === "core" && (
+            <Badge variant="secondary" className="text-[10px] h-4 px-1">
+              core
+            </Badge>
+          )}
+        </div>
+      </div>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeCriterion(index)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-
-                <CollapsibleContent>
-                  <CardContent className="space-y-4 pt-0">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor={`name-${index}`}>
-                          Name <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id={`name-${index}`}
-                          value={criterion.name}
-                          onChange={(e) => updateCriterion(index, "name", e.target.value)}
-                          placeholder="e.g., italiano_autentico"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`weight-${index}`}>Weight</Label>
-                        <Input
-                          id={`weight-${index}`}
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          max="10"
-                          value={criterion.weight}
-                          onChange={(e) =>
-                            updateCriterion(index, "weight", parseFloat(e.target.value))
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`description-${index}`}>
-                        Description <span className="text-destructive">*</span>
-                      </Label>
-                      <Textarea
-                        id={`description-${index}`}
-                        value={criterion.description}
-                        onChange={(e) => updateCriterion(index, "description", e.target.value)}
-                        placeholder="Brief description of what this criterion evaluates"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`scoring_guide-${index}`}>Scoring Guide</Label>
-                      <Textarea
-                        id={`scoring_guide-${index}`}
-                        value={criterion.scoring_guide || ""}
-                        onChange={(e) =>
-                          updateCriterion(index, "scoring_guide", e.target.value)
-                        }
-                        placeholder="Optional: Explain how to score this criterion (e.g., 0-3: Poor, 4-6: Average, 7-10: Excellent)"
-                        rows={2}
-                      />
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
-          ))}
+      {selected && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Label className="text-xs text-muted-foreground">W:</Label>
+          <Input
+            type="number"
+            step="0.1"
+            min="0.1"
+            max="5"
+            value={weight}
+            onChange={(e) => onWeightChange(parseFloat(e.target.value) || 1.0)}
+            className="w-16 h-7 text-xs"
+          />
         </div>
       )}
     </div>

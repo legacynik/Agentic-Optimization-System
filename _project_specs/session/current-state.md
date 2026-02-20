@@ -7,15 +7,16 @@ CHECKPOINT RULES (from session-management skill):
 
 # Current Session State
 
-*Last updated: 2026-02-19T19*
+*Last updated: 2026-02-19T21*
 
 ## Active Task
-Housekeeping — Playwright tests fixed
+P0 Pipeline Foundations — ALL 7 TASKS COMPLETE
 
 ## Current Status
-- **Phase**: Housekeeping
-- **Progress**: PROJECT-INDEX updated ✅, Playwright tests 0 failures ✅
+- **Phase**: P0 Implementation DONE
+- **Progress**: T1-T4 fully implemented across DB, API, n8n, UI
 - **Blockers**: None
+- **Key Output**: `_project_specs/specs/pipeline-p0-foundations.md`
 
 ## Completed This Session
 
@@ -45,18 +46,23 @@ Housekeeping — Playwright tests fixed
 ## Resume Instructions
 
 ```
-LAST SESSION: 2026-02-19 - Agentic Refactor v2 COMPLETE (T1-T6)
+LAST SESSION: 2026-02-19 - P0 Pipeline Foundations DONE
 
 WHAT WAS DONE:
-- T1-T6 all completed
-- T6 E2E: Fixed 2 n8n bugs (Postgres comma-split, chainLlm connection type)
-- Draft prompt_version v3.0-opt created successfully
-- CLAUDE.md updated: subagent rule for MCP/token-heavy ops
+- Sessions 1-7: Dashboard realignment, agentic refactor v2, Playwright fixes
+- Sessions 8-9: Pipeline architecture brainstorming + decisions doc
+- Sessions 10-12: P0 spec created + full implementation (7 tasks, 3 batches)
+
+P0 IMPLEMENTED:
+- T1: Hybrid webhook — single endpoint for runner + re-eval
+- T2: Criteria taxonomy — {core, domain, weights} + criteria_definitions table
+- T3: LLM rotation — Gemini default, expression-based model selection
+- T4: Criteria snapshot — frozen at eval creation, compare API with diff
 
 NEXT STEPS:
-1. Verify draft appears in UI with Approve/Discard buttons
-2. Fix dashboard API timeout for optimizer trigger
-3. Fix Playwright tests (5 failing, 8 skipped)
+1. Commit P0 changes (pending user approval)
+2. Manual test: run test via Test Runner → verify evaluator triggers
+3. Start P1 implementation (Analyzer Flag, Persona Validator)
 ```
 
 ---
