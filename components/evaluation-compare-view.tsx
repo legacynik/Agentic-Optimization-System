@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { CompareHeader } from "@/components/evaluator/compare-header"
 import { CriteriaCompareTable } from "@/components/evaluator/criteria-compare-table"
 import { PersonaCompareList } from "@/components/evaluator/persona-compare-list"
@@ -31,6 +33,11 @@ interface ComparisonData {
     success_rate: number
     criteria_avg: Record<string, number>
   }
+  model_comparison?: {
+    eval_a: { model_used: string | null; tokens_used: number | null }
+    eval_b: { model_used: string | null; tokens_used: number | null }
+    same_model: boolean
+  }
   deltas: {
     overall_score: { value: number; percent: number }
     success_rate: { value: number; percent: number }
@@ -42,6 +49,12 @@ interface ComparisonData {
       direction: "up" | "down" | "same"
     }>
   }
+  criteria_snapshot_diff?: {
+    same_config: boolean
+    added_criteria: string[]
+    removed_criteria: string[]
+    weight_changes: Array<{ name: string; a: number; b: number }>
+  } | null
   per_persona: Array<{
     persona_id: string
     persona_name: string
@@ -67,12 +80,15 @@ interface EvaluationCompareViewProps {
   evaluationId1: string
   evaluationId2: string
   onClose: () => void
+  /** When true, uses the cross-compare endpoint (allows different test runs) */
+  crossCompare?: boolean
 }
 
 export function EvaluationCompareView({
   evaluationId1,
   evaluationId2,
   onClose,
+  crossCompare = false,
 }: EvaluationCompareViewProps) {
   const [data, setData] = useState<ComparisonData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,9 +101,10 @@ export function EvaluationCompareView({
   async function fetchComparison() {
     try {
       setLoading(true)
-      const response = await fetch(
-        `/api/evaluations/${evaluationId1}/compare/${evaluationId2}`
-      )
+      const url = crossCompare
+        ? `/api/evaluations/cross-compare?eval_a=${evaluationId1}&eval_b=${evaluationId2}`
+        : `/api/evaluations/${evaluationId1}/compare/${evaluationId2}`
+      const response = await fetch(url)
       const result = await response.json()
 
       if (result.error) {
@@ -134,10 +151,11 @@ export function EvaluationCompareView({
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="criteria">Criteria</TabsTrigger>
             <TabsTrigger value="personas">Per Persona</TabsTrigger>
+            <TabsTrigger value="config">Config</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -155,6 +173,96 @@ export function EvaluationCompareView({
 
           <TabsContent value="personas" className="space-y-2">
             <PersonaCompareList personas={data.per_persona} />
+          </TabsContent>
+
+          <TabsContent value="config" className="space-y-4">
+            {data.model_comparison && (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium">Model:</span>
+                  <Badge variant={data.model_comparison.same_model ? "outline" : "secondary"}>
+                    {data.model_comparison.same_model ? "Same Model" : "Different Models"}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Evaluation A</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1 text-sm">
+                      <p><span className="text-muted-foreground">Model:</span> {data.model_comparison.eval_a.model_used ?? "N/A"}</p>
+                      <p><span className="text-muted-foreground">Tokens:</span> {data.model_comparison.eval_a.tokens_used?.toLocaleString() ?? "N/A"}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Evaluation B</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1 text-sm">
+                      <p><span className="text-muted-foreground">Model:</span> {data.model_comparison.eval_b.model_used ?? "N/A"}</p>
+                      <p><span className="text-muted-foreground">Tokens:</span> {data.model_comparison.eval_b.tokens_used?.toLocaleString() ?? "N/A"}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            )}
+
+            {data.criteria_snapshot_diff && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    Criteria Snapshot Diff
+                    <Badge variant={data.criteria_snapshot_diff.same_config ? "outline" : "secondary"}>
+                      {data.criteria_snapshot_diff.same_config ? "Identical" : "Changed"}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {data.criteria_snapshot_diff.added_criteria.length > 0 && (
+                    <div>
+                      <p className="font-medium text-green-600 mb-1">Added Criteria</p>
+                      <div className="flex flex-wrap gap-1">
+                        {data.criteria_snapshot_diff.added_criteria.map((c) => (
+                          <Badge key={c} variant="outline" className="text-green-600 border-green-600">+ {c}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {data.criteria_snapshot_diff.removed_criteria.length > 0 && (
+                    <div>
+                      <p className="font-medium text-red-600 mb-1">Removed Criteria</p>
+                      <div className="flex flex-wrap gap-1">
+                        {data.criteria_snapshot_diff.removed_criteria.map((c) => (
+                          <Badge key={c} variant="outline" className="text-red-600 border-red-600">- {c}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {data.criteria_snapshot_diff.weight_changes.length > 0 && (
+                    <div>
+                      <p className="font-medium mb-1">Weight Changes</p>
+                      <div className="space-y-1">
+                        {data.criteria_snapshot_diff.weight_changes.map((w) => (
+                          <div key={w.name} className="flex items-center gap-2">
+                            <span className="text-muted-foreground">{w.name}:</span>
+                            <span>{w.a.toFixed(2)}</span>
+                            <span className="text-muted-foreground">&rarr;</span>
+                            <span>{w.b.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {data.criteria_snapshot_diff.same_config && (
+                    <p className="text-muted-foreground">Both evaluations used identical criteria configuration.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {!data.model_comparison && !data.criteria_snapshot_diff && (
+              <p className="text-sm text-muted-foreground text-center py-4">No config comparison data available.</p>
+            )}
           </TabsContent>
         </Tabs>
 

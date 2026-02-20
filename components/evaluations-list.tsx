@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { BarChart3, RefreshCw } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { BarChart3, GitCompareArrows, RefreshCw } from "lucide-react"
 import { ReEvaluateModal } from "@/components/re-evaluate-modal"
 import { EvaluationCompareView } from "@/components/evaluation-compare-view"
 import { EvaluationRow } from "@/components/evaluation/evaluation-row"
@@ -42,6 +43,8 @@ export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) 
   const [showReEvaluate, setShowReEvaluate] = useState(false)
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null)
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([])
+  const [crossCompareId, setCrossCompareId] = useState("")
+  const [crossCompareIds, setCrossCompareIds] = useState<[string, string] | null>(null)
 
   useEffect(() => { fetchEvaluations() }, [testRunId])
 
@@ -171,6 +174,28 @@ export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) 
               </TableBody>
             </Table>
           )}
+
+          {/* Cross-test-run comparison: paste an external evaluation ID */}
+          {selectedForCompare.length === 1 && (
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+              <GitCompareArrows className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Cross-compare with:</span>
+              <Input
+                placeholder="Paste evaluation ID from another test run"
+                value={crossCompareId}
+                onChange={(e) => setCrossCompareId(e.target.value)}
+                className="max-w-xs text-sm"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!crossCompareId.trim()}
+                onClick={() => setCrossCompareIds([selectedForCompare[0], crossCompareId.trim()])}
+              >
+                Cross Compare
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -181,6 +206,15 @@ export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) 
           evaluationId1={compareIds[0]}
           evaluationId2={compareIds[1]}
           onClose={() => { setCompareIds(null); setSelectedForCompare([]) }}
+        />
+      )}
+
+      {crossCompareIds && (
+        <EvaluationCompareView
+          evaluationId1={crossCompareIds[0]}
+          evaluationId2={crossCompareIds[1]}
+          crossCompare
+          onClose={() => { setCrossCompareIds(null); setCrossCompareId(""); setSelectedForCompare([]) }}
         />
       )}
     </>
