@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { EvaluatorSelectForm } from "@/components/evaluation/evaluator-select-form"
 import { EvaluationProgress } from "@/components/evaluation/evaluation-progress"
 
@@ -36,11 +38,16 @@ export function ReEvaluateModal({ testRunId, open, onOpenChange, onSuccess }: Re
   const [loading, setLoading] = useState(false)
   const [fetchingConfigs, setFetchingConfigs] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [runAnalyzer, setRunAnalyzer] = useState(true)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState<"idle" | "submitting" | "polling" | "complete">("idle")
 
   useEffect(() => {
     if (open) fetchConfigs()
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
   }, [open])
 
   async function fetchConfigs() {
@@ -74,7 +81,7 @@ export function ReEvaluateModal({ testRunId, open, onOpenChange, onSuccess }: Re
       const response = await fetch("/api/evaluations/re-evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test_run_id: testRunId, evaluator_config_id: selectedConfigId }),
+        body: JSON.stringify({ test_run_id: testRunId, evaluator_config_id: selectedConfigId, run_analyzer: runAnalyzer }),
       })
       const result = await response.json()
 
@@ -94,7 +101,7 @@ export function ReEvaluateModal({ testRunId, open, onOpenChange, onSuccess }: Re
     const maxAttempts = 60
     let attempts = 0
 
-    const interval = setInterval(async () => {
+    const interval = pollIntervalRef.current = setInterval(async () => {
       attempts++
       setProgress((attempts / maxAttempts) * 100)
 
@@ -125,7 +132,7 @@ export function ReEvaluateModal({ testRunId, open, onOpenChange, onSuccess }: Re
   }
 
   function resetState() {
-    setSelectedConfigId(""); setError(null); setProgress(0); setStatus("idle")
+    setSelectedConfigId(""); setRunAnalyzer(true); setError(null); setProgress(0); setStatus("idle")
   }
 
   function handleClose() {
@@ -153,15 +160,27 @@ export function ReEvaluateModal({ testRunId, open, onOpenChange, onSuccess }: Re
           {(status === "polling" || status === "complete") ? (
             <EvaluationProgress status={status} progress={progress} onClose={handleClose} />
           ) : (
-            <EvaluatorSelectForm
-              configs={configs}
-              selectedConfigId={selectedConfigId}
-              onConfigChange={setSelectedConfigId}
-              fetchingConfigs={fetchingConfigs}
-              loading={loading}
-              onSubmit={handleSubmit}
-              onCancel={handleClose}
-            />
+            <>
+              <EvaluatorSelectForm
+                configs={configs}
+                selectedConfigId={selectedConfigId}
+                onConfigChange={setSelectedConfigId}
+                fetchingConfigs={fetchingConfigs}
+                loading={loading}
+                onSubmit={handleSubmit}
+                onCancel={handleClose}
+              />
+              <div className="flex items-center gap-2 pt-2">
+                <Checkbox
+                  id="run-analyzer"
+                  checked={runAnalyzer}
+                  onCheckedChange={(checked) => setRunAnalyzer(checked === true)}
+                />
+                <Label htmlFor="run-analyzer" className="text-sm font-normal cursor-pointer">
+                  Include analysis (LLM Analyzer after scoring)
+                </Label>
+              </div>
+            </>
           )}
         </div>
       </DialogContent>

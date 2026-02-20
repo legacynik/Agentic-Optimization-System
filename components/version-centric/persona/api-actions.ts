@@ -28,7 +28,10 @@ export async function fetchPersonasFromAPI(promptName: string): Promise<Persona[
     behaviors: p.behaviors || [],
     created_by: p.created_by || 'human',
     validated_by_human: p.validated_by_human,
-    validation_status: p.validation_status || 'pending',
+    validation_status: p.validation_status || 'pending_validation',
+    validation_score: p.validation_score ?? null,
+    validation_details: p.validation_details ?? null,
+    rejection_reason: p.rejection_reason ?? null,
     feedback_notes: p.feedback_notes || []
   }))
 }

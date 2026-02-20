@@ -84,6 +84,47 @@ export function usePersonaWorkshop({ promptName, promptVersion }: UsePersonaWork
     }
   }
 
+  // T6: Trigger LLM validation via n8n
+  const llmValidatePersona = async (personaId: string) => {
+    try {
+      setPersonas(prev => prev.map(p => p.id === personaId
+        ? { ...p, validation_status: 'pending_validation' } : p))
+      const res = await fetch(`/api/personas/${personaId}/validate`, { method: 'POST' })
+      const result = await res.json()
+      if (result.success) {
+        if (result.data?.warning) {
+          toast.warning(result.data.message || 'Validation may not have triggered.')
+        } else {
+          toast.success('LLM validation triggered. Refresh in a moment.')
+        }
+        setTimeout(() => fetchPersonas(), 8000)
+      } else {
+        toast.error(result.error?.message || 'Failed to trigger validation')
+      }
+    } catch (error) {
+      console.error('[PersonaWorkshop] Error triggering LLM validation:', error)
+      toast.error('Failed to trigger LLM validation')
+    }
+  }
+
+  // T6: Approve override for rejected personas
+  const approveOverride = async (personaId: string) => {
+    try {
+      const res = await fetch(`/api/personas/${personaId}/approve-override`, { method: 'POST' })
+      const result = await res.json()
+      if (result.success) {
+        setPersonas(prev => prev.map(p => p.id === personaId
+          ? { ...p, validation_status: 'approved_override' } : p))
+        toast.success('Persona approved via override')
+      } else {
+        toast.error(result.error?.message || 'Failed to override')
+      }
+    } catch (error) {
+      console.error('[PersonaWorkshop] Error approving override:', error)
+      toast.error('Failed to approve override')
+    }
+  }
+
   const editPersona = (persona: Persona) => {
     setEditingPersona({ ...persona })
     setShowEditDialog(true)
@@ -97,7 +138,7 @@ export function usePersonaWorkshop({ promptName, promptVersion }: UsePersonaWork
 
       if (isNew) {
         const newPersona = await createPersona(editingPersona, promptName)
-        setPersonas(prev => [{ ...newPersona, validation_status: 'pending' }, ...prev])
+        setPersonas(prev => [{ ...newPersona, validation_status: 'pending_validation' }, ...prev])
         toast.success('Persona created')
       } else {
         await updatePersona(editingPersona)
@@ -136,7 +177,7 @@ export function usePersonaWorkshop({ promptName, promptVersion }: UsePersonaWork
       behaviors: [],
       created_by: 'human',
       validated_by_human: false,
-      validation_status: 'pending'
+      validation_status: 'pending_validation'
     }
     setEditingPersona(newPersona)
     setShowEditDialog(true)
@@ -194,6 +235,8 @@ export function usePersonaWorkshop({ promptName, promptVersion }: UsePersonaWork
     deletePersona,
     addCustomPersona,
     openFeedbackDialog,
-    submitFeedback
+    submitFeedback,
+    llmValidatePersona,
+    approveOverride
   }
 }

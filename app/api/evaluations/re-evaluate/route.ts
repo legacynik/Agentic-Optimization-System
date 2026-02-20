@@ -21,6 +21,7 @@ const supabase = createSupabaseClient()
 interface ReEvaluateRequest {
   test_run_id: string
   evaluator_config_id: string
+  run_analyzer?: boolean // T5: Optional flag to skip LLM Analyzer (default: true)
 }
 
 // ============================================================================
@@ -157,10 +158,12 @@ export async function POST(request: NextRequest) {
 
     if (webhookConfig?.webhook_url && webhookConfig.is_active) {
       try {
+        const runAnalyzer = body.run_analyzer !== false // default: true
         const triggerPayload = {
           test_run_id: body.test_run_id,
           evaluation_id: newEvaluation.id,
           evaluator_config_id: body.evaluator_config_id,
+          run_analyzer: runAnalyzer,
           triggered_by: 'manual',
           callback_url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/n8n/webhook`,
           timestamp: Date.now()

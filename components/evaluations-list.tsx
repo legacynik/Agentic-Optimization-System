@@ -26,6 +26,8 @@ interface Evaluation {
   model_used: string | null
   created_at: string
   completed_at: string | null
+  error_count: number
+  has_analysis: boolean
 }
 
 interface EvaluationsListProps {

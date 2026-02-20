@@ -65,7 +65,9 @@ export function PersonaWorkshop({
     deletePersona,
     addCustomPersona,
     openFeedbackDialog,
-    submitFeedback
+    submitFeedback,
+    llmValidatePersona,
+    approveOverride
   } = usePersonaWorkshop({ promptName, promptVersion })
 
   /**
@@ -150,6 +152,8 @@ export function PersonaWorkshop({
         onReject={(id) => validatePersona(id, 'reject')}
         onFeedback={openFeedbackDialog}
         onGenerate={generatePersonas}
+        onLlmValidate={llmValidatePersona}
+        onApproveOverride={approveOverride}
       />
 
       {/* Save Button - only show if there are validated personas */}

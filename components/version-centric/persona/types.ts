@@ -1,6 +1,6 @@
 /**
- * Persona interface matching the database schema (v2.4)
- * validation_status: only 'pending' or 'validated' (simplified from 5 states)
+ * Persona interface matching the database schema (P1-T6 lifecycle)
+ * validation_status: pending_validation → validated | rejected → approved_override
  */
 export interface Persona {
   id: string
@@ -13,7 +13,15 @@ export interface Persona {
   behaviors: string[] | null
   created_by: 'ai' | 'human' | 'template'
   validated_by_human: boolean
-  validation_status: 'pending' | 'validated'  // v2.4: only 2 states
+  validation_status: 'pending_validation' | 'validated' | 'rejected' | 'approved_override'
+  validation_score?: number | null
+  validation_details?: {
+    naturalness?: number
+    coherence?: number
+    testability?: number
+    reasoning?: string
+  } | null
+  rejection_reason?: string | null
   feedback_notes?: FeedbackNote[]
 }
 

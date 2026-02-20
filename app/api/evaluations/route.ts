@@ -37,8 +37,11 @@ interface EvaluationResponse {
   started_at: string | null
   completed_at: string | null
   created_at: string
+  model_used: string | null
   triggered_by: string | null
   error_message: string | null
+  error_count: number
+  has_analysis: boolean
 }
 
 // ============================================================================
@@ -92,6 +95,7 @@ export async function GET(request: NextRequest) {
         created_at,
         triggered_by,
         error_message,
+        has_analysis,
         evaluator_configs!inner(name, version)
       `)
       .eq('test_run_id', testRunId)
@@ -102,20 +106,27 @@ export async function GET(request: NextRequest) {
       return apiError('Failed to fetch evaluations', 'INTERNAL_ERROR', 500)
     }
 
-    // Get battle_evaluations counts for each evaluation
+    // Get battle_evaluations counts (total + error) for each evaluation
     const evaluationIds = evaluations?.map(e => e.id) || []
     let battleCounts: Record<string, number> = {}
+    let errorCounts: Record<string, number> = {}
 
     if (evaluationIds.length > 0) {
       const { data: battleData, error: battleError } = await supabase
         .from('battle_evaluations')
-        .select('evaluation_id')
+        .select('evaluation_id, outcome')
         .in('evaluation_id', evaluationIds)
 
       if (!battleError && battleData) {
-        // Count battles per evaluation
         battleCounts = battleData.reduce((acc, battle) => {
           acc[battle.evaluation_id] = (acc[battle.evaluation_id] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        // T7: Count parse error battles separately
+        errorCounts = battleData.reduce((acc, battle) => {
+          if (battle.outcome === 'error') {
+            acc[battle.evaluation_id] = (acc[battle.evaluation_id] || 0) + 1
+          }
           return acc
         }, {} as Record<string, number>)
       }
@@ -138,8 +149,11 @@ export async function GET(request: NextRequest) {
       started_at: evaluation.started_at,
       completed_at: evaluation.completed_at,
       created_at: evaluation.created_at,
+      model_used: evaluation.model_used ?? null,
       triggered_by: evaluation.triggered_by,
-      error_message: evaluation.error_message
+      error_message: evaluation.error_message,
+      error_count: errorCounts[evaluation.id] || 0,
+      has_analysis: evaluation.has_analysis ?? false
     })) || []
 
     return apiSuccess(transformedData)

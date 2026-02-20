@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Test run status types per PRD v3 - State Machine
@@ -101,14 +102,56 @@ async function abortTestRun(testRunId: string): Promise<void> {
   }
 }
 
+// T8: Reconcile mismatched test_run/evaluation status
+async function reconcileTestRun(testRunId: string): Promise<{ reconciled: boolean }> {
+  const res = await fetch(`/api/test-runs/${testRunId}/reconcile`, { method: 'POST' })
+  if (!res.ok) return { reconciled: false }
+  const result = await res.json()
+  return result.data || { reconciled: false }
+}
+
 /**
  * Hook for polling test run status
  * Per PRD 10.3: Polling every 5 sec when status=running/pending
+ * T8: Auto-reconciles if stuck in evaluating for >2 minutes
  */
 export function useTestRunStatus(testRunId: string | null) {
+  const evaluatingSinceRef = useRef<number | null>(null)
+  const reconcileAttemptedRef = useRef(false)
+  const queryClient = useQueryClient()
+
+  const tryReconcile = useCallback(async (id: string) => {
+    if (reconcileAttemptedRef.current) return
+    reconcileAttemptedRef.current = true
+    const result = await reconcileTestRun(id)
+    if (result.reconciled) {
+      queryClient.invalidateQueries({ queryKey: ['test-run', id] })
+      queryClient.invalidateQueries({ queryKey: ['test-runs'] })
+    }
+  }, [queryClient])
+
   return useQuery({
     queryKey: ['test-run', testRunId],
-    queryFn: () => fetchTestRun(testRunId!),
+    queryFn: async () => {
+      const data = await fetchTestRun(testRunId!)
+
+      // T8: Track how long we've been in 'evaluating' state
+      if (data.status === 'evaluating') {
+        if (!evaluatingSinceRef.current) {
+          evaluatingSinceRef.current = Date.now()
+        }
+        // Auto-reconcile after 2 minutes stuck in evaluating
+        const stuckMs = Date.now() - evaluatingSinceRef.current
+        if (stuckMs > 120_000) {
+          tryReconcile(testRunId!)
+        }
+      } else {
+        evaluatingSinceRef.current = null
+        reconcileAttemptedRef.current = false
+      }
+
+      return data
+    },
     enabled: !!testRunId,
     refetchInterval: (query) => {
       const data = query.state.data

@@ -11,7 +11,8 @@ import {
   Bot,
   UserCheck,
   Trash2,
-  MessageSquarePlus
+  MessageSquarePlus,
+  Sparkles
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Persona, getDifficultyColor } from './types'
@@ -25,6 +26,7 @@ interface PersonaCardProps {
   onValidate: (personaId: string) => void
   onReject: (personaId: string) => void
   onFeedback: (persona: Persona) => void
+  onLlmValidate?: (personaId: string) => void
 }
 
 /**
@@ -38,7 +40,8 @@ export function PersonaCard({
   onDelete,
   onValidate,
   onReject,
-  onFeedback
+  onFeedback,
+  onLlmValidate
 }: PersonaCardProps) {
   return (
     <motion.div
@@ -125,6 +128,18 @@ export function PersonaCard({
                 <X className="w-4 h-4 mr-1" />
                 Reject
               </Button>
+              {onLlmValidate && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-purple-600 border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950"
+                  onClick={() => onLlmValidate(persona.id)}
+                  title="Trigger LLM quality validation"
+                >
+                  <Sparkles className="w-4 h-4 mr-1" />
+                  LLM Validate
+                </Button>
+              )}
               <Button
                 size="sm"
                 className="bg-green-500 hover:bg-green-600 text-white"

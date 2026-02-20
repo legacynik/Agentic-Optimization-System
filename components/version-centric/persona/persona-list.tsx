@@ -9,11 +9,13 @@ import {
   UserCheck,
   Users,
   Edit,
-  MessageSquarePlus
+  MessageSquarePlus,
+  ShieldCheck,
+  XCircle
 } from 'lucide-react'
 import { PersonaCard } from './persona-card'
 import { Persona, getDifficultyColor } from './types'
-import { getStatusBadge } from './helpers'
+import { getStatusBadge, getValidationScoreDisplay } from './helpers'
 
 interface PersonaListProps {
   personas: Persona[]
@@ -23,6 +25,8 @@ interface PersonaListProps {
   onReject: (personaId: string) => void
   onFeedback: (persona: Persona) => void
   onGenerate: () => void
+  onLlmValidate?: (personaId: string) => void
+  onApproveOverride?: (personaId: string) => void
 }
 
 /**
@@ -36,22 +40,28 @@ export function PersonaList({
   onValidate,
   onReject,
   onFeedback,
-  onGenerate
+  onGenerate,
+  onLlmValidate,
+  onApproveOverride
 }: PersonaListProps) {
-  const pendingPersonas = personas.filter(p => p.validation_status === 'pending')
-  const validatedPersonas = personas.filter(p => p.validation_status === 'validated')
+  const pendingPersonas = personas.filter(p => p.validation_status === 'pending_validation')
+  const validatedPersonas = personas.filter(p => p.validation_status === 'validated' || p.validation_status === 'approved_override')
+  const rejectedPersonas = personas.filter(p => p.validation_status === 'rejected')
 
   return (
     <Tabs defaultValue="validation" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="validation">
           Pending ({pendingPersonas.length})
         </TabsTrigger>
         <TabsTrigger value="validated">
           Validated ({validatedPersonas.length})
         </TabsTrigger>
+        <TabsTrigger value="rejected">
+          Rejected ({rejectedPersonas.length})
+        </TabsTrigger>
         <TabsTrigger value="all">
-          All Personas ({personas.length})
+          All ({personas.length})
         </TabsTrigger>
       </TabsList>
 
@@ -81,6 +91,7 @@ export function PersonaList({
                 onValidate={onValidate}
                 onReject={onReject}
                 onFeedback={onFeedback}
+                onLlmValidate={onLlmValidate}
               />
             ))}
           </div>
@@ -148,6 +159,64 @@ export function PersonaList({
         )}
       </TabsContent>
 
+      {/* Rejected Tab */}
+      <TabsContent value="rejected" className="space-y-4">
+        {rejectedPersonas.length === 0 ? (
+          <Card className="p-12 text-center">
+            <XCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <p className="text-muted-foreground">No rejected personas</p>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {rejectedPersonas.map((persona) => (
+              <Card key={persona.id} className="border-red-500/20">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{persona.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {getValidationScoreDisplay(persona.validation_score)}
+                      {getStatusBadge(persona)}
+                    </div>
+                  </div>
+                  <CardDescription className="text-xs">
+                    {persona.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {persona.rejection_reason && (
+                    <div className="mb-3 p-2 rounded bg-red-50 dark:bg-red-950/30 text-sm text-red-700 dark:text-red-300">
+                      <span className="font-medium">Rejection reason:</span> {persona.rejection_reason}
+                    </div>
+                  )}
+                  {persona.validation_details && (
+                    <div className="flex gap-3 mb-3 text-xs">
+                      <span>Naturalness: <strong>{persona.validation_details.naturalness}</strong></span>
+                      <span>Coherence: <strong>{persona.validation_details.coherence}</strong></span>
+                      <span>Testability: <strong>{persona.validation_details.testability}</strong></span>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2 pt-3 border-t">
+                    <Button size="sm" variant="outline" onClick={() => onEdit(persona)}>
+                      <Edit className="w-4 h-4 mr-1" />Edit & Re-validate
+                    </Button>
+                    {onApproveOverride && (
+                      <Button
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600 text-white"
+                        onClick={() => onApproveOverride(persona.id)}
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-1" />
+                        Approve Override
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+
       {/* All Personas Tab */}
       <TabsContent value="all" className="space-y-4">
         {personas.length === 0 ? (
@@ -164,8 +233,9 @@ export function PersonaList({
               <Card
                 key={persona.id}
                 className={
-                  persona.validation_status === 'validated'
-                    ? 'border-green-500/20'
+                  persona.validation_status === 'validated' ? 'border-green-500/20'
+                    : persona.validation_status === 'rejected' ? 'border-red-500/20'
+                    : persona.validation_status === 'approved_override' ? 'border-blue-500/20'
                     : 'border-yellow-500/20'
                 }
               >

@@ -21,8 +21,8 @@ const supabase = createSupabaseClient()
 /** Valid persona difficulty levels */
 type Difficulty = 'easy' | 'medium' | 'hard' | 'extreme'
 
-/** Valid validation statuses (v2.4: only 2 states) */
-type ValidationStatus = 'pending' | 'validated'
+/** Valid validation statuses (P1-T6 lifecycle) */
+type ValidationStatus = 'pending_validation' | 'validated' | 'rejected' | 'approved_override'
 
 /** Create persona request body */
 interface CreatePersonaRequest {
@@ -101,6 +101,9 @@ export async function GET(request: NextRequest) {
         difficulty,
         behaviors,
         validation_status,
+        validation_score,
+        validation_details,
+        rejection_reason,
         created_for_prompt,
         created_by,
         validated_by_human,
@@ -124,7 +127,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('created_for_prompt', createdForPrompt)
     }
     if (search) {
-      query = query.ilike('name', `%${search}%`)
+      const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_')
+      query = query.ilike('name', `%${escaped}%`)
     }
 
     const { data, error, count } = await query
@@ -203,7 +207,7 @@ export async function POST(request: NextRequest) {
         behaviors: body.behaviors || null,
         created_for_prompt: body.created_for_prompt?.trim() || null,
         created_by: body.created_by || 'human',
-        validation_status: 'pending',
+        validation_status: 'pending_validation',
         validated_by_human: false,
         feedback_notes: []
       })

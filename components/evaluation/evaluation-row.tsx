@@ -3,7 +3,8 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TableCell, TableRow } from "@/components/ui/table"
-import { Star, StarOff, Loader2 } from "lucide-react"
+import { Star, StarOff, Loader2, AlertTriangle } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface Evaluation {
   id: string
@@ -20,6 +21,8 @@ interface Evaluation {
   model_used: string | null
   created_at: string
   completed_at: string | null
+  error_count: number
+  has_analysis: boolean
 }
 
 interface EvaluationRowProps {
@@ -55,7 +58,23 @@ export function EvaluationRow({ evaluation, isSelected, canSelect, onCompareTogg
       <TableCell><Badge variant="default" className="bg-green-600">{evaluation.success_count}</Badge></TableCell>
       <TableCell><Badge variant="destructive">{evaluation.failure_count}</Badge></TableCell>
       <TableCell><Badge variant="secondary">{evaluation.partial_count}</Badge></TableCell>
-      <TableCell>{evaluation.battles_evaluated}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1.5">
+          {evaluation.battles_evaluated}
+          {evaluation.error_count > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{evaluation.battles_evaluated - evaluation.error_count}/{evaluation.battles_evaluated} scored, {evaluation.error_count} parse error{evaluation.error_count > 1 ? 's' : ''}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      </TableCell>
       <TableCell>
         {evaluation.model_used ? (
           <Badge variant="outline" className="text-xs font-mono">
