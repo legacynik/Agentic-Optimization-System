@@ -1,20 +1,18 @@
 -- P2: Differentiating Features
 
--- T10: Optimizer dual mode — create optimization_history table
-CREATE TABLE IF NOT EXISTS optimization_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  test_run_id UUID NOT NULL REFERENCES test_runs(id),
-  prompt_version_id UUID REFERENCES prompt_versions(id),
-  new_prompt_version_id UUID REFERENCES prompt_versions(id),
-  selected_suggestions JSONB DEFAULT '[]'::jsonb,
-  human_feedback TEXT,
-  optimizer_mode VARCHAR(20) DEFAULT 'full',
-  optimization_round INTEGER DEFAULT 1,
-  status VARCHAR(20) DEFAULT 'pending',
-  result JSONB,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  completed_at TIMESTAMPTZ
-);
+-- T10: Optimizer dual mode — extend existing optimization_history table
+-- (table already exists from migration 001 with a different schema)
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS optimizer_mode VARCHAR(20) DEFAULT 'full';
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS optimization_round INTEGER DEFAULT 1;
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS selected_suggestions JSONB;
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS human_feedback TEXT;
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS result JSONB;
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS test_run_id UUID REFERENCES test_runs(id);
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS prompt_version_id UUID REFERENCES prompt_versions(id);
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS new_prompt_version_id UUID REFERENCES prompt_versions(id);
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE optimization_history ADD COLUMN IF NOT EXISTS regression_detected BOOLEAN DEFAULT false;
 
 -- T11: Latency metrics (structured transcript)
 ALTER TABLE battle_results ADD COLUMN IF NOT EXISTS transcript_structured JSONB;

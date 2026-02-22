@@ -327,6 +327,15 @@ async function handleOptimizerCallback(payload: N8nCallbackPayload): Promise<voi
     if (historyRecord) {
       const optimizationResult = result.optimization as Record<string, unknown>
 
+      // Regression detection: flag if new score is >1 point worse than original
+      const regressionThreshold = 1.0
+      const originalScore = result?.original_score as number | null ?? null
+      const newScore = result?.new_score as number | null ?? null
+      const regressionDetected =
+        originalScore !== null &&
+        newScore !== null &&
+        (originalScore - newScore) > regressionThreshold
+
       await supabase
         .from('optimization_history')
         .update({
@@ -334,8 +343,13 @@ async function handleOptimizerCallback(payload: N8nCallbackPayload): Promise<voi
           result: optimizationResult,
           new_prompt_version_id: optimizationResult?.new_prompt_version_id || null,
           completed_at: new Date().toISOString(),
+          regression_detected: regressionDetected,
         })
         .eq('id', historyRecord.id)
+
+      if (regressionDetected) {
+        console.warn(`[n8n/webhook] Regression detected for optimization ${historyRecord.id}: original=${originalScore}, new=${newScore}`)
+      }
 
       console.log(`[n8n/webhook] Updated optimization_history ${historyRecord.id}`)
     }

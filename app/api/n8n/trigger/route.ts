@@ -205,6 +205,29 @@ export async function POST(request: NextRequest) {
 
     // Save optimization_history record for optimizer workflows
     if (body.workflow_type === 'optimizer' && body.test_run_id) {
+      // Circuit breaker: enforce max_optimization_rounds from workflow_configs
+      const { count: existingRounds } = await supabase
+        .from('optimization_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('test_run_id', body.test_run_id)
+
+      const { data: optimizerConfig } = await supabase
+        .from('workflow_configs')
+        .select('config')
+        .eq('workflow_type', 'optimizer')
+        .single()
+
+      const maxRounds = (optimizerConfig?.config as Record<string, unknown> | null)?.max_optimization_rounds as number ?? 3
+      const currentRound = (existingRounds ?? 0) + 1
+
+      if (currentRound > maxRounds) {
+        return apiError(
+          `Circuit breaker: max optimization rounds (${maxRounds}) reached for this test run`,
+          'CIRCUIT_BREAKER',
+          429
+        )
+      }
+
       const { error: historyError } = await supabase
         .from('optimization_history')
         .insert({
@@ -212,6 +235,7 @@ export async function POST(request: NextRequest) {
           selected_suggestions: body.selected_suggestions || [],
           human_feedback: body.human_feedback || null,
           optimizer_mode: body.optimizer_mode || 'full',
+          optimization_round: currentRound,
           status: 'pending',
         })
 
