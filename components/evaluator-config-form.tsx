@@ -80,7 +80,11 @@ export function EvaluatorConfigForm({
     fetchPrompts()
 
     if (config) {
-      setFormData(config)
+      // Normalize criteria: ensure taxonomy format even if legacy flat array
+      const normalizedCriteria = (config.criteria && typeof config.criteria === 'object' && 'core' in config.criteria)
+        ? config.criteria
+        : DEFAULT_CRITERIA
+      setFormData({ ...config, criteria: normalizedCriteria })
     }
   }, [config])
 
@@ -109,7 +113,9 @@ export function EvaluatorConfigForm({
     if (!formData.prompt_version_id) {
       newErrors.prompt_version_id = "Prompt is required"
     }
-    if (formData.criteria.core.length === 0 && formData.criteria.domain.length === 0) {
+    const coreLen = Array.isArray(formData.criteria?.core) ? formData.criteria.core.length : 0
+    const domainLen = Array.isArray(formData.criteria?.domain) ? formData.criteria.domain.length : 0
+    if (coreLen === 0 && domainLen === 0) {
       newErrors.criteria = "At least one criterion is required"
     }
     if (!formData.system_prompt_template.trim()) {
@@ -163,12 +169,16 @@ export function EvaluatorConfigForm({
   }
 
   // Build flat criteria list for system prompt preview
+  // Guard against legacy flat array format or missing fields
+  const coreNames = Array.isArray(formData.criteria?.core) ? formData.criteria.core : []
+  const domainNames = Array.isArray(formData.criteria?.domain) ? formData.criteria.domain : []
+  const weightsMap = formData.criteria?.weights ?? {}
   const criteriaForPreview = [
-    ...formData.criteria.core,
-    ...formData.criteria.domain,
+    ...coreNames,
+    ...domainNames,
   ].map((name) => ({
     name,
-    weight: formData.criteria.weights[name] ?? 1.0,
+    weight: weightsMap[name] ?? 1.0,
   }))
 
   return (

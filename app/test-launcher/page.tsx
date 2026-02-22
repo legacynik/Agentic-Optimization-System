@@ -191,13 +191,14 @@ export default function TestLauncherPage() {
         body: JSON.stringify(payload),
       })
 
-      const data = await res.json()
+      const json = await res.json()
 
       if (!res.ok) {
-        console.error("[TestLauncher] API error:", data)
-        throw new Error(data.error || "Failed to launch test")
+        console.error("[TestLauncher] API error:", json)
+        throw new Error(json.error?.message || json.error || "Failed to launch test")
       }
 
+      const data = json.data ?? json
       console.log("[TestLauncher] Test run created:", data)
       setActiveTestRunId(data.test_run_id || data.id || data.test_run_code)
     } catch (error) {

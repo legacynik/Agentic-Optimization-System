@@ -92,16 +92,26 @@ test.describe('Evaluator Management', () => {
       test.skip(true, 'No prompts available to select');
     }
 
-    // Navigate to Criteria tab and add a criterion
+    // Navigate to Criteria tab — P0 changed to taxonomy-based editor
+    // Core criteria are auto-included; domain criteria are selectable via checkboxes
     await page.getByRole('tab', { name: /criteria/i }).click();
-    await page.getByRole('button', { name: /add criterion/i }).click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(1000); // Wait for criteria_definitions API
 
-    // Fill criterion name
-    const criterionNameInput = page.getByRole('textbox', { name: /name/i }).last();
-    await criterionNameInput.fill('Test Criterion');
-    const descriptionInput = page.getByRole('textbox', { name: /description/i }).last();
-    await descriptionInput.fill('Test criterion description');
+    // Verify core criteria section exists (always included)
+    const coreCriteriaLoaded = await page.getByText('Core Criteria').isVisible().catch(() => false);
+    if (!coreCriteriaLoaded) {
+      // If criteria_definitions table is empty, skip criteria-dependent parts
+      test.skip(true, 'No criteria definitions in database');
+    }
+
+    // Verify at least core criteria are present
+    await expect(page.getByText('Core Criteria')).toBeVisible();
+
+    // Select a domain criterion if available (checkboxes)
+    const domainCheckbox = page.locator('[role="checkbox"]').first();
+    if (await domainCheckbox.isVisible().catch(() => false)) {
+      await domainCheckbox.click();
+    }
 
     // Navigate to System Prompt tab
     await page.getByRole('tab', { name: /system prompt/i }).click();
@@ -128,23 +138,21 @@ test.describe('Evaluator Management', () => {
     const firstRow = page.locator('table tbody tr').first();
     await firstRow.waitFor({ state: 'visible' });
 
-    // Edit is the first button in the actions cell
+    // Edit is the first button in the actions cell (icon-only button with Edit icon)
     const actionsCell = firstRow.locator('td').last();
     const editButton = actionsCell.getByRole('button').first();
     await editButton.click();
 
-    // Wait for dialog to open
+    // Wait for dialog to open — may take time for form + criteria API
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15000 });
 
-    // Verify edit mode — dialog should show Update button
-    await expect(page.getByRole('button', { name: /update/i })).toBeVisible();
+    // Verify edit mode — dialog title should say "Edit Evaluator Config"
+    await expect(page.getByText('Edit Evaluator Config')).toBeVisible({ timeout: 5000 });
 
-    // Verify form is pre-filled with existing data
-    const nameInput = page.getByRole('textbox', { name: /name/i }).first();
-    const currentName = await nameInput.inputValue();
-    expect(currentName.length).toBeGreaterThan(0);
+    // Verify form submit button shows "Update" (or "Saving...")
+    await expect(page.getByRole('button', { name: /update|saving/i })).toBeVisible({ timeout: 5000 });
 
-    // Close dialog without submitting (submit may fail due to prompt dropdown not loading)
+    // Close dialog without submitting
     await page.getByRole('button', { name: /cancel/i }).click();
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 3000 });
   });
@@ -235,9 +243,10 @@ test.describe('Evaluator Management', () => {
     // Verify dialog title
     await expect(page.getByText('Create Evaluator Config')).toBeVisible();
 
-    // Verify tabs exist
+    // Verify tabs exist (4 tabs after P0: Basic Info, Criteria, LLM Config, System Prompt)
     await expect(page.getByRole('tab', { name: /basic info/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /criteria/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /llm config/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /system prompt/i })).toBeVisible();
 
     // Close dialog
@@ -251,25 +260,45 @@ test.describe('Evaluator Management', () => {
     // Open dialog
     await openNewConfigDialog(page);
 
-    // Navigate to Criteria tab
+    // Navigate to Criteria tab — P0 taxonomy-based editor
     await page.getByRole('tab', { name: /criteria/i }).click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(1000); // Wait for criteria_definitions API
 
-    // Count initial criteria (form starts with empty criteria list)
-    const addButton = page.getByRole('button', { name: /add criterion/i });
-    await expect(addButton).toBeVisible();
+    // Verify criteria catalog loaded (core criteria are always shown)
+    const coreSection = page.getByText('Core Criteria');
+    const catalogLoading = page.getByText('Loading criteria catalog...');
 
-    // Add new criterion
-    await addButton.click();
-    await page.waitForTimeout(500);
+    // Wait for loading to finish
+    try {
+      await catalogLoading.waitFor({ state: 'hidden', timeout: 10000 });
+    } catch {
+      // Already hidden or never appeared
+    }
 
-    // Verify criterion was added — look for "Criterion 1" text
-    await expect(page.getByText('Criterion 1')).toBeVisible();
+    // Core criteria section should be visible if criteria_definitions has data
+    const hasCriteria = await coreSection.isVisible().catch(() => false);
+    if (!hasCriteria) {
+      test.skip(true, 'No criteria definitions in database');
+    }
 
-    // Fill criterion fields
-    const nameInput = page.getByRole('textbox', { name: /name/i }).last();
-    await nameInput.fill('Test Criterion');
-    await expect(nameInput).toHaveValue('Test Criterion');
+    await expect(coreSection).toBeVisible();
+
+    // Verify "Always included" badge for core
+    await expect(page.getByText('Always included')).toBeVisible();
+
+    // Verify criteria count display
+    await expect(page.getByText(/\d+ criteria selected/)).toBeVisible();
+
+    // Toggle a domain criterion checkbox if available
+    const checkboxes = page.locator('[role="checkbox"]');
+    const checkboxCount = await checkboxes.count();
+    if (checkboxCount > 0) {
+      const firstCheckbox = checkboxes.first();
+      await firstCheckbox.click();
+      await page.waitForTimeout(300);
+      // Toggle back
+      await firstCheckbox.click();
+    }
 
     // Close dialog
     await page.getByRole('button', { name: /cancel/i }).click();

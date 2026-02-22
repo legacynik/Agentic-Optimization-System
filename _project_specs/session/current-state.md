@@ -7,62 +7,69 @@ CHECKPOINT RULES (from session-management skill):
 
 # Current Session State
 
-*Last updated: 2026-02-19T21*
+*Last updated: 2026-02-20T12*
 
 ## Active Task
-P0 Pipeline Foundations — ALL 7 TASKS COMPLETE
+P1 Pipeline High Impact — ALL 4 FEATURES COMPLETE (T5-T8)
 
 ## Current Status
-- **Phase**: P0 Implementation DONE
-- **Progress**: T1-T4 fully implemented across DB, API, n8n, UI
+- **Phase**: P1 Implementation DONE
+- **Progress**: T5-T8 fully implemented across DB, API, n8n, UI
 - **Blockers**: None
-- **Key Output**: `_project_specs/specs/pipeline-p0-foundations.md`
+- **Commit**: `712726b` — feat: P1 pipeline high impact
 
 ## Completed This Session
 
-- [x] **T1**: Fix webhook `analysis_report` persistence (both callback handlers)
-- [x] **T2**: Fix partial outcome count (derived from `personas_tested.length`)
-- [x] **T3**: Verify optimizer deployment — active on n8n, fixed empty `webhook_url` in DB
-- [x] **T4**: Documented 3 LLM prompts with NEEDS_OPTIMIZATION flags in spec
-- [x] **T5**: Draft approval flow — DELETE API + approve/discard buttons in PromptVersionsHub
-- [x] **T6**: E2E test Optimizer → Draft flow — PASSED (exec #33825, draft `b39c9d1f`)
+- [x] **T5**: Analyzer as optional flag — `run_analyzer` param, UI checkbox, n8n IF node + Mark/Skip nodes
+- [x] **T6**: Persona validator — migration, validate/override APIs, n8n workflow `aGlmWu7SPHw17eYQ`, 4-state UI badges
+- [x] **T7**: Parse error resilience — try/catch in evaluator, exclude errors from aggregation, UI warning tooltip
+- [x] **T8**: Callback retry + polling fallback — reconcile API, auto-reconcile after 2min stuck
 
-## T6 Bugs Found & Fixed
-- n8n Postgres `queryReplacement` splits by comma → replaced Save Draft with Code node (Supabase REST API)
-- chainLlm connection type `"0"` vs `"main"` → fixed connections in optimizer workflow
+## Code Review Fixes Applied
+- H1: `validation_status: 'pending'` → `'pending_validation'` in personas POST (would break after migration)
+- H2: Optimistic lock on reconcile endpoint (race condition fix)
+- H3: SQL wildcard escape in search ilike
+- M4: Warning field on validate API webhook failure
+- M5: `model_used` added to evaluations response transform
+- L2: Polling interval cleanup on unmount
 
 ## Pending Issues
 
 | Task | Priority | Notes |
 |------|----------|-------|
-| Dashboard API timeout on optimizer trigger | LOW | `/api/n8n/trigger` awaits full n8n response (~2 min) |
-| Fix Playwright tests | MEDIUM | 5 failing, 8 skipped |
+| P2 implementation | NEXT | `_project_specs/specs/pipeline-p2-differentiating.md` |
+| Playwright tests update | MEDIUM | May need updating for new persona states |
 
 ## Key Context
-- Optimizer workflow fully working: Webhook → Get Context → LLM Optimize → Save Draft (Supabase REST) → Response
-- Draft `v3.0-opt` created for `qual-audit-sa` with status `draft`
-- Draft visible in PromptVersionsHub with Approve/Discard buttons
+- n8n Evaluator: 36 nodes (3 new: Run Analyzer?, Skip Analyzer, Mark Analysis Done)
+- n8n Persona Validator: `aGlmWu7SPHw17eYQ` — 12 nodes, active, Gemini 2.5 Flash
+- Migration 014 applied: `has_analysis`, persona validation columns, CHECK constraint
+- `workflow_configs.personas_validator.webhook_url` updated with new workflow URL
 
 ## Resume Instructions
 
 ```
-LAST SESSION: 2026-02-19 - P0 Pipeline Foundations DONE
+LAST SESSION: 2026-02-20 - P1 Pipeline High Impact DONE
 
 WHAT WAS DONE:
-- Sessions 1-7: Dashboard realignment, agentic refactor v2, Playwright fixes
-- Sessions 8-9: Pipeline architecture brainstorming + decisions doc
-- Sessions 10-12: P0 spec created + full implementation (7 tasks, 3 batches)
+- P1 spec executed: 4 tasks (T5-T8), 9 subtasks, 3 batches
+- Code review: 3 High + 5 Medium + 4 Low findings, 6 fixed
+- Commit: 712726b (19 files, +1096/-47)
 
-P0 IMPLEMENTED:
-- T1: Hybrid webhook — single endpoint for runner + re-eval
-- T2: Criteria taxonomy — {core, domain, weights} + criteria_definitions table
-- T3: LLM rotation — Gemini default, expression-based model selection
-- T4: Criteria snapshot — frozen at eval creation, compare API with diff
+P1 IMPLEMENTED:
+- T5: Analyzer flag — skip LLM analysis on re-evaluate (saves ~30-60s)
+- T6: Persona validator — LLM scores naturalness/coherence/testability, 4-state lifecycle
+- T7: Parse resilience — JSON parse errors don't corrupt scores
+- T8: Callback retry — auto-reconcile stuck evaluations
+
+n8n WORKFLOWS:
+- Evaluator: 202JEX5zm3VlrUT8 (36 nodes, T5+T7 changes)
+- Persona Validator: aGlmWu7SPHw17eYQ (12 nodes, NEW)
 
 NEXT STEPS:
-1. Commit P0 changes (pending user approval)
-2. Manual test: run test via Test Runner → verify evaluator triggers
-3. Start P1 implementation (Analyzer Flag, Persona Validator)
+1. Manual test: re-evaluate with analyzer unchecked
+2. Manual test: validate a persona via LLM
+3. Start P2 implementation (differentiating features)
 ```
 
 ---
@@ -71,7 +78,9 @@ NEXT STEPS:
 
 | Date | File | Topic |
 |------|------|-------|
-| 2026-02-19 | (this session) | Dashboard Realignment Phases 1-3 Executed |
+| 2026-02-20 | (this session) | P1 Pipeline High Impact — T5-T8 Complete |
+| 2026-02-19 | (previous) | P0 Pipeline Foundations — T1-T4 Complete |
+| 2026-02-19 | (previous) | Dashboard Realignment Phases 1-3 Executed |
 | 2026-02-18 | (previous) | E2E Tests Validated + System Stable |
 | 2026-02-17 | (previous) | First E2E Test + n8n Bug Fixes |
 | 2026-02-17 | (previous) | Architecture Audit + Launch Plan v3 |
