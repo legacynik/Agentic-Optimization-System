@@ -75,6 +75,7 @@ interface BattleResultPayload {
 interface N8nCallbackPayload {
   workflow_type: WorkflowType
   test_run_id: string
+  execution_id?: string
   status: CallbackStatus
   progress?: ProgressInfo
   error?: ErrorInfo
@@ -85,6 +86,8 @@ interface N8nCallbackPayload {
     analysis?: unknown
     optimization?: unknown
     personas_generated?: number
+    original_score?: number
+    new_score?: number
     [key: string]: unknown
   }
   timestamp?: number
@@ -305,32 +308,70 @@ async function handleAnalyzerCallback(payload: N8nCallbackPayload): Promise<void
 }
 
 /**
+ * Resolves an optimization_history record by execution_id (preferred) or by
+ * most-recent pending record (fallback when the callback doesn't echo execution_id).
+ *
+ * Using execution_id eliminates the race condition where two concurrent
+ * optimizer runs for the same test_run_id could match the wrong record.
+ */
+async function resolveOptimizationHistoryRecord(
+  test_run_id: string,
+  execution_id?: string
+): Promise<{ id: string } | null> {
+  if (execution_id) {
+    const { data } = await supabase
+      .from('optimization_history')
+      .select('id')
+      .eq('execution_id', execution_id)
+      .maybeSingle()
+    return data
+  }
+
+  // Known limitation: without execution_id from the callback, we fall back to
+  // most-recent pending record. This can misfire if two runs overlap.
+  console.warn('[n8n/webhook] execution_id not echoed by callback — using fallback lookup (race-condition risk)')
+  const { data } = await supabase
+    .from('optimization_history')
+    .select('id')
+    .eq('test_run_id', test_run_id)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data
+}
+
+/**
  * Handles optimizer workflow callbacks.
  * Updates optimization_history with result, mode, and round info.
+ *
+ * I6: Reads regression_threshold from workflow_configs; falls back to 1.0.
+ * C2: Uses execution_id for record lookup; falls back to pending+order approach.
  */
 async function handleOptimizerCallback(payload: N8nCallbackPayload): Promise<void> {
-  const { test_run_id, status, result } = payload
+  const { test_run_id, execution_id, status, result } = payload
 
   if (status === 'completed' && result?.optimization) {
     console.log(`[n8n/webhook] Optimization completed for test run ${test_run_id}`)
 
-    // Update the most recent pending optimization_history record for this test run
-    const { data: historyRecord } = await supabase
-      .from('optimization_history')
-      .select('id')
-      .eq('test_run_id', test_run_id)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const historyRecord = await resolveOptimizationHistoryRecord(test_run_id, execution_id)
 
     if (historyRecord) {
       const optimizationResult = result.optimization as Record<string, unknown>
 
-      // Regression detection: flag if new score is >1 point worse than original
-      const regressionThreshold = 1.0
-      const originalScore = result?.original_score as number | null ?? null
-      const newScore = result?.new_score as number | null ?? null
+      // I6: Read regression_threshold from optimizer workflow_configs; default 1.0
+      const { data: optimizerConfig } = await supabase
+        .from('workflow_configs')
+        .select('config')
+        .eq('workflow_type', 'optimizer')
+        .single()
+
+      const regressionThreshold =
+        ((optimizerConfig?.config as Record<string, unknown> | null)
+          ?.regression_threshold as number) ?? 1.0
+
+      const originalScore = result.original_score ?? null
+      const newScore = result.new_score ?? null
       const regressionDetected =
         originalScore !== null &&
         newScore !== null &&
@@ -358,15 +399,7 @@ async function handleOptimizerCallback(payload: N8nCallbackPayload): Promise<voi
   if (status === 'failed') {
     console.error(`[n8n/webhook] Optimizer failed for test run ${test_run_id}`)
 
-    // Mark the pending history record as failed
-    const { data: historyRecord } = await supabase
-      .from('optimization_history')
-      .select('id')
-      .eq('test_run_id', test_run_id)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const historyRecord = await resolveOptimizationHistoryRecord(test_run_id, execution_id)
 
     if (historyRecord) {
       await supabase

@@ -164,6 +164,48 @@ export async function POST(request: NextRequest) {
     }
 
     // ========================================================================
+    // Circuit Breaker (optimizer only) — must run BEFORE triggering n8n
+    // ========================================================================
+
+    // I3: Runtime validation of optimizer_mode
+    const validModes = ['full', 'surgical'] as const
+    const resolvedMode: 'full' | 'surgical' =
+      validModes.includes(body.optimizer_mode as 'full' | 'surgical')
+        ? body.optimizer_mode!
+        : 'full'
+
+    let currentRound = 1
+
+    if (body.workflow_type === 'optimizer' && body.test_run_id) {
+      const { data: optimizerConfig } = await supabase
+        .from('workflow_configs')
+        .select('config')
+        .eq('workflow_type', 'optimizer')
+        .single()
+
+      const maxRounds =
+        ((optimizerConfig?.config as Record<string, unknown> | null)
+          ?.max_optimization_rounds as number) ?? 3
+
+      // I4: Only count non-failed rounds toward the limit
+      const { count: existingRounds } = await supabase
+        .from('optimization_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('test_run_id', body.test_run_id)
+        .neq('status', 'failed')
+
+      currentRound = (existingRounds ?? 0) + 1
+
+      if (currentRound > maxRounds) {
+        return apiError(
+          `Circuit breaker: max optimization rounds (${maxRounds}) reached for this test run`,
+          'CIRCUIT_BREAKER',
+          429
+        )
+      }
+    }
+
+    // ========================================================================
     // Trigger Workflow
     // ========================================================================
 
@@ -175,7 +217,7 @@ export async function POST(request: NextRequest) {
       test_run_id: body.test_run_id,
       selected_suggestions: body.selected_suggestions || [],
       human_feedback: body.human_feedback || null,
-      optimizer_mode: body.optimizer_mode || 'full',
+      optimizer_mode: resolvedMode,
       additional_params: body.additional_params || {},
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/n8n/webhook`,
       timestamp: Date.now()
@@ -203,38 +245,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save optimization_history record for optimizer workflows
+    // C2: Save optimization_history AFTER successful trigger, including execution_id
     if (body.workflow_type === 'optimizer' && body.test_run_id) {
-      // Circuit breaker: enforce max_optimization_rounds from workflow_configs
-      const { count: existingRounds } = await supabase
-        .from('optimization_history')
-        .select('*', { count: 'exact', head: true })
-        .eq('test_run_id', body.test_run_id)
-
-      const { data: optimizerConfig } = await supabase
-        .from('workflow_configs')
-        .select('config')
-        .eq('workflow_type', 'optimizer')
-        .single()
-
-      const maxRounds = (optimizerConfig?.config as Record<string, unknown> | null)?.max_optimization_rounds as number ?? 3
-      const currentRound = (existingRounds ?? 0) + 1
-
-      if (currentRound > maxRounds) {
-        return apiError(
-          `Circuit breaker: max optimization rounds (${maxRounds}) reached for this test run`,
-          'CIRCUIT_BREAKER',
-          429
-        )
-      }
-
       const { error: historyError } = await supabase
         .from('optimization_history')
         .insert({
           test_run_id: body.test_run_id,
+          execution_id: executionId,
           selected_suggestions: body.selected_suggestions || [],
           human_feedback: body.human_feedback || null,
-          optimizer_mode: body.optimizer_mode || 'full',
+          optimizer_mode: resolvedMode,
           optimization_round: currentRound,
           status: 'pending',
         })
