@@ -305,15 +305,65 @@ async function handleAnalyzerCallback(payload: N8nCallbackPayload): Promise<void
 }
 
 /**
- * Handles optimizer workflow callbacks
+ * Handles optimizer workflow callbacks.
+ * Updates optimization_history with result, mode, and round info.
  */
 async function handleOptimizerCallback(payload: N8nCallbackPayload): Promise<void> {
   const { test_run_id, status, result } = payload
 
   if (status === 'completed' && result?.optimization) {
     console.log(`[n8n/webhook] Optimization completed for test run ${test_run_id}`)
-    // The optimizer creates a new draft prompt_version
-    // No direct update to test_runs needed
+
+    // Update the most recent pending optimization_history record for this test run
+    const { data: historyRecord } = await supabase
+      .from('optimization_history')
+      .select('id')
+      .eq('test_run_id', test_run_id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (historyRecord) {
+      const optimizationResult = result.optimization as Record<string, unknown>
+
+      await supabase
+        .from('optimization_history')
+        .update({
+          status: 'completed',
+          result: optimizationResult,
+          new_prompt_version_id: optimizationResult?.new_prompt_version_id || null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', historyRecord.id)
+
+      console.log(`[n8n/webhook] Updated optimization_history ${historyRecord.id}`)
+    }
+  }
+
+  if (status === 'failed') {
+    console.error(`[n8n/webhook] Optimizer failed for test run ${test_run_id}`)
+
+    // Mark the pending history record as failed
+    const { data: historyRecord } = await supabase
+      .from('optimization_history')
+      .select('id')
+      .eq('test_run_id', test_run_id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (historyRecord) {
+      await supabase
+        .from('optimization_history')
+        .update({
+          status: 'failed',
+          result: payload.error || null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', historyRecord.id)
+    }
   }
 }
 

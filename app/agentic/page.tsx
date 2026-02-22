@@ -70,7 +70,7 @@ function AgentHealthContent() {
   }
 
   // Handle optimization trigger via n8n trigger endpoint
-  const handleOptimize = async (selectedSuggestions: string[], feedback: string) => {
+  const handleOptimize = async (selectedSuggestions: string[], feedback: string, optimizerMode: 'full' | 'surgical' = 'full') => {
     if (!details?.latestTestRunId) {
       throw new Error('No test run available for optimization')
     }
@@ -86,6 +86,7 @@ function AgentHealthContent() {
           test_run_id: details.latestTestRunId,
           selected_suggestions: selectedSuggestions,
           human_feedback: feedback || null,
+          optimizer_mode: optimizerMode,
         }),
       })
 

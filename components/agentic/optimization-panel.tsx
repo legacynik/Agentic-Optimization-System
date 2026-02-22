@@ -26,6 +26,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 /** Prompt suggestion from analysis_report */
@@ -44,7 +46,7 @@ interface OptimizationPanelProps {
   /** AI-generated suggestions from analysis_report */
   suggestions?: PromptSuggestion[]
   /** Callback when optimization is triggered */
-  onOptimize?: (selectedSuggestions: string[], feedback: string) => Promise<void>
+  onOptimize?: (selectedSuggestions: string[], feedback: string, optimizerMode: 'full' | 'surgical') => Promise<void>
   /** Whether optimization is in progress */
   isOptimizing?: boolean
   /** Whether the panel is disabled */
@@ -86,6 +88,7 @@ export function OptimizationPanel({
 }: OptimizationPanelProps) {
   const [feedback, setFeedback] = useState('')
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set())
+  const [optimizerMode, setOptimizerMode] = useState<'full' | 'surgical'>('full')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
@@ -116,7 +119,7 @@ export function OptimizationPanel({
     setSuccess(false)
 
     try {
-      await onOptimize(Array.from(selectedSuggestions), feedback)
+      await onOptimize(Array.from(selectedSuggestions), feedback, optimizerMode)
       setSuccess(true)
       setFeedback('') // Clear feedback on success
     } catch (err) {
@@ -183,6 +186,29 @@ export function OptimizationPanel({
             </div>
           </div>
         )}
+
+        {/* Optimization Mode Selector */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Optimization Mode</Label>
+          <RadioGroup
+            value={optimizerMode}
+            onValueChange={(v) => setOptimizerMode(v as 'full' | 'surgical')}
+            disabled={isOptimizing}
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="full" id="mode-full" />
+              <Label htmlFor="mode-full" className="font-normal">
+                Full Rewrite — rewrites entire prompt
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="surgical" id="mode-surgical" />
+              <Label htmlFor="mode-surgical" className="font-normal">
+                Surgical — 1 targeted change per suggestion
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
 
         {/* Feedback Textarea */}
         <div className="space-y-2">

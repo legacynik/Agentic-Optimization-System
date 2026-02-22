@@ -22,12 +22,16 @@ const supabase = createSupabaseClient()
 /** Valid workflow types */
 type WorkflowType = 'optimizer' | 'analyzer' | 'personas_generator' | 'personas_validator'
 
+/** Valid optimizer modes */
+type OptimizerMode = 'full' | 'surgical'
+
 /** Request body for triggering a workflow */
 interface TriggerWorkflowRequest {
   workflow_type: WorkflowType
   test_run_id?: string
   selected_suggestions?: string[]
   human_feedback?: string | null
+  optimizer_mode?: OptimizerMode
   additional_params?: Record<string, unknown>
 }
 
@@ -171,6 +175,7 @@ export async function POST(request: NextRequest) {
       test_run_id: body.test_run_id,
       selected_suggestions: body.selected_suggestions || [],
       human_feedback: body.human_feedback || null,
+      optimizer_mode: body.optimizer_mode || 'full',
       additional_params: body.additional_params || {},
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/n8n/webhook`,
       timestamp: Date.now()
@@ -196,6 +201,23 @@ export async function POST(request: NextRequest) {
         502,
         { httpStatus: response.status }
       )
+    }
+
+    // Save optimization_history record for optimizer workflows
+    if (body.workflow_type === 'optimizer' && body.test_run_id) {
+      const { error: historyError } = await supabase
+        .from('optimization_history')
+        .insert({
+          test_run_id: body.test_run_id,
+          selected_suggestions: body.selected_suggestions || [],
+          human_feedback: body.human_feedback || null,
+          optimizer_mode: body.optimizer_mode || 'full',
+          status: 'pending',
+        })
+
+      if (historyError) {
+        console.error('[n8n/trigger] Failed to save optimization_history:', historyError)
+      }
     }
 
     // Update tracking
