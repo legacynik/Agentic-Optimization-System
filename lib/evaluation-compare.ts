@@ -17,6 +17,7 @@ const EVAL_SELECT = `
   tokens_used,
   criteria_snapshot,
   llm_config_snapshot,
+  test_run:test_runs(prompt_version_id),
   battle_evaluations(
     battle_result_id,
     score,
@@ -92,6 +93,14 @@ export function buildComparisonData(eval1Data: any, eval2Data: any) {
   const tokensA = eval1Data.tokens_used ?? null
   const tokensB = eval2Data.tokens_used ?? null
 
+  const promptVersionA = eval1Data.test_run?.prompt_version_id ?? null
+  const promptVersionB = eval2Data.test_run?.prompt_version_id ?? null
+  const promptVersionWarning = {
+    differs: promptVersionA !== promptVersionB,
+    version_a: promptVersionA,
+    version_b: promptVersionB,
+  }
+
   return {
     evaluation_a: {
       id: eval1Data.id,
@@ -101,6 +110,7 @@ export function buildComparisonData(eval1Data: any, eval2Data: any) {
       success_rate: successRate1,
       criteria_avg: eval1CriteriaAvg,
       model_used: modelA,
+      tokens_used: tokensA,
       criteria_snapshot: snapshotA || null,
     },
     evaluation_b: {
@@ -111,6 +121,7 @@ export function buildComparisonData(eval1Data: any, eval2Data: any) {
       success_rate: successRate2,
       criteria_avg: eval2CriteriaAvg,
       model_used: modelB,
+      tokens_used: tokensB,
       criteria_snapshot: snapshotB || null,
     },
     model_comparison: {
@@ -131,6 +142,7 @@ export function buildComparisonData(eval1Data: any, eval2Data: any) {
       regressions,
       unchanged,
     },
+    prompt_version_warning: promptVersionWarning,
   }
 }
 

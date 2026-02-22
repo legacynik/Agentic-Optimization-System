@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2 } from "lucide-react"
+import { AlertTriangle, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CompareHeader } from "@/components/evaluator/compare-header"
@@ -24,6 +24,8 @@ interface ComparisonData {
     overall_score: number
     success_rate: number
     criteria_avg: Record<string, number>
+    model_used?: string | null
+    tokens_used?: number | null
   }
   evaluation_b: {
     id: string
@@ -32,7 +34,14 @@ interface ComparisonData {
     overall_score: number
     success_rate: number
     criteria_avg: Record<string, number>
+    model_used?: string | null
+    tokens_used?: number | null
   }
+  prompt_version_warning?: {
+    differs: boolean
+    version_a: string | null
+    version_b: string | null
+  } | null
   model_comparison?: {
     eval_a: { model_used: string | null; tokens_used: number | null }
     eval_b: { model_used: string | null; tokens_used: number | null }
@@ -149,6 +158,18 @@ export function EvaluationCompareView({
         <DialogHeader>
           <DialogTitle>Evaluation Comparison</DialogTitle>
         </DialogHeader>
+
+        {data.prompt_version_warning?.differs && (
+          <div className="flex items-start gap-2 rounded-md border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500" />
+            <span>
+              <strong>Warning:</strong> These evaluations are from test runs with different prompt
+              versions (A: {data.prompt_version_warning.version_a ?? "N/A"}, B:{" "}
+              {data.prompt_version_warning.version_b ?? "N/A"}). Score differences may reflect
+              prompt changes, not evaluator differences.
+            </span>
+          </div>
+        )}
 
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
