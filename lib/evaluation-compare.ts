@@ -127,7 +127,7 @@ export function buildComparisonData(eval1Data: any, eval2Data: any) {
     model_comparison: {
       eval_a: { model_used: modelA, tokens_used: tokensA },
       eval_b: { model_used: modelB, tokens_used: tokensB },
-      same_model: modelA === modelB,
+      same_model: modelA !== null && modelB !== null && modelA === modelB,
     },
     deltas: {
       overall_score: { value: scoreDelta, percent: scorePercent },

@@ -8,6 +8,7 @@
 import { NextRequest } from "next/server"
 import { apiSuccess, apiError } from "@/lib/api-response"
 import { fetchEvaluation, buildComparisonData } from "@/lib/evaluation-compare"
+import { isValidUUID } from "@/lib/validation"
 
 export async function GET(request: NextRequest) {
   const evalAId = request.nextUrl.searchParams.get("eval_a")
@@ -19,6 +20,10 @@ export async function GET(request: NextRequest) {
       "MISSING_PARAMS",
       400
     )
+  }
+
+  if (!isValidUUID(evalAId) || !isValidUUID(evalBId)) {
+    return apiError("Invalid evaluation ID format", "INVALID_UUID", 400)
   }
 
   if (evalAId === evalBId) {

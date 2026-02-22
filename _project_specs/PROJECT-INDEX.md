@@ -68,7 +68,30 @@ Fasi originali (PRD v2-v3) completate e validate:
 
 Specs attive con lavoro pendente, in ordine di priorità:
 
-*(Nessuna spec attiva al momento — Agentic Refactor v2 completato)*
+### 1. P0: Pipeline Foundations
+
+**File**: [pipeline-p0-foundations.md](specs/pipeline-p0-foundations.md)
+**Status**: IMPLEMENTED — pending manual test
+**Effort**: Done (T1-T4)
+
+Hybrid webhook, criteria taxonomy, LLM rotation, criteria snapshot.
+
+### 2. P1: Pipeline High Impact
+
+**File**: [pipeline-p1-high-impact.md](specs/pipeline-p1-high-impact.md)
+**Status**: PENDING
+**Effort**: Medium-Large (T5-T8)
+
+Analyzer flag, persona validator, parse error resilience, callback retry.
+
+### 3. P2: Pipeline Differentiating Features
+
+**File**: [pipeline-p2-differentiating.md](specs/pipeline-p2-differentiating.md)
+**Status**: PENDING
+**Effort**: Large (T9-T12)
+**Plan**: [docs/plans/2026-02-20-pipeline-p2-differentiating.md](../docs/plans/2026-02-20-pipeline-p2-differentiating.md)
+
+Eval A/B enhancement, optimizer dual mode (surgical/full), latency metrics, quote verification.
 
 ---
 

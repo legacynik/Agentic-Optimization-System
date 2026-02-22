@@ -1,12 +1,17 @@
 import { NextRequest } from "next/server"
 import { apiSuccess, apiError } from "@/lib/api-response"
 import { fetchEvaluation, buildComparisonData } from "@/lib/evaluation-compare"
+import { isValidUUID } from "@/lib/validation"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; otherId: string }> }
 ) {
   const { id: evaluationId1, otherId: evaluationId2 } = await params
+
+  if (!isValidUUID(evaluationId1) || !isValidUUID(evaluationId2)) {
+    return apiError("Invalid evaluation ID format", "INVALID_UUID", 400)
+  }
 
   try {
     const eval1 = await fetchEvaluation(evaluationId1)

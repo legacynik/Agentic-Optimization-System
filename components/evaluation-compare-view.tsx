@@ -105,15 +105,28 @@ export function EvaluationCompareView({
 
   useEffect(() => {
     fetchComparison()
-  }, [evaluationId1, evaluationId2])
+  }, [evaluationId1, evaluationId2, crossCompare])
 
   async function fetchComparison() {
     try {
       setLoading(true)
+      setError(null)
       const url = crossCompare
         ? `/api/evaluations/cross-compare?eval_a=${evaluationId1}&eval_b=${evaluationId2}`
         : `/api/evaluations/${evaluationId1}/compare/${evaluationId2}`
       const response = await fetch(url)
+
+      if (!response.ok) {
+        const text = await response.text()
+        try {
+          const errResult = JSON.parse(text)
+          setError(errResult.error?.message || `Request failed: ${response.status}`)
+        } catch {
+          setError(`Request failed: ${response.status}`)
+        }
+        return
+      }
+
       const result = await response.json()
 
       if (result.error) {

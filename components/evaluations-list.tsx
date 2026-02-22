@@ -182,6 +182,7 @@ export function EvaluationsList({ testRunId, onPromote }: EvaluationsListProps) 
               <span className="text-sm text-muted-foreground whitespace-nowrap">Cross-compare with:</span>
               <Input
                 placeholder="Paste evaluation ID from another test run"
+                aria-label="Evaluation ID from another test run"
                 value={crossCompareId}
                 onChange={(e) => setCrossCompareId(e.target.value)}
                 className="max-w-xs text-sm"
