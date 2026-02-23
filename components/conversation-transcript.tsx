@@ -1,25 +1,144 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Copy } from "lucide-react"
-import { useState } from "react"
+import { useState, useMemo } from "react"
+
+// NOTE: This component has no active callers — conversations-v2.tsx handles
+// transcript rendering directly via its own StructuredTranscriptView. This file
+// is kept as a shared utility module; getLatencyVariant is exported and imported
+// by conversations-v2.tsx to avoid duplicating the threshold logic.
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface StructuredTurn {
+  speaker: string
+  message: string
+  timestamp_ms: number | null
+}
+
+interface StructuredTranscript {
+  turns: StructuredTurn[]
+}
 
 interface ConversationTranscriptProps {
   transcript: string
+  transcriptStructured?: StructuredTranscript | null
   loading?: boolean
   error?: string
 }
 
-export function ConversationTranscript({ transcript, loading = false, error }: ConversationTranscriptProps) {
+/** Parsed turn with computed latency for rendering */
+interface ParsedTurn {
+  speaker: string
+  message: string
+  index: number
+  isAgent: boolean
+  /** Latency in ms from previous turn (only for agent turns with structured data) */
+  latencyMs: number | null
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Compute latency badge variant based on response time thresholds.
+ * Exported so conversations-v2.tsx can reuse without duplicating logic.
+ */
+export function getLatencyVariant(latencyMs: number): "secondary" | "outline" | "destructive" {
+  if (latencyMs > 10000) return "destructive"
+  if (latencyMs > 5000) return "outline"
+  return "secondary"
+}
+
+/** Parse structured transcript into turns with latency */
+function parseStructuredTurns(structured: StructuredTranscript): ParsedTurn[] {
+  return structured.turns.map((turn, index) => {
+    let latencyMs: number | null = null
+    const isAgent = turn.speaker === "Agent" || turn.speaker === "assistant"
+
+    if (isAgent && index > 0) {
+      const prevTimestamp = structured.turns[index - 1].timestamp_ms
+      if (prevTimestamp && turn.timestamp_ms) {
+        latencyMs = turn.timestamp_ms - prevTimestamp
+      }
+    }
+
+    return {
+      speaker: turn.speaker,
+      message: turn.message,
+      index,
+      isAgent,
+      latencyMs,
+    }
+  })
+}
+
+/** Parse plain text transcript (legacy "Speaker: message\n\n" format) */
+function parsePlainTextTurns(transcript: string): ParsedTurn[] {
+  return transcript
+    .split("\n\n")
+    .filter((t) => t.trim())
+    .map((turn, index) => {
+      const colonIndex = turn.indexOf(":")
+      if (colonIndex === -1) {
+        return { speaker: "Unknown", message: turn, index, isAgent: false, latencyMs: null }
+      }
+
+      const speaker = turn.substring(0, colonIndex).trim()
+      const message = turn.substring(colonIndex + 1).trim()
+
+      return {
+        speaker,
+        message,
+        index,
+        isAgent: speaker === "Agent",
+        latencyMs: null,
+      }
+    })
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
+export function ConversationTranscript({
+  transcript,
+  transcriptStructured,
+  loading = false,
+  error,
+}: ConversationTranscriptProps) {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
-  // Loading state
+  // Determine whether to use structured or plain text parsing
+  const hasStructuredData = Boolean(
+    transcriptStructured?.turns?.length && transcriptStructured.turns.length > 0
+  )
+
+  const turns = useMemo<ParsedTurn[] | null>(() => {
+    try {
+      if (hasStructuredData && transcriptStructured) {
+        return parseStructuredTurns(transcriptStructured)
+      }
+      if (transcript && typeof transcript === "string") {
+        return parsePlainTextTurns(transcript)
+      }
+      return null
+    } catch (parseError) {
+      console.error("[ConversationTranscript] Error parsing transcript:", parseError)
+      return null
+    }
+  }, [transcript, transcriptStructured, hasStructuredData])
+
   if (loading) {
     return (
       <div className="h-full overflow-y-auto p-6 space-y-4 bg-gradient-to-br from-background via-background to-muted/10">
-        {/* Skeleton message bubbles alternating left/right */}
         <div className="flex justify-start">
           <div className="max-w-[80%] space-y-2">
             <Skeleton className="h-4 w-[100px]" />
@@ -48,7 +167,6 @@ export function ConversationTranscript({ transcript, loading = false, error }: C
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
@@ -64,8 +182,7 @@ export function ConversationTranscript({ transcript, loading = false, error }: C
     )
   }
 
-  // Empty state
-  if (!transcript || typeof transcript !== "string") {
+  if (!transcript && !hasStructuredData) {
     return (
       <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
         <Card>
@@ -77,47 +194,7 @@ export function ConversationTranscript({ transcript, loading = false, error }: C
     )
   }
 
-  let turns: Array<{ speaker: string; message: string; index: number; isAgent: boolean }>
-
-  try {
-    turns = transcript
-      .split("\n\n")
-      .filter((t) => t.trim())
-      .map((turn, index) => {
-      const colonIndex = turn.indexOf(":")
-      if (colonIndex === -1) {
-        return { speaker: "Unknown", message: turn, index, isAgent: false }
-      }
-
-      const speaker = turn.substring(0, colonIndex).trim()
-      const message = turn.substring(colonIndex + 1).trim()
-
-        return {
-          speaker,
-          message,
-          index,
-          isAgent: speaker === "Agent",
-        }
-      })
-  } catch (parseError) {
-    console.error("[ConversationTranscript] Error parsing transcript:", parseError)
-    return (
-      <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle>Error Parsing Transcript</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-destructive">
-              Failed to parse conversation transcript. The data may be malformed.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (turns.length === 0) {
+  if (!turns || turns.length === 0) {
     return (
       <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-background to-muted/10">
         <Card>
@@ -142,8 +219,20 @@ export function ConversationTranscript({ transcript, loading = false, error }: C
           <div className={`max-w-[80%] ${turn.isAgent ? "mr-auto" : "ml-auto"}`}>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium text-muted-foreground">
-                {turn.speaker} • Turn {turn.index + 1}
+                {turn.speaker} &bull; Turn {turn.index + 1}
               </span>
+              {turn.isAgent && turn.latencyMs !== null && turn.latencyMs >= 0 && (
+                <Badge
+                  variant={getLatencyVariant(turn.latencyMs)}
+                  className={
+                    turn.latencyMs > 5000 && turn.latencyMs <= 10000
+                      ? "border-yellow-500 text-yellow-600"
+                      : ""
+                  }
+                >
+                  {(turn.latencyMs / 1000).toFixed(1)}s
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

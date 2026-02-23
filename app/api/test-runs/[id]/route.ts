@@ -30,6 +30,8 @@ interface BattleResultSummary {
   score: number | null
   turns: number
   has_notes: boolean
+  avg_agent_latency_ms: number | null
+  max_agent_latency_ms: number | null
   created_at: string
 }
 
@@ -125,6 +127,10 @@ export async function GET(
       .single()
 
     // Fetch battle results with persona info
+    // transcript_structured is intentionally excluded here — the test-run detail
+    // page only needs aggregate latency stats (avg/max), not per-turn data.
+    // The conversations API (/api/conversations) returns transcript_structured
+    // for the conversations view where it is actually rendered.
     const { data: battleResults, error: battleError } = await supabase
       .from('battle_results')
       .select(`
@@ -133,6 +139,8 @@ export async function GET(
         outcome,
         score,
         turns,
+        avg_agent_latency_ms,
+        max_agent_latency_ms,
         created_at,
         personas (
           name,
@@ -172,6 +180,8 @@ export async function GET(
         score: br.score,
         turns: br.turns,
         has_notes: notesMap.has(br.id),
+        avg_agent_latency_ms: br.avg_agent_latency_ms ?? null,
+        max_agent_latency_ms: br.max_agent_latency_ms ?? null,
         created_at: br.created_at
       }
     })

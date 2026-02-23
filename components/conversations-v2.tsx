@@ -17,10 +17,21 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MessageSquare, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getLatencyVariant } from "@/components/conversation-transcript"
 
 // ============================================================================
 // Types
 // ============================================================================
+
+interface StructuredTurn {
+  speaker: string
+  message: string
+  timestamp_ms: number | null
+}
+
+interface StructuredTranscript {
+  turns: StructuredTurn[]
+}
 
 interface Conversation {
   id: string
@@ -33,6 +44,9 @@ interface Conversation {
   score: number | null
   turns: number
   transcript: unknown
+  transcript_structured?: StructuredTranscript | null
+  avg_agent_latency_ms?: number | null
+  max_agent_latency_ms?: number | null
   created_at: string
 }
 
@@ -276,7 +290,12 @@ export function ConversationsV2() {
         <CardContent className="p-0">
           <ScrollArea className="h-[calc(100vh-220px)]">
             {selected ? (
-              <TranscriptViewer transcript={selected.transcript} />
+              <TranscriptViewer
+                transcript={selected.transcript}
+                transcriptStructured={selected.transcript_structured}
+                avgLatencyMs={selected.avg_agent_latency_ms}
+                maxLatencyMs={selected.max_agent_latency_ms}
+              />
             ) : (
               <p className="text-center text-muted-foreground py-12">
                 Click a conversation to view transcript
@@ -293,7 +312,22 @@ export function ConversationsV2() {
 // Transcript Viewer
 // ============================================================================
 
-function TranscriptViewer({ transcript }: { transcript: unknown }) {
+interface TranscriptViewerProps {
+  transcript: unknown
+  transcriptStructured?: StructuredTranscript | null
+  avgLatencyMs?: number | null
+  maxLatencyMs?: number | null
+}
+
+function TranscriptViewer({ transcript, transcriptStructured, avgLatencyMs, maxLatencyMs }: TranscriptViewerProps) {
+  // Prefer structured transcript with timestamps when available
+  const hasStructured = Boolean(transcriptStructured?.turns?.length && transcriptStructured.turns.length > 0)
+
+  if (hasStructured && transcriptStructured) {
+    return <StructuredTranscriptView structured={transcriptStructured} avgLatencyMs={avgLatencyMs} maxLatencyMs={maxLatencyMs} />
+  }
+
+  // Fall back to legacy parsing
   const messages = parseTranscript(transcript)
 
   if (!messages.length) {
@@ -320,6 +354,69 @@ function TranscriptViewer({ transcript }: { transcript: unknown }) {
           <p className="whitespace-pre-wrap">{msg.content}</p>
         </div>
       ))}
+    </div>
+  )
+}
+
+/** Render structured transcript with per-turn latency badges */
+function StructuredTranscriptView({
+  structured,
+  avgLatencyMs,
+  maxLatencyMs,
+}: {
+  structured: StructuredTranscript
+  avgLatencyMs?: number | null
+  maxLatencyMs?: number | null
+}) {
+  const showLatencySummary = avgLatencyMs != null || maxLatencyMs != null
+
+  return (
+    <div className="p-4 space-y-3">
+      {showLatencySummary && (
+        <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-muted/50 text-xs text-muted-foreground mb-2">
+          <span className="font-medium">Latency:</span>
+          {avgLatencyMs != null && <span>Avg {(avgLatencyMs / 1000).toFixed(1)}s</span>}
+          {maxLatencyMs != null && <span>Max {(maxLatencyMs / 1000).toFixed(1)}s</span>}
+        </div>
+      )}
+      {structured.turns.map((turn, i) => {
+        const isAgent = turn.speaker === 'Agent' || turn.speaker === 'assistant'
+        let latencyMs: number | null = null
+        if (isAgent && i > 0) {
+          const prevTs = structured.turns[i - 1].timestamp_ms
+          if (turn.timestamp_ms != null && prevTs != null) {
+            latencyMs = turn.timestamp_ms - prevTs
+          }
+        }
+
+        return (
+          <div
+            key={i}
+            className={cn(
+              "rounded-lg p-3 text-sm",
+              !isAgent
+                ? "bg-primary/10 ml-8"
+                : "bg-muted mr-8"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-xs font-medium text-muted-foreground capitalize">{turn.speaker}</p>
+              {isAgent && latencyMs !== null && latencyMs >= 0 && (
+                <Badge
+                  variant={getLatencyVariant(latencyMs)}
+                  className={cn(
+                    "text-[10px] px-1.5 py-0",
+                    latencyMs > 5000 && latencyMs <= 10000 && "border-yellow-500 text-yellow-600"
+                  )}
+                >
+                  {(latencyMs / 1000).toFixed(1)}s
+                </Badge>
+              )}
+            </div>
+            <p className="whitespace-pre-wrap">{turn.message}</p>
+          </div>
+        )
+      })}
     </div>
   )
 }

@@ -17,12 +17,14 @@ export async function GET(request: NextRequest) {
     const personaId = searchParams.get('persona_id')
     const outcome = searchParams.get('outcome')
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0'))
 
     let query = supabase
       .from('battle_results')
       .select(`
-        id, test_run_id, persona_id, outcome, score, turns, transcript, created_at,
+        id, test_run_id, persona_id, outcome, score, turns, transcript,
+        transcript_structured, avg_agent_latency_ms, max_agent_latency_ms,
+        created_at,
         personas!inner(name, category),
         test_runs!inner(test_run_code)
       `, { count: 'exact' })
@@ -51,6 +53,9 @@ export async function GET(request: NextRequest) {
         score: b.score,
         turns: b.turns,
         transcript: b.transcript,
+        transcript_structured: b.transcript_structured,
+        avg_agent_latency_ms: b.avg_agent_latency_ms,
+        max_agent_latency_ms: b.max_agent_latency_ms,
         created_at: b.created_at,
       }
     })

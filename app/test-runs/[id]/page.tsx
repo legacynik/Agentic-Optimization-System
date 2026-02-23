@@ -22,6 +22,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Target,
+  Timer,
   Zap,
 } from "lucide-react"
 import { EvaluationsList } from "@/components/evaluations-list"
@@ -48,6 +49,9 @@ interface TestRunDetail {
     persona_name: string
     outcome: string
     score: number | null
+    turns: number
+    avg_agent_latency_ms: number | null
+    max_agent_latency_ms: number | null
   }>
 }
 
@@ -216,8 +220,59 @@ export default function TestRunDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Latency Summary — only shown when at least one battle has latency data */}
+      <LatencySummary battleResults={testRun.battle_results} />
+
       {/* Evaluations Section */}
       <EvaluationsList testRunId={testRun.id} />
     </div>
+  )
+}
+
+// ============================================================================
+// Latency Summary — renders only when latency data exists
+// ============================================================================
+
+interface LatencySummaryProps {
+  battleResults: TestRunDetail["battle_results"]
+}
+
+function LatencySummary({ battleResults }: LatencySummaryProps) {
+  const battlesWithLatency = battleResults.filter(b => b.avg_agent_latency_ms != null)
+  if (battlesWithLatency.length === 0) return null
+
+  // Weighted average by turns: battles with more turns contribute proportionally
+  const totalWeightedMs = battlesWithLatency.reduce((sum, b) => sum + (b.avg_agent_latency_ms || 0) * (b.turns || 1), 0)
+  const totalTurns = battlesWithLatency.reduce((sum, b) => sum + (b.turns || 1), 0)
+  const totalAvg = totalWeightedMs / totalTurns
+  const slowest = battlesWithLatency.reduce((max, b) =>
+    (b.max_agent_latency_ms || 0) > (max.max_agent_latency_ms || 0) ? b : max
+  , battlesWithLatency[0])
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Timer className="h-4 w-4 text-muted-foreground" />
+          Response Latency
+          <Badge variant="outline" className="text-xs font-normal">
+            {battlesWithLatency.length} / {battleResults.length} battles
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Average Response Time</p>
+            <p className="text-2xl font-bold">{(totalAvg / 1000).toFixed(1)}s</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Slowest Response</p>
+            <p className="text-2xl font-bold">{((slowest.max_agent_latency_ms || 0) / 1000).toFixed(1)}s</p>
+            <p className="text-xs text-muted-foreground">{slowest.persona_name}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
