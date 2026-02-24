@@ -25,13 +25,24 @@ import {
   Users,
   CircleAlert,
   CircleCheck,
+  FileSearch,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip } from 'recharts'
-import type { PersonaScore } from '@/hooks/use-agent-details'
+import type { PersonaScore, InsightsVerification } from '@/hooks/use-agent-details'
+import { EvidenceBadge, VerificationSummaryBadge, getEvidenceStatus } from './evidence-badges'
+
+/** Insight with evidence from analysis report */
+interface AnalysisInsight {
+  title: string
+  description: string
+  evidence?: string[]
+  impact?: string
+  recommendation?: string
+}
 
 interface AgentDetailsProps {
   /** Top issues list */
@@ -42,6 +53,10 @@ interface AgentDetailsProps {
   strugglingPersonas: PersonaScore[]
   /** Top performing personas */
   excellingPersonas: PersonaScore[]
+  /** Analysis insights with evidence (T12) */
+  insights?: AnalysisInsight[]
+  /** Evidence verification results (T12) */
+  insightsVerification?: InsightsVerification | null
   /** Whether data is loading */
   isLoading?: boolean
   /** Callback when "View Full Report" is clicked */
@@ -173,6 +188,8 @@ export function AgentDetails({
   scoreHistory,
   strugglingPersonas,
   excellingPersonas,
+  insights = [],
+  insightsVerification = null,
   isLoading = false,
   onViewFullReport,
   className,
@@ -268,6 +285,43 @@ export function AgentDetails({
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Insights with Evidence (T12) */}
+          {insights.length > 0 && insights.some(i => i.evidence?.length) && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <FileSearch className="h-4 w-4 text-violet-600" />
+                  <span>Evidence</span>
+                </div>
+                {insightsVerification && (
+                  <VerificationSummaryBadge verification={insightsVerification} />
+                )}
+              </div>
+              <div className="space-y-3">
+                {insights.map((insight, i) => (
+                  insight.evidence && insight.evidence.length > 0 && (
+                    <div key={i} className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {insight.title}
+                      </p>
+                      <ul className="space-y-1 pl-3">
+                        {insight.evidence.map((ev, j) => {
+                          const status = getEvidenceStatus(insightsVerification, i, j)
+                          return (
+                            <li key={j} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              {status && <EvidenceBadge status={status} className="mt-0.5 shrink-0" />}
+                              <span className="line-clamp-2">{ev}</span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )
+                ))}
+              </div>
             </div>
           )}
 

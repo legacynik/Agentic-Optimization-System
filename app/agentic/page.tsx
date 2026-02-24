@@ -199,6 +199,8 @@ function AgentHealthContent() {
                   scoreHistory={health?.scoreHistory ?? []}
                   strugglingPersonas={details?.strugglingPersonas ?? []}
                   excellingPersonas={details?.excellingPersonas ?? []}
+                  insights={details?.insights ?? []}
+                  insightsVerification={details?.insightsVerification ?? null}
                   isLoading={detailsLoading}
                   onViewFullReport={handleViewFullReport}
                 />

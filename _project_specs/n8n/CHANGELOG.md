@@ -315,3 +315,19 @@ When Executed → Init Battle → Code (30 loops) → Loop Over Items
 ### Notes
 - Note aggiuntive, problemi riscontrati, etc.
 ```
+
+## 2026-02-24 — T12: Evidence Format Enforcement (Analyzer Prompt)
+
+**Workflow**: Evaluator `202JEX5zm3VlrUT8`
+**Node**: LLM Analyzer (system prompt)
+
+**Change needed**: Add to the analyzer system prompt's Critical Rules section:
+
+```
+6. Evidence format MUST be one of:
+   - EXACT QUOTE: Use single quotes around the verbatim text from the conversation (min 10 chars), e.g. 'L'agente non ha risposto alla domanda sul prezzo'
+   - PATTERN: Include cross-conversation language like "across N conversations", "pattern observed in", "consistently", e.g. "Pattern observed across 8 conversations: agent skips discovery phase"
+```
+
+**Status**: RECOMMENDED (verification works with current format but better evidence format improves verification accuracy)
+**Related**: `lib/evidence-verification.ts` (3-tier verification), `app/api/n8n/webhook/route.ts` (auto-verification on analyzer callback)

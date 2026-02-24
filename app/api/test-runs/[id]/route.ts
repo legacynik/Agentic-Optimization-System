@@ -61,6 +61,7 @@ interface TestRunDetailResponse {
   strengths: unknown
   weaknesses: unknown
   analysis_report: unknown
+  insights_verification: unknown
 }
 
 // ============================================================================
@@ -109,6 +110,7 @@ export async function GET(
         strengths,
         weaknesses,
         analysis_report,
+        insights_verification,
         test_config,
         llm_config
       `)
@@ -211,7 +213,8 @@ export async function GET(
       failure_patterns: testRun.failure_patterns,
       strengths: testRun.strengths,
       weaknesses: testRun.weaknesses,
-      analysis_report: testRun.analysis_report
+      analysis_report: testRun.analysis_report,
+      insights_verification: testRun.insights_verification
     }
 
     return apiSuccess(response)

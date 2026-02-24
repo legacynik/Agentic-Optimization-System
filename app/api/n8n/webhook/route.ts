@@ -12,6 +12,7 @@
 import { NextRequest } from 'next/server'
 import { isValidUUID } from '@/lib/validation'
 import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
+import { verifyEvidence } from '@/lib/evidence-verification'
 
 const supabase = createSupabaseClient()
 
@@ -277,6 +278,86 @@ async function handleEvaluatorCallback(payload: N8nCallbackPayload): Promise<voi
 }
 
 /**
+ * Normalizes the analyzer output into the insights format expected by verifyEvidence.
+ * The analyzer outputs top_issues/strengths with single evidence strings,
+ * but the verification utility expects insights[].evidence[] arrays.
+ */
+function normalizeToInsights(report: Record<string, unknown>) {
+  const insights: Array<{ evidence?: string[] }> = []
+
+  // Map top_issues (evidence is a single string)
+  const topIssues = report.top_issues as Array<{ evidence?: string }> | undefined
+  if (Array.isArray(topIssues)) {
+    for (const issue of topIssues) {
+      insights.push({
+        evidence: issue.evidence ? [issue.evidence] : [],
+      })
+    }
+  }
+
+  // Map insights directly if they exist (standard format)
+  const existingInsights = report.insights as Array<{ evidence?: string[] }> | undefined
+  if (Array.isArray(existingInsights)) {
+    return { insights: existingInsights }
+  }
+
+  // Map strengths (evidence is a single string)
+  const strengths = report.strengths as Array<{ evidence?: string }> | undefined
+  if (Array.isArray(strengths)) {
+    for (const s of strengths) {
+      insights.push({
+        evidence: s.evidence ? [s.evidence] : [],
+      })
+    }
+  }
+
+  return { insights }
+}
+
+/**
+ * T12: Runs evidence verification against battle transcripts.
+ * Best-effort: returns null on any error so the pipeline continues.
+ */
+async function runEvidenceVerification(
+  testRunId: string,
+  analysisReport: unknown
+): Promise<unknown | null> {
+  try {
+    if (!analysisReport || typeof analysisReport !== 'object') return null
+
+    // Fetch transcripts for this test run
+    const { data: battles } = await supabase
+      .from('battle_results')
+      .select('transcript')
+      .eq('test_run_id', testRunId)
+
+    if (!battles || battles.length === 0) return null
+
+    const transcripts = battles
+      .map(b => typeof b.transcript === 'string'
+        ? b.transcript
+        : JSON.stringify(b.transcript ?? ''))
+      .filter(Boolean)
+
+    // Normalize analyzer output to insights format
+    const normalized = normalizeToInsights(analysisReport as Record<string, unknown>)
+
+    const result = verifyEvidence(normalized, transcripts)
+
+    console.log(
+      `[n8n/webhook] Evidence verification for ${testRunId}: ` +
+      `${result.summary.exact} exact, ${result.summary.pattern} pattern, ` +
+      `${result.summary.unverified} unverified`
+    )
+
+    return result
+  } catch (err) {
+    console.error('[n8n/webhook] Evidence verification failed (non-blocking):', err)
+    return null
+  }
+}
+
+/**
  * Handles analyzer workflow callbacks.
  * Note: The analyzer runs AFTER the evaluator and intentionally overwrites
  * analysis_report with a richer analysis that includes failure_patterns,
@@ -292,7 +373,11 @@ async function handleAnalyzerCallback(payload: N8nCallbackPayload): Promise<void
       failure_patterns?: unknown
       strengths?: unknown
       weaknesses?: unknown
+      insights?: Array<{ evidence?: string[] }>
     }
+
+    // T12: Run evidence verification (best-effort — never blocks pipeline)
+    const verification = await runEvidenceVerification(test_run_id, analysis)
 
     await supabase
       .from('test_runs')
@@ -301,7 +386,8 @@ async function handleAnalyzerCallback(payload: N8nCallbackPayload): Promise<void
         strengths: analysis.strengths || null,
         weaknesses: analysis.weaknesses || null,
         analysis_report: result.analysis || null,
-        analyzed_at: new Date().toISOString()
+        analyzed_at: new Date().toISOString(),
+        ...(verification ? { insights_verification: verification } : {})
       })
       .eq('id', test_run_id)
   }

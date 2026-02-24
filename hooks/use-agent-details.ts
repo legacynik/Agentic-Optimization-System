@@ -28,6 +28,26 @@ export interface PromptSuggestion {
   priority: 'high' | 'medium' | 'low'
 }
 
+/** Evidence verification status from T12 */
+export interface EvidenceVerificationItem {
+  insight_index: number
+  evidence_index: number
+  status: 'exact' | 'pattern' | 'unverified'
+  matched_in: string | null
+}
+
+/** Evidence verification result */
+export interface InsightsVerification {
+  items: EvidenceVerificationItem[]
+  summary: {
+    total: number
+    exact: number
+    pattern: number
+    unverified: number
+    verified_at: string
+  }
+}
+
 /** Agent details data structure */
 export interface AgentDetails {
   /** Top issues from failure_patterns */
@@ -48,11 +68,22 @@ export interface AgentDetails {
   strengths: unknown
   /** Weaknesses raw data */
   weaknesses: unknown
+  /** Analysis insights with evidence arrays (for T12 rendering) */
+  insights: Array<{
+    title: string
+    description: string
+    evidence?: string[]
+    impact?: string
+    recommendation?: string
+  }>
+  /** T12: Evidence verification results */
+  insightsVerification: InsightsVerification | null
 }
 
-/** Analysis report structure from LLM */
+/** Analysis report structure from LLM (supports both formats) */
 interface AnalysisReport {
   executive_summary?: string
+  summary?: string
   insights?: Array<{
     title: string
     description: string
@@ -61,11 +92,18 @@ interface AnalysisReport {
     affected_personas?: string[]
     recommendation?: string
   }>
+  top_issues?: Array<{
+    title: string
+    description?: string
+    evidence?: string
+    severity?: string
+    affected_personas?: string[]
+  }>
   persona_breakdown?: {
     struggling?: Array<{ name: string; avg_score: number; root_cause?: string }>
     excelling?: Array<{ name: string; avg_score: number; why?: string }>
   }
-  strengths?: string[]
+  strengths?: string[] | Array<{ title: string; evidence?: string }>
   prompt_suggestions?: Array<{
     id: string
     action: 'ADD' | 'MODIFY' | 'REMOVE'
@@ -82,6 +120,7 @@ interface TestRunResponse {
   strengths: unknown
   weaknesses: unknown
   analysis_report: AnalysisReport | null
+  insights_verification: InsightsVerification | null
   battle_results: Array<{
     id: string
     persona_id: string
@@ -90,6 +129,35 @@ interface TestRunResponse {
     outcome: string
     score: number | null
   }>
+}
+
+/**
+ * T12: Normalizes top_issues/strengths format to insights[] for evidence display.
+ * The analyzer may output top_issues[].evidence (string) instead of insights[].evidence (string[]).
+ */
+function normalizeTopIssuesToInsights(
+  report: AnalysisReport | null
+): AgentDetails['insights'] {
+  if (!report) return []
+
+  const insights: AgentDetails['insights'] = []
+  const raw = report as Record<string, unknown>
+
+  const topIssues = raw.top_issues as Array<{
+    title?: string; description?: string; evidence?: string
+  }> | undefined
+
+  if (Array.isArray(topIssues)) {
+    for (const issue of topIssues) {
+      insights.push({
+        title: issue.title || 'Issue',
+        description: issue.description || '',
+        evidence: issue.evidence ? [issue.evidence] : [],
+      })
+    }
+  }
+
+  return insights
 }
 
 /**
@@ -207,6 +275,8 @@ async function fetchAgentDetails(promptName: string): Promise<AgentDetails> {
       failurePatterns: null,
       strengths: null,
       weaknesses: null,
+      insights: [],
+      insightsVerification: null,
     }
   }
 
@@ -238,6 +308,12 @@ async function fetchAgentDetails(promptName: string): Promise<AgentDetails> {
   // Extract suggestions from analysis_report
   const suggestions: PromptSuggestion[] = testRun.analysis_report?.prompt_suggestions || []
 
+  // T12: Normalize insights — handle both insights[] and top_issues[] formats
+  const rawInsights = testRun.analysis_report?.insights || []
+  const normalizedInsights = rawInsights.length > 0
+    ? rawInsights
+    : normalizeTopIssuesToInsights(testRun.analysis_report)
+
   return {
     topIssues,
     strugglingPersonas: struggling,
@@ -248,6 +324,8 @@ async function fetchAgentDetails(promptName: string): Promise<AgentDetails> {
     failurePatterns: testRun.failure_patterns,
     strengths: testRun.strengths,
     weaknesses: testRun.weaknesses,
+    insights: normalizedInsights,
+    insightsVerification: testRun.insights_verification || null,
   }
 }
 
