@@ -10,6 +10,13 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
+import type {
+  EvidenceVerification as EvidenceVerificationItem,
+  VerificationResult as InsightsVerification,
+} from '@/lib/evidence-verification'
+
+// Re-export for consumers
+export type { EvidenceVerificationItem, InsightsVerification }
 
 /** Persona score summary */
 export interface PersonaScore {
@@ -26,26 +33,6 @@ export interface PromptSuggestion {
   action: 'ADD' | 'MODIFY' | 'REMOVE'
   text: string
   priority: 'high' | 'medium' | 'low'
-}
-
-/** Evidence verification status from T12 */
-export interface EvidenceVerificationItem {
-  insight_index: number
-  evidence_index: number
-  status: 'exact' | 'pattern' | 'unverified'
-  matched_in: string | null
-}
-
-/** Evidence verification result */
-export interface InsightsVerification {
-  items: EvidenceVerificationItem[]
-  summary: {
-    total: number
-    exact: number
-    pattern: number
-    unverified: number
-    verified_at: string
-  }
 }
 
 /** Agent details data structure */
@@ -288,7 +275,9 @@ async function fetchAgentDetails(promptName: string): Promise<AgentDetails> {
     throw new Error('Failed to fetch test run details')
   }
 
-  const testRun: TestRunResponse = await detailResponse.json()
+  const detailJson = await detailResponse.json()
+  // apiSuccess wraps response in { success, data, error } envelope
+  const testRun: TestRunResponse = detailJson.data ?? detailJson
 
   // Extract top issues - prefer analysis_report insights, fallback to failure_patterns
   let topIssues: string[] = []

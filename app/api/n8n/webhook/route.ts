@@ -12,7 +12,7 @@
 import { NextRequest } from 'next/server'
 import { isValidUUID } from '@/lib/validation'
 import { apiSuccess, apiError, createSupabaseClient } from '@/lib/api-response'
-import { verifyEvidence } from '@/lib/evidence-verification'
+import { verifyEvidence, type VerificationResult } from '@/lib/evidence-verification'
 
 const supabase = createSupabaseClient()
 
@@ -283,31 +283,26 @@ async function handleEvaluatorCallback(payload: N8nCallbackPayload): Promise<voi
  * but the verification utility expects insights[].evidence[] arrays.
  */
 function normalizeToInsights(report: Record<string, unknown>) {
-  const insights: Array<{ evidence?: string[] }> = []
-
-  // Map top_issues (evidence is a single string)
-  const topIssues = report.top_issues as Array<{ evidence?: string }> | undefined
-  if (Array.isArray(topIssues)) {
-    for (const issue of topIssues) {
-      insights.push({
-        evidence: issue.evidence ? [issue.evidence] : [],
-      })
-    }
-  }
-
-  // Map insights directly if they exist (standard format)
+  // Standard insights[] format takes precedence
   const existingInsights = report.insights as Array<{ evidence?: string[] }> | undefined
   if (Array.isArray(existingInsights)) {
     return { insights: existingInsights }
   }
 
-  // Map strengths (evidence is a single string)
+  // Fallback: map top_issues + strengths (evidence is a single string)
+  const insights: Array<{ evidence?: string[] }> = []
+
+  const topIssues = report.top_issues as Array<{ evidence?: string }> | undefined
+  if (Array.isArray(topIssues)) {
+    for (const issue of topIssues) {
+      insights.push({ evidence: issue.evidence ? [issue.evidence] : [] })
+    }
+  }
+
   const strengths = report.strengths as Array<{ evidence?: string }> | undefined
   if (Array.isArray(strengths)) {
     for (const s of strengths) {
-      insights.push({
-        evidence: s.evidence ? [s.evidence] : [],
-      })
+      insights.push({ evidence: s.evidence ? [s.evidence] : [] })
     }
   }
 
@@ -321,7 +316,7 @@ function normalizeToInsights(report: Record<string, unknown>) {
 async function runEvidenceVerification(
   testRunId: string,
   analysisReport: unknown
-): Promise<unknown | null> {
+): Promise<VerificationResult | null> {
   try {
     if (!analysisReport || typeof analysisReport !== 'object') return null
 
