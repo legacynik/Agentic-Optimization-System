@@ -1,0 +1,2342 @@
+{
+  "updatedAt": "2026-02-20T11:37:28.598Z",
+  "createdAt": "2025-08-25T21:10:06.706Z",
+  "id": "202JEX5zm3VlrUT8",
+  "name": "Battles Evaluator",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "ccd15692-8aab-43c3-9e0e-fa476bfb733e",
+      "name": "Start Evaluation",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- T1: Direct evaluation_id lookup \u2014 no polling for pending status.\n-- Fetch all battle_results for this evaluation's test_run.\nSELECT\n  br.id as battle_result_id,\n  br.test_run_id,\n  br.persona_id,\n  br.outcome,\n  br.turns,\n  br.transcript,\n  p.name as persona_name,\n  p.category as persona_category,\n  p.personaprompt as persona_description,\n  tr.prompt_version_id,\n  $2::uuid as evaluation_id\nFROM battle_results br\nJOIN test_runs tr ON tr.id = br.test_run_id\nJOIN personas p ON p.id = br.persona_id\nWHERE br.test_run_id = $1::uuid\nORDER BY br.created_at ASC",
+        "options": {
+          "queryReplacement": "={{ $json.test_run_id }}, {{ $json.evaluation_id }}"
+        }
+      },
+      "id": "8f379fcb-2433-44b7-9700-fdb4e0b35270",
+      "name": "Get Pending Evaluations",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -240,
+        -320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "de72d5a2-0e50-4143-b4b1-27e5858a48c8",
+      "name": "Process Each Conversation",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        800,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst rawText = item.llm_response || item.output || item.text || '';\n\ntry {\n  let cleanText = rawText.trim();\n  if (cleanText.startsWith('```')) {\n    cleanText = cleanText.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\n  }\n  const parsed = JSON.parse(cleanText);\n  return { json: { ...item, ...parsed, parse_error: false } };\n} catch (err) {\n  return {\n    json: {\n      ...item,\n      parse_error: true,\n      raw_response: rawText,\n      outcome: 'error',\n      score: null,\n      criteria_scores: null,\n      parse_error_message: err.message\n    }\n  };\n}"
+      },
+      "id": "b8bf75f7-4c6e-4a9f-b713-1b26cbe13b5b",
+      "name": "Parse Evaluation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO battle_evaluations (evaluation_id, battle_result_id, score, criteria_scores, outcome, summary, strengths, weaknesses, raw_response, evaluator_version) VALUES ($1::uuid, $2::uuid, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10) ON CONFLICT (evaluation_id, battle_result_id) DO UPDATE SET score=EXCLUDED.score, criteria_scores=EXCLUDED.criteria_scores, outcome=EXCLUDED.outcome, summary=EXCLUDED.summary, strengths=EXCLUDED.strengths, weaknesses=EXCLUDED.weaknesses, raw_response=EXCLUDED.raw_response, evaluator_version=EXCLUDED.evaluator_version, evaluated_at=now() RETURNING id, evaluation_id, '{{ $json.model_used || '' }}' as model_used, {{ $json.tokens_used !== null && $json.tokens_used !== undefined ? $json.tokens_used : 'NULL' }} as tokens_used",
+        "options": {
+          "queryReplacement": "={{ $json.evaluation_id }}, {{ $json.battle_result_id }}, {{ $json.overall_score || 0 }}, {{ JSON.stringify($json.criteria_scores || {}) }}, {{ $json.conversation_outcome || 'unknown' }}, {{ $json.summary || '' }}, {{ JSON.stringify($json.strengths || []) }}, {{ JSON.stringify($json.weaknesses || []) }}, {{ JSON.stringify($json) }}, {{ $json.evaluator_version || 'evaluator-v4.1-dynamic' }}"
+        }
+      },
+      "id": "a6ad99e5-7ddd-4d2f-9e8a-dc9a6d32e05d",
+      "name": "Update Battle Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2048,
+        -224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"overall_score\": 7.5, \"criteria_scores\": {\"criteria_name\": 8}, \"conversation_outcome\": \"success\", \"summary\": \"text\", \"strengths\": [\"strength 1\"], \"weaknesses\": [\"weakness 1\"]}",
+        "autoFix": true
+      },
+      "id": "63eda45e-0f86-446c-af95-2c6315a1b912",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1440,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "id": "4d2b3c16-0b49-4392-9d15-0c086c65a219",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1520,
+        768
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "W0CaTzV6FEPicj73",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "={{ $json.llm }}",
+        "options": {}
+      },
+      "id": "7d075ca8-10d0-49bd-a12b-9f2adc438f0c",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        640
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "am83txd1aTbmmhSo",
+          "name": "OpenRouter OLD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "d5bff2a6-e59e-40c6-b3ca-f26451ed70b1",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -688,
+        -656
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// T1: Read evaluation_id, test_run_id, evaluator_config_id from webhook payload.\n// triggered_by is audit-only - never branch on it.\nconst input = $('When Executed by Another Workflow').first().json;\nconst evaluationId = input.evaluation_id || null;\nconst testRunId = input.test_run_id || null;\nconst evaluatorConfigId = input.evaluator_config_id || null;\nconst triggeredBy = input.triggered_by || 'unknown';\n// T5d: extract run_analyzer flag (default true if not provided)\nconst runAnalyzer = input.run_analyzer ?? input.body?.run_analyzer ?? true;\nif (!evaluationId) throw new Error('[T1] evaluation_id is required in webhook payload');\nif (!testRunId) throw new Error('[T1] test_run_id is required in webhook payload');\nconsole.log('[T1] evaluation_id=' + evaluationId + ' test_run_id=' + testRunId + ' run_analyzer=' + runAnalyzer);\nreturn { json: { evaluation_id: evaluationId, test_run_id: testRunId, evaluator_config_id: evaluatorConfigId, triggered_by: triggeredBy, run_analyzer: runAnalyzer } };"
+      },
+      "id": "4a4103e4-bd44-4698-9ddc-e1c9ecf0db9a",
+      "name": "Extract Test Run Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -656
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH eval_data AS (SELECT be.score, be.outcome, be.criteria_scores, be.summary, be.strengths, be.weaknesses, br.turns, br.outcome as original_outcome, p.name as persona_name, p.category as persona_category FROM battle_evaluations be JOIN battle_results br ON be.battle_result_id = br.id JOIN personas p ON br.persona_id = p.id WHERE br.test_run_id = $1::uuid), stats AS (SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE outcome IN ('success','successo')) as success_count, COUNT(*) FILTER (WHERE outcome IN ('partial','successo_parziale')) as partial_count, COUNT(*) FILTER (WHERE outcome IN ('failure','fallimento')) as failure_count, ROUND(AVG(score)::numeric,2) as avg_score, ROUND(MIN(score)::numeric,2) as min_score, ROUND(MAX(score)::numeric,2) as max_score FROM eval_data), persona_perf AS (SELECT json_agg(json_build_object('persona',persona_name,'category',persona_category,'score',score,'outcome',outcome,'turns',turns,'summary',summary,'strengths',strengths,'weaknesses',weaknesses) ORDER BY score ASC) as personas FROM eval_data), criteria_avg AS (SELECT json_object_agg(key, ROUND(avg_val::numeric,2)) as criteria_breakdown FROM (SELECT kv.key, AVG(kv.value::text::numeric) as avg_val FROM eval_data, LATERAL jsonb_each(CASE jsonb_typeof(criteria_scores) WHEN 'object' THEN criteria_scores WHEN 'array' THEN (SELECT jsonb_object_agg(elem->>'criteria_name', elem->'score') FROM jsonb_array_elements(criteria_scores) elem) ELSE '{}'::jsonb END) AS kv(key,value) WHERE criteria_scores IS NOT NULL GROUP BY kv.key) sub) SELECT json_build_object('test_run_id',$1::uuid,'overall_stats',(SELECT row_to_json(stats) FROM stats),'criteria_breakdown',(SELECT criteria_breakdown FROM criteria_avg),'conversations_detail',(SELECT personas FROM persona_perf)) as analysis_context",
+        "options": {
+          "queryReplacement": "={{ $json.test_run_id }}"
+        }
+      },
+      "id": "d76dbda9-77c3-44eb-a388-9e7fd6413e3a",
+      "name": "PG Aggregate",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1408,
+        -624
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "={{ $('Build Dynamic System Prompt').first().json.llm_config?.analyzer?.model || 'anthropic/claude-sonnet-4.5' }}",
+        "options": {}
+      },
+      "id": "b74808ee-129b-40f3-8137-dc64544d7b3f",
+      "name": "OpenRouter Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        -528
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "am83txd1aTbmmhSo",
+          "name": "OpenRouter OLD"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# Test Run Data\n{{ JSON.stringify($json.analysis_context, null, 2) }}\n# Instructions\nAnalyze and return JSON with summary, overall_assessment, top_issues, strengths, criteria_analysis, suggestions.",
+        "batching": {}
+      },
+      "id": "0613829f-de40-4c83-88e3-00d448289099",
+      "name": "LLM Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        1664,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.text || $input.first().json.content || '';\nlet cleaned = raw.replace(/```json\\n?/gi, '').replace(/```\\n?/gi, '').trim();\nconst start = cleaned.indexOf('{');\nconst end = cleaned.lastIndexOf('}');\nconst testRunId = $('PG Aggregate').first().json.analysis_context?.test_run_id;\nif (start === -1 || end === -1) return [{ json: { success: false, error: 'NO_JSON_FOUND', raw: raw.substring(0,500), test_run_id: testRunId } }];\ntry {\n  const parsed = JSON.parse(cleaned.substring(start, end + 1));\n  const required = ['summary','top_issues','suggestions','overall_assessment'];\n  const missing = required.filter(f => !(f in parsed));\n  if (missing.length > 0) return [{ json: { success: false, error: 'MISSING_FIELDS', missing, test_run_id: testRunId } }];\n  parsed.top_issues = Array.isArray(parsed.top_issues) ? parsed.top_issues : [];\n  parsed.suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];\n  parsed.strengths = Array.isArray(parsed.strengths) ? parsed.strengths : [];\n  return [{ json: { success: true, analysis_report: parsed, analyzed_at: new Date().toISOString(), issues_count: parsed.top_issues.length, suggestions_count: parsed.suggestions.length, overall_assessment: parsed.overall_assessment, test_run_id: testRunId } }];\n} catch (e) {\n  return [{ json: { success: false, error: 'PARSE_ERROR', message: e.message, test_run_id: testRunId } }];\n}"
+      },
+      "id": "6711475c-8899-4e87-8cae-6fca6a95d3ab",
+      "name": "Code Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE test_runs SET status = 'completed', analysis_report = $1::jsonb, analyzed_at = $2, completed_at = NOW() WHERE id = $3::uuid RETURNING id, status, analyzed_at",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($json.analysis_report) }}, {{ $now.toISO() }}, {{ $json.test_run_id }}"
+        }
+      },
+      "id": "81807531-b913-4b5f-98a6-0ebe56cfd419",
+      "name": "Save Report",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2416,
+        -800
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 3,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "d6477080-9b09-493a-9c93-74daaf1c03b2",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "acd63615-d298-4294-8419-729dc1c3027e",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE test_runs SET status='failed', completed_at=NOW(), analysis_report=$1::jsonb, analyzed_at=NOW(), stopped_reason='evaluator_error' WHERE id=$2::uuid RETURNING id, status",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify({ error: true, message: $json.error, details: $json.message || $json.raw || null }) }}, {{ $json.test_run_id }}"
+        }
+      },
+      "id": "d7f167dd-1ed5-4fbf-9ef0-d8242c9126fe",
+      "name": "Log error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2432,
+        -608
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- T1: Use test_run_id directly from webhook payload\nUPDATE test_runs SET status='evaluating', last_heartbeat_at=NOW() WHERE id=$1::uuid RETURNING id as test_run_id, test_run_code, status",
+        "options": {
+          "queryReplacement": "={{ $('Extract Test Run Info').item.json.test_run_id }}"
+        }
+      },
+      "id": "354c1a40-e338-4ecf-93cf-41a15ed3b848",
+      "name": "Set Status Evaluating",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -480,
+        -656
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0cf419aa-c3df-4f9e-8dc4-9d67e133e430",
+              "name": "test_run_id",
+              "value": "e088affd-82d7-45bf-931b-f88a51afa272",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c20c8a37-c03a-478a-a793-b372732f6708",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        -304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- T1/T2/T3: Fetch evaluator config by evaluator_config_id from webhook.\n-- Falls back to JOIN via test_run. Includes llm_config (T3).\nSELECT ec.id, ec.name, ec.version, ec.criteria, ec.system_prompt_template, ec.success_config, ec.llm_config\nFROM evaluator_configs ec\nWHERE ec.id = COALESCE($1::uuid, (SELECT ec2.id FROM evaluator_configs ec2 JOIN test_runs tr ON tr.prompt_version_id=ec2.prompt_version_id WHERE tr.id=$2::uuid AND ec2.status='active' ORDER BY ec2.is_promoted DESC, ec2.created_at DESC LIMIT 1))\nAND ec.status='active' LIMIT 1",
+        "options": {
+          "queryReplacement": "={{ $('Extract Test Run Info').item.json.evaluator_config_id }}, {{ $('Extract Test Run Info').item.json.test_run_id }}"
+        }
+      },
+      "id": "fetch-evaluator-config-node",
+      "name": "Fetch Evaluator Config",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        48,
+        -320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// T2 + T4: Build dynamic system prompt with criteria taxonomy.\n// T4: COALESCE criteria_snapshot / llm_config_snapshot for backwards compat.\nconst config = $('Fetch Evaluator Config').first().json;\nconst createEvalRow = $('Create Evaluation').first().json;\nconst evaluationId = createEvalRow.evaluation_id;\nif (!evaluationId) throw new Error('[Build Dynamic System Prompt] No evaluation_id from Create Evaluation');\nconst rawCriteria = createEvalRow.criteria_snapshot || config.criteria;\nif (!rawCriteria || (!Array.isArray(rawCriteria) && typeof rawCriteria !== 'object')) throw new Error('No criteria found: ' + config.id);\nconst llmConfig = createEvalRow.llm_config_snapshot || config.llm_config || {};\nconst template = config.system_prompt_template;\nif (!template) throw new Error('No system_prompt_template: ' + config.id);\nlet coreCriteria = [], domainCriteria = [];\nif (Array.isArray(rawCriteria)) { coreCriteria = rawCriteria; }\nelse if (typeof rawCriteria === 'object' && rawCriteria !== null) { coreCriteria = rawCriteria.core || []; domainCriteria = rawCriteria.domain || []; }\nconst allCriteria = [...coreCriteria, ...domainCriteria];\nif (allCriteria.length === 0) throw new Error('[Build] Zero criteria');\nconst invalid = allCriteria.filter(c => !c.name || typeof c.name !== 'string' || c.name.trim() === '');\nif (invalid.length > 0) throw new Error('[REQ-T2.7] Missing criterion names: ' + JSON.stringify(invalid));\nconst CRIT = 'CRITERIA_SECTION_HERE';\nconst SCORE = 'SCORES_TEMPLATE_HERE';\nconst buildSection = (criteria, label) => criteria.map((c, i) => [(label ? label + ' ' : '') + (i+1) + '. **' + c.name.replace(/_/g,' ').toUpperCase() + '** (weight: ' + (c.weight != null ? c.weight : (c.weight_default != null ? c.weight_default : 1.0)) + ')', '   ' + (c.description || ''), c.scoring_guide ? '   Scale: ' + c.scoring_guide : ''].filter(Boolean).join('\\n')).join('\\n\\n');\nlet criteriaSection = domainCriteria.length > 0 ? buildSection(coreCriteria,'[CORE]') + '\\n\\n' + buildSection(domainCriteria,'[DOMAIN]') : buildSection(coreCriteria,'');\nconst scoresTemplate = {};\nallCriteria.forEach(c => { scoresTemplate[c.name] = 0; });\nconst hasWeights = allCriteria.some(c => (c.weight != null ? c.weight : (c.weight_default != null ? c.weight_default : 1.0)) !== 1.0);\nconst weightNote = hasWeights ? '\\n\\n**SCORING**: Final score = SUM(score_i * weight_i) / SUM(weight_i).' : '';\nlet systemPrompt = template;\nif (template.indexOf(CRIT) !== -1) systemPrompt = systemPrompt.split(CRIT).join(criteriaSection + weightNote);\nif (systemPrompt.indexOf(SCORE) !== -1) systemPrompt = systemPrompt.split(SCORE).join(JSON.stringify(scoresTemplate, null, 2));\nconst battles = $('Get Pending Evaluations').all();\nreturn battles.map(battle => ({ json: { ...battle.json, evaluation_id: evaluationId, evaluator_config_id: config.id, evaluator_name: config.name, dynamic_system_prompt: systemPrompt, criteria_names: allCriteria.map(c => c.name), criteria_with_weights: allCriteria.map(c => ({ name: c.name, weight: c.weight != null ? c.weight : (c.weight_default != null ? c.weight_default : 1.0) })), expected_scores_shape: scoresTemplate, success_config: config.success_config, llm_config: llmConfig } }));"
+      },
+      "id": "build-dynamic-prompt-node",
+      "name": "Build Dynamic System Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=-- T3/T4: Mark evaluation completed, write model_used + tokens_used.\n-- T7b: overall_score excludes outcome='error' rows (parse failures have null score).\nUPDATE evaluations SET status='completed', completed_at=now(),\n  overall_score=(SELECT ROUND(AVG(score)::numeric,2) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IS DISTINCT FROM 'error'),\n  success_count=(SELECT COUNT(*) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IN ('success','successo')),\n  failure_count=(SELECT COUNT(*) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IN ('failure','fallimento')),\n  partial_count=(SELECT COUNT(*) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IN ('partial','successo_parziale')),\n  model_used='{{ $json.model_used || '' }}',\n  tokens_used={{ $json.tokens_used !== null && $json.tokens_used !== undefined ? $json.tokens_used : 'NULL' }}\nWHERE id='{{ $json.evaluation_id }}'::uuid\nRETURNING *",
+        "options": {}
+      },
+      "id": "update-eval-complete-node",
+      "name": "Update Evaluation Complete",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2256,
+        -176
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- T1: evaluation_id from webhook - mark running, snapshot criteria + llm_config (T4).\nINSERT INTO evaluations (id, test_run_id, evaluator_config_id, status, started_at, triggered_by, criteria_snapshot, llm_config_snapshot)\nVALUES ($1::uuid, $2::uuid, $3::uuid, 'running', NOW(), 'n8n', $4::jsonb, $5::jsonb)\nON CONFLICT (id) DO UPDATE SET status='running', started_at=NOW(), completed_at=NULL, error_message=NULL,\n  criteria_snapshot=COALESCE(evaluations.criteria_snapshot, EXCLUDED.criteria_snapshot),\n  llm_config_snapshot=COALESCE(evaluations.llm_config_snapshot, EXCLUDED.llm_config_snapshot)\nRETURNING id as evaluation_id, test_run_id, evaluator_config_id, status, criteria_snapshot, llm_config_snapshot",
+        "options": {
+          "queryReplacement": "={{ $('Extract Test Run Info').item.json.evaluation_id }}, {{ $('Extract Test Run Info').item.json.test_run_id }}, {{ $json.id }}, {{ JSON.stringify($json.criteria || []) }}, {{ JSON.stringify($json.llm_config || {}) }}"
+        }
+      },
+      "id": "create-evaluation-node",
+      "name": "Create Evaluation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        240,
+        -320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "={{ $json.llm_config?.judge?.model || 'models/gemini-3-flash-preview' }}",
+        "options": {}
+      },
+      "id": "b96467be-68d9-4863-93d6-91fb2e6d96c7",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        -32
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "A4H7U8xkqVIIMl1g",
+          "name": "Gemini Sempre Attivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "={{ $json.llm_config?.judge?.fallback?.model || 'google/gemini-3-flash-preview' }}",
+        "options": {
+          "maxRetries": 2
+        }
+      },
+      "id": "c5115bd8-c145-4a4e-a720-c741d3779ae3",
+      "name": "OpenRouter Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        0
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "oIAwycFsTzWnjNQo",
+          "name": "OpenRouter Sempre Attivo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=CONVERSAZIONE DA VALUTARE:\n\n\n\nCONTESTO AGGIUNTIVO:\n- Persona: {{ $json.persona_name }} - {{ $json.persona_category }}\n- Persona Description: {{ $json.persona_description }}\n- Outcome nel DB: {{ $json.outcome }}\n- Turni totali: {{ $json.turns }}\n\nValuta la conversazione secondo i criteri specificati.",
+        "options": {
+          "systemMessage": "=wow"
+        }
+      },
+      "id": "64fa0e0e-fc3b-44d8-a181-6eb370b83afc",
+      "name": "Judge Agent 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        1312,
+        432
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=CONVERSAZIONE DA VALUTARE:\n\n{{ JSON.stringify($json.transcript) }}\n\nCONTESTO AGGIUNTIVO:\n- Persona: {{ $json.persona_name }} - {{ $json.persona_category }}\n- Persona Description: {{ $json.persona_description }}\n- Outcome nel DB: {{ $json.outcome }}\n- Turni totali: {{ $json.turns }}\n\nValuta la conversazione secondo i criteri specificati.",
+        "needsFallback": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "={{ $json.dynamic_system_prompt }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "f21fc34c-a1e0-4e03-9ddb-68a1eeb8ee9d",
+      "name": "Judge Agent",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        1216,
+        -240
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const firstItem = $input.first().json;\nreturn [{ json: { test_run_id: firstItem.test_run_id, evaluation_id: firstItem.evaluation_id } }];"
+      },
+      "id": "ffd28477-20ac-4918-81df-5d96422b43bd",
+      "name": "Dedup ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -544
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "169fb6e5-c5fc-4ea2-971e-9232149a2d24",
+              "name": "llm",
+              "value": "google/gemini-3-flash-preview",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9c083ab8-ab00-4bd3-ba93-1c47d53dd731",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1056,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// REQ-T2.7: Validate criteria names against known list from criteria_definitions.\nconst item = $input.first().json;\nconst criteriaNames = item.criteria_names || [];\nconst knownNames = item.known_criteria_names || null;\nif (knownNames !== null) {\n  const unknown = criteriaNames.filter(n => !knownNames.includes(n));\n  if (unknown.length > 0) throw new Error('[REQ-T2.7] Unknown criteria: ' + unknown.join(', ') + ' for evaluation ' + item.evaluation_id);\n}\nconsole.log('[Validate Criteria Names] ' + criteriaNames.length + ' criteria OK for evaluation ' + item.evaluation_id);\nreturn { json: item };"
+      },
+      "id": "validate-criteria-names-node",
+      "name": "Validate Criteria Names",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// T3: Track model_used and tokens_used.\nconst item = $input.first().json;\nconst llmConfig = item.llm_config || {};\nconst tokenUsage = item.tokenUsage || item.usage || {};\nconst tokensUsed = tokenUsage.totalTokens || tokenUsage.total_tokens || ((tokenUsage.promptTokens || 0) + (tokenUsage.completionTokens || 0)) || null;\nconst primaryModel = llmConfig.judge?.model || 'models/gemini-3-flash-preview';\nconst fallbackModel = llmConfig.judge?.fallback?.model || 'google/gemini-3-flash-preview';\nconst modelUsed = item._usedFallback ? (fallbackModel + ' (fallback)') : primaryModel;\nconsole.log('[LLM Result Tracker] evaluation_id=' + item.evaluation_id + ' model=' + modelUsed + ' tokens=' + tokensUsed);\nreturn { json: { ...item, model_used: modelUsed, tokens_used: tokensUsed } };"
+      },
+      "id": "llm-result-tracker-node",
+      "name": "LLM Result Tracker",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- T2/REQ-T2.7: Fetch criteria_definitions for validation and enrichment.\nSELECT cd.name, cd.description, cd.scoring_guide, cd.category, cd.domain_type, cd.weight_default\nFROM criteria_definitions cd\nWHERE cd.name = ANY($1::text[])",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify(($input.first().json.criteria_names || [])) }}"
+        }
+      },
+      "id": "fetch-criteria-definitions-node",
+      "name": "Fetch Criteria Definitions",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1050,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// T2/REQ-T2.7: Merge criteria_definitions into items, validate all names exist.\nconst buildItems = $('Build Dynamic System Prompt').all();\nconst definitionsRows = $('Fetch Criteria Definitions').all();\nconst definitionsMap = {};\nfor (const row of definitionsRows) definitionsMap[row.json.name] = row.json;\nconst knownNames = Object.keys(definitionsMap);\nreturn buildItems.map(item => {\n  const criteriaNames = item.json.criteria_names || [];\n  const unknown = criteriaNames.filter(n => !definitionsMap[n]);\n  if (unknown.length > 0) throw new Error('[REQ-T2.7] Unknown criteria: ' + unknown.join(', ') + ' for evaluation ' + item.json.evaluation_id);\n  const enrichedWeights = (item.json.criteria_with_weights || []).map(cw => {\n    const def = definitionsMap[cw.name] || {};\n    return { name: cw.name, weight: cw.weight != null ? cw.weight : (def.weight_default != null ? def.weight_default : 1.0), description: def.description || '', scoring_guide: def.scoring_guide || '', category: def.category || '', domain_type: def.domain_type || '' };\n  });\n  return { json: { ...item.json, criteria_with_weights: enrichedWeights, known_criteria_names: knownNames } };\n});"
+      },
+      "id": "merge-crit-def-node",
+      "name": "Merge Criteria Definitions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1125,
+        400
+      ]
+    },
+    {
+      "id": "run-analyzer-if-node",
+      "name": "Run Analyzer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        -624
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "run-analyzer-condition",
+              "leftValue": "={{ $('Extract Test Run Info').item.json.run_analyzer }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "skip-analyzer-node",
+      "name": "Skip Analyzer",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1408,
+        -480
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE evaluations SET has_analysis = false WHERE test_run_id = '{{ $('Extract Test Run Info').item.json.test_run_id }}'",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "id": "mark-analysis-done-node",
+      "name": "Mark Analysis Done",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2608,
+        -800
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE evaluations SET has_analysis = true WHERE test_run_id = '{{ $json.test_run_id }}'",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Start Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Conversation": {
+      "main": [
+        [
+          {
+            "node": "Dedup ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Judge Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Update Battle Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Judge Agent 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Test Run Info": {
+      "main": [
+        [
+          {
+            "node": "Set Status Evaluating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG Aggregate": {
+      "main": [
+        [
+          {
+            "node": "LLM Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Code Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Parser": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Save Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Evaluations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Evaluations": {
+      "main": [
+        [
+          {
+            "node": "Fetch Evaluator Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Battle Result": {
+      "main": [
+        [
+          {
+            "node": "Update Evaluation Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Evaluation Complete": {
+      "main": [
+        [
+          {
+            "node": "Process Each Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Evaluator Config": {
+      "main": [
+        [
+          {
+            "node": "Create Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Evaluation": {
+      "main": [
+        [
+          {
+            "node": "Build Dynamic System Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Judge Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Judge Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Judge Agent 1": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Judge Agent 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Extract Test Run Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Evaluating": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Evaluations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Criteria Names": {
+      "main": [
+        [
+          {
+            "node": "Process Each Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge Agent": {
+      "main": [
+        [
+          {
+            "node": "LLM Result Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Result Tracker": {
+      "main": [
+        [
+          {
+            "node": "Parse Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dynamic System Prompt": {
+      "main": [
+        [
+          {
+            "node": "Fetch Criteria Definitions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Criteria Definitions": {
+      "main": [
+        [
+          {
+            "node": "Merge Criteria Definitions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Criteria Definitions": {
+      "main": [
+        [
+          {
+            "node": "Validate Criteria Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedup ": {
+      "main": [
+        [
+          {
+            "node": "Run Analyzer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Report": {
+      "main": [
+        [
+          {
+            "node": "Mark Analysis Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Analyzer?": {
+      "main": [
+        [
+          {
+            "node": "PG Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "EgAdQyNFrL5OS1J4"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 1
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 2
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 3
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 4
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 5
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 6
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 7
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 8
+        }
+      },
+      {
+        "json": {
+          "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "status": "battles_completed",
+          "test_run_id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+          "test_run_code": "RUN-20260217-121520"
+        },
+        "pairedItem": {
+          "item": 9
+        }
+      }
+    ]
+  },
+  "versionId": "9e2addbb-7da1-4237-ba39-4211ea3e3ae1",
+  "activeVersionId": "9e2addbb-7da1-4237-ba39-4211ea3e3ae1",
+  "versionCounter": 725,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-08-25T21:10:06.706Z",
+      "createdAt": "2025-08-25T21:10:06.706Z",
+      "role": "workflow:owner",
+      "workflowId": "202JEX5zm3VlrUT8",
+      "projectId": "dv3kA4Oe2sL1pWid",
+      "project": {
+        "updatedAt": "2025-01-10T11:02:16.487Z",
+        "createdAt": "2025-01-10T11:00:49.307Z",
+        "id": "dv3kA4Oe2sL1pWid",
+        "name": "Niccolo Franzin <franzin.niccolo@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-02-20T11:37:28.601Z",
+    "createdAt": "2026-02-20T11:37:28.601Z",
+    "versionId": "9e2addbb-7da1-4237-ba39-4211ea3e3ae1",
+    "workflowId": "202JEX5zm3VlrUT8",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "ccd15692-8aab-43c3-9e0e-fa476bfb733e",
+        "name": "Start Evaluation",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -880,
+          -416
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- T1: Direct evaluation_id lookup \u2014 no polling for pending status.\n-- Fetch all battle_results for this evaluation's test_run.\nSELECT\n  br.id as battle_result_id,\n  br.test_run_id,\n  br.persona_id,\n  br.outcome,\n  br.turns,\n  br.transcript,\n  p.name as persona_name,\n  p.category as persona_category,\n  p.personaprompt as persona_description,\n  tr.prompt_version_id,\n  $2::uuid as evaluation_id\nFROM battle_results br\nJOIN test_runs tr ON tr.id = br.test_run_id\nJOIN personas p ON p.id = br.persona_id\nWHERE br.test_run_id = $1::uuid\nORDER BY br.created_at ASC",
+          "options": {
+            "queryReplacement": "={{ $json.test_run_id }}, {{ $json.evaluation_id }}"
+          }
+        },
+        "id": "8f379fcb-2433-44b7-9700-fdb4e0b35270",
+        "name": "Get Pending Evaluations",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          -240,
+          -320
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "de72d5a2-0e50-4143-b4b1-27e5858a48c8",
+        "name": "Process Each Conversation",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          800,
+          -304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const item = $input.item.json;\nconst rawText = item.llm_response || item.output || item.text || '';\n\ntry {\n  let cleanText = rawText.trim();\n  if (cleanText.startsWith('```')) {\n    cleanText = cleanText.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\n  }\n  const parsed = JSON.parse(cleanText);\n  return { json: { ...item, ...parsed, parse_error: false } };\n} catch (err) {\n  return {\n    json: {\n      ...item,\n      parse_error: true,\n      raw_response: rawText,\n      outcome: 'error',\n      score: null,\n      criteria_scores: null,\n      parse_error_message: err.message\n    }\n  };\n}"
+        },
+        "id": "b8bf75f7-4c6e-4a9f-b713-1b26cbe13b5b",
+        "name": "Parse Evaluation",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1728,
+          -208
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=INSERT INTO battle_evaluations (evaluation_id, battle_result_id, score, criteria_scores, outcome, summary, strengths, weaknesses, raw_response, evaluator_version) VALUES ($1::uuid, $2::uuid, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10) ON CONFLICT (evaluation_id, battle_result_id) DO UPDATE SET score=EXCLUDED.score, criteria_scores=EXCLUDED.criteria_scores, outcome=EXCLUDED.outcome, summary=EXCLUDED.summary, strengths=EXCLUDED.strengths, weaknesses=EXCLUDED.weaknesses, raw_response=EXCLUDED.raw_response, evaluator_version=EXCLUDED.evaluator_version, evaluated_at=now() RETURNING id, evaluation_id, '{{ $json.model_used || '' }}' as model_used, {{ $json.tokens_used !== null && $json.tokens_used !== undefined ? $json.tokens_used : 'NULL' }} as tokens_used",
+          "options": {
+            "queryReplacement": "={{ $json.evaluation_id }}, {{ $json.battle_result_id }}, {{ $json.overall_score || 0 }}, {{ JSON.stringify($json.criteria_scores || {}) }}, {{ $json.conversation_outcome || 'unknown' }}, {{ $json.summary || '' }}, {{ JSON.stringify($json.strengths || []) }}, {{ JSON.stringify($json.weaknesses || []) }}, {{ JSON.stringify($json) }}, {{ $json.evaluator_version || 'evaluator-v4.1-dynamic' }}"
+          }
+        },
+        "id": "a6ad99e5-7ddd-4d2f-9e8a-dc9a6d32e05d",
+        "name": "Update Battle Result",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          2048,
+          -224
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsonSchemaExample": "{\"overall_score\": 7.5, \"criteria_scores\": {\"criteria_name\": 8}, \"conversation_outcome\": \"success\", \"summary\": \"text\", \"strengths\": [\"strength 1\"], \"weaknesses\": [\"weakness 1\"]}",
+          "autoFix": true
+        },
+        "id": "63eda45e-0f86-446c-af95-2c6315a1b912",
+        "name": "Structured Output Parser",
+        "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "typeVersion": 1.2,
+        "position": [
+          1440,
+          640
+        ]
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4.1-mini"
+          },
+          "options": {}
+        },
+        "id": "4d2b3c16-0b49-4392-9d15-0c086c65a219",
+        "name": "OpenAI Chat Model",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          1520,
+          768
+        ],
+        "credentials": {
+          "openAiApi": {
+            "id": "W0CaTzV6FEPicj73",
+            "name": "OpenAI account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "model": "={{ $json.llm }}",
+          "options": {}
+        },
+        "id": "7d075ca8-10d0-49bd-a12b-9f2adc438f0c",
+        "name": "OpenRouter Chat Model",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          1248,
+          640
+        ],
+        "credentials": {
+          "openRouterApi": {
+            "id": "am83txd1aTbmmhSo",
+            "name": "OpenRouter OLD"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "d5bff2a6-e59e-40c6-b3ca-f26451ed70b1",
+        "name": "When Executed by Another Workflow",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -688,
+          -656
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// T1: Read evaluation_id, test_run_id, evaluator_config_id from webhook payload.\n// triggered_by is audit-only - never branch on it.\nconst input = $('When Executed by Another Workflow').first().json;\nconst evaluationId = input.evaluation_id || null;\nconst testRunId = input.test_run_id || null;\nconst evaluatorConfigId = input.evaluator_config_id || null;\nconst triggeredBy = input.triggered_by || 'unknown';\n// T5d: extract run_analyzer flag (default true if not provided)\nconst runAnalyzer = input.run_analyzer ?? input.body?.run_analyzer ?? true;\nif (!evaluationId) throw new Error('[T1] evaluation_id is required in webhook payload');\nif (!testRunId) throw new Error('[T1] test_run_id is required in webhook payload');\nconsole.log('[T1] evaluation_id=' + evaluationId + ' test_run_id=' + testRunId + ' run_analyzer=' + runAnalyzer);\nreturn { json: { evaluation_id: evaluationId, test_run_id: testRunId, evaluator_config_id: evaluatorConfigId, triggered_by: triggeredBy, run_analyzer: runAnalyzer } };"
+        },
+        "id": "4a4103e4-bd44-4698-9ddc-e1c9ecf0db9a",
+        "name": "Extract Test Run Info",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -240,
+          -656
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "WITH eval_data AS (SELECT be.score, be.outcome, be.criteria_scores, be.summary, be.strengths, be.weaknesses, br.turns, br.outcome as original_outcome, p.name as persona_name, p.category as persona_category FROM battle_evaluations be JOIN battle_results br ON be.battle_result_id = br.id JOIN personas p ON br.persona_id = p.id WHERE br.test_run_id = $1::uuid), stats AS (SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE outcome IN ('success','successo')) as success_count, COUNT(*) FILTER (WHERE outcome IN ('partial','successo_parziale')) as partial_count, COUNT(*) FILTER (WHERE outcome IN ('failure','fallimento')) as failure_count, ROUND(AVG(score)::numeric,2) as avg_score, ROUND(MIN(score)::numeric,2) as min_score, ROUND(MAX(score)::numeric,2) as max_score FROM eval_data), persona_perf AS (SELECT json_agg(json_build_object('persona',persona_name,'category',persona_category,'score',score,'outcome',outcome,'turns',turns,'summary',summary,'strengths',strengths,'weaknesses',weaknesses) ORDER BY score ASC) as personas FROM eval_data), criteria_avg AS (SELECT json_object_agg(key, ROUND(avg_val::numeric,2)) as criteria_breakdown FROM (SELECT kv.key, AVG(kv.value::text::numeric) as avg_val FROM eval_data, LATERAL jsonb_each(CASE jsonb_typeof(criteria_scores) WHEN 'object' THEN criteria_scores WHEN 'array' THEN (SELECT jsonb_object_agg(elem->>'criteria_name', elem->'score') FROM jsonb_array_elements(criteria_scores) elem) ELSE '{}'::jsonb END) AS kv(key,value) WHERE criteria_scores IS NOT NULL GROUP BY kv.key) sub) SELECT json_build_object('test_run_id',$1::uuid,'overall_stats',(SELECT row_to_json(stats) FROM stats),'criteria_breakdown',(SELECT criteria_breakdown FROM criteria_avg),'conversations_detail',(SELECT personas FROM persona_perf)) as analysis_context",
+          "options": {
+            "queryReplacement": "={{ $json.test_run_id }}"
+          }
+        },
+        "id": "d76dbda9-77c3-44eb-a388-9e7fd6413e3a",
+        "name": "PG Aggregate",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          1408,
+          -624
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "model": "={{ $('Build Dynamic System Prompt').first().json.llm_config?.analyzer?.model || 'anthropic/claude-sonnet-4.5' }}",
+          "options": {}
+        },
+        "id": "b74808ee-129b-40f3-8137-dc64544d7b3f",
+        "name": "OpenRouter Chat Model1",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          1632,
+          -528
+        ],
+        "credentials": {
+          "openRouterApi": {
+            "id": "am83txd1aTbmmhSo",
+            "name": "OpenRouter OLD"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=# Test Run Data\n{{ JSON.stringify($json.analysis_context, null, 2) }}\n# Instructions\nAnalyze and return JSON with summary, overall_assessment, top_issues, strengths, criteria_analysis, suggestions.",
+          "batching": {}
+        },
+        "id": "0613829f-de40-4c83-88e3-00d448289099",
+        "name": "LLM Analyzer",
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.4,
+        "position": [
+          1664,
+          -704
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const raw = $input.first().json.text || $input.first().json.content || '';\nlet cleaned = raw.replace(/```json\\n?/gi, '').replace(/```\\n?/gi, '').trim();\nconst start = cleaned.indexOf('{');\nconst end = cleaned.lastIndexOf('}');\nconst testRunId = $('PG Aggregate').first().json.analysis_context?.test_run_id;\nif (start === -1 || end === -1) return [{ json: { success: false, error: 'NO_JSON_FOUND', raw: raw.substring(0,500), test_run_id: testRunId } }];\ntry {\n  const parsed = JSON.parse(cleaned.substring(start, end + 1));\n  const required = ['summary','top_issues','suggestions','overall_assessment'];\n  const missing = required.filter(f => !(f in parsed));\n  if (missing.length > 0) return [{ json: { success: false, error: 'MISSING_FIELDS', missing, test_run_id: testRunId } }];\n  parsed.top_issues = Array.isArray(parsed.top_issues) ? parsed.top_issues : [];\n  parsed.suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];\n  parsed.strengths = Array.isArray(parsed.strengths) ? parsed.strengths : [];\n  return [{ json: { success: true, analysis_report: parsed, analyzed_at: new Date().toISOString(), issues_count: parsed.top_issues.length, suggestions_count: parsed.suggestions.length, overall_assessment: parsed.overall_assessment, test_run_id: testRunId } }];\n} catch (e) {\n  return [{ json: { success: false, error: 'PARSE_ERROR', message: e.message, test_run_id: testRunId } }];\n}"
+        },
+        "id": "6711475c-8899-4e87-8cae-6fca6a95d3ab",
+        "name": "Code Parser",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1968,
+          -704
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE test_runs SET status = 'completed', analysis_report = $1::jsonb, analyzed_at = $2, completed_at = NOW() WHERE id = $3::uuid RETURNING id, status, analyzed_at",
+          "options": {
+            "queryReplacement": "={{ JSON.stringify($json.analysis_report) }}, {{ $now.toISO() }}, {{ $json.test_run_id }}"
+          }
+        },
+        "id": "81807531-b913-4b5f-98a6-0ebe56cfd419",
+        "name": "Save Report",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          2416,
+          -800
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "version": 3,
+              "leftValue": "",
+              "caseSensitive": true,
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "d6477080-9b09-493a-9c93-74daaf1c03b2",
+                "leftValue": "={{ $json.success }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "acd63615-d298-4294-8419-729dc1c3027e",
+        "name": "If",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2176,
+          -704
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE test_runs SET status='failed', completed_at=NOW(), analysis_report=$1::jsonb, analyzed_at=NOW(), stopped_reason='evaluator_error' WHERE id=$2::uuid RETURNING id, status",
+          "options": {
+            "queryReplacement": "={{ JSON.stringify({ error: true, message: $json.error, details: $json.message || $json.raw || null }) }}, {{ $json.test_run_id }}"
+          }
+        },
+        "id": "d7f167dd-1ed5-4fbf-9ef0-d8242c9126fe",
+        "name": "Log error",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          2432,
+          -608
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- T1: Use test_run_id directly from webhook payload\nUPDATE test_runs SET status='evaluating', last_heartbeat_at=NOW() WHERE id=$1::uuid RETURNING id as test_run_id, test_run_code, status",
+          "options": {
+            "queryReplacement": "={{ $('Extract Test Run Info').item.json.test_run_id }}"
+          }
+        },
+        "id": "354c1a40-e338-4ecf-93cf-41a15ed3b848",
+        "name": "Set Status Evaluating",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          -480,
+          -656
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "0cf419aa-c3df-4f9e-8dc4-9d67e133e430",
+                "name": "test_run_id",
+                "value": "e088affd-82d7-45bf-931b-f88a51afa272",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "c20c8a37-c03a-478a-a793-b372732f6708",
+        "name": "Edit Fields",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -656,
+          -304
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- T1/T2/T3: Fetch evaluator config by evaluator_config_id from webhook.\n-- Falls back to JOIN via test_run. Includes llm_config (T3).\nSELECT ec.id, ec.name, ec.version, ec.criteria, ec.system_prompt_template, ec.success_config, ec.llm_config\nFROM evaluator_configs ec\nWHERE ec.id = COALESCE($1::uuid, (SELECT ec2.id FROM evaluator_configs ec2 JOIN test_runs tr ON tr.prompt_version_id=ec2.prompt_version_id WHERE tr.id=$2::uuid AND ec2.status='active' ORDER BY ec2.is_promoted DESC, ec2.created_at DESC LIMIT 1))\nAND ec.status='active' LIMIT 1",
+          "options": {
+            "queryReplacement": "={{ $('Extract Test Run Info').item.json.evaluator_config_id }}, {{ $('Extract Test Run Info').item.json.test_run_id }}"
+          }
+        },
+        "id": "fetch-evaluator-config-node",
+        "name": "Fetch Evaluator Config",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          48,
+          -320
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// T2 + T4: Build dynamic system prompt with criteria taxonomy.\n// T4: COALESCE criteria_snapshot / llm_config_snapshot for backwards compat.\nconst config = $('Fetch Evaluator Config').first().json;\nconst createEvalRow = $('Create Evaluation').first().json;\nconst evaluationId = createEvalRow.evaluation_id;\nif (!evaluationId) throw new Error('[Build Dynamic System Prompt] No evaluation_id from Create Evaluation');\nconst rawCriteria = createEvalRow.criteria_snapshot || config.criteria;\nif (!rawCriteria || (!Array.isArray(rawCriteria) && typeof rawCriteria !== 'object')) throw new Error('No criteria found: ' + config.id);\nconst llmConfig = createEvalRow.llm_config_snapshot || config.llm_config || {};\nconst template = config.system_prompt_template;\nif (!template) throw new Error('No system_prompt_template: ' + config.id);\nlet coreCriteria = [], domainCriteria = [];\nif (Array.isArray(rawCriteria)) { coreCriteria = rawCriteria; }\nelse if (typeof rawCriteria === 'object' && rawCriteria !== null) { coreCriteria = rawCriteria.core || []; domainCriteria = rawCriteria.domain || []; }\nconst allCriteria = [...coreCriteria, ...domainCriteria];\nif (allCriteria.length === 0) throw new Error('[Build] Zero criteria');\nconst invalid = allCriteria.filter(c => !c.name || typeof c.name !== 'string' || c.name.trim() === '');\nif (invalid.length > 0) throw new Error('[REQ-T2.7] Missing criterion names: ' + JSON.stringify(invalid));\nconst CRIT = 'CRITERIA_SECTION_HERE';\nconst SCORE = 'SCORES_TEMPLATE_HERE';\nconst buildSection = (criteria, label) => criteria.map((c, i) => [(label ? label + ' ' : '') + (i+1) + '. **' + c.name.replace(/_/g,' ').toUpperCase() + '** (weight: ' + (c.weight != null ? c.weight : (c.weight_default != null ? c.weight_default : 1.0)) + ')', '   ' + (c.description || ''), c.scoring_guide ? '   Scale: ' + c.scoring_guide : ''].filter(Boolean).join('\\n')).join('\\n\\n');\nlet criteriaSection = domainCriteria.length > 0 ? buildSection(coreCriteria,'[CORE]') + '\\n\\n' + buildSection(domainCriteria,'[DOMAIN]') : buildSection(coreCriteria,'');\nconst scoresTemplate = {};\nallCriteria.forEach(c => { scoresTemplate[c.name] = 0; });\nconst hasWeights = allCriteria.some(c => (c.weight != null ? c.weight : (c.weight_default != null ? c.weight_default : 1.0)) !== 1.0);\nconst weightNote = hasWeights ? '\\n\\n**SCORING**: Final score = SUM(score_i * weight_i) / SUM(weight_i).' : '';\nlet systemPrompt = template;\nif (template.indexOf(CRIT) !== -1) systemPrompt = systemPrompt.split(CRIT).join(criteriaSection + weightNote);\nif (systemPrompt.indexOf(SCORE) !== -1) systemPrompt = systemPrompt.split(SCORE).join(JSON.stringify(scoresTemplate, null, 2));\nconst battles = $('Get Pending Evaluations').all();\nreturn battles.map(battle => ({ json: { ...battle.json, evaluation_id: evaluationId, evaluator_config_id: config.id, evaluator_name: config.name, dynamic_system_prompt: systemPrompt, criteria_names: allCriteria.map(c => c.name), criteria_with_weights: allCriteria.map(c => ({ name: c.name, weight: c.weight != null ? c.weight : (c.weight_default != null ? c.weight_default : 1.0) })), expected_scores_shape: scoresTemplate, success_config: config.success_config, llm_config: llmConfig } }));"
+        },
+        "id": "build-dynamic-prompt-node",
+        "name": "Build Dynamic System Prompt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          464,
+          -320
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=-- T3/T4: Mark evaluation completed, write model_used + tokens_used.\n-- T7b: overall_score excludes outcome='error' rows (parse failures have null score).\nUPDATE evaluations SET status='completed', completed_at=now(),\n  overall_score=(SELECT ROUND(AVG(score)::numeric,2) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IS DISTINCT FROM 'error'),\n  success_count=(SELECT COUNT(*) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IN ('success','successo')),\n  failure_count=(SELECT COUNT(*) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IN ('failure','fallimento')),\n  partial_count=(SELECT COUNT(*) FROM battle_evaluations WHERE evaluation_id='{{ $json.evaluation_id }}'::uuid AND outcome IN ('partial','successo_parziale')),\n  model_used='{{ $json.model_used || '' }}',\n  tokens_used={{ $json.tokens_used !== null && $json.tokens_used !== undefined ? $json.tokens_used : 'NULL' }}\nWHERE id='{{ $json.evaluation_id }}'::uuid\nRETURNING *",
+          "options": {}
+        },
+        "id": "update-eval-complete-node",
+        "name": "Update Evaluation Complete",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          2256,
+          -176
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- T1: evaluation_id from webhook - mark running, snapshot criteria + llm_config (T4).\nINSERT INTO evaluations (id, test_run_id, evaluator_config_id, status, started_at, triggered_by, criteria_snapshot, llm_config_snapshot)\nVALUES ($1::uuid, $2::uuid, $3::uuid, 'running', NOW(), 'n8n', $4::jsonb, $5::jsonb)\nON CONFLICT (id) DO UPDATE SET status='running', started_at=NOW(), completed_at=NULL, error_message=NULL,\n  criteria_snapshot=COALESCE(evaluations.criteria_snapshot, EXCLUDED.criteria_snapshot),\n  llm_config_snapshot=COALESCE(evaluations.llm_config_snapshot, EXCLUDED.llm_config_snapshot)\nRETURNING id as evaluation_id, test_run_id, evaluator_config_id, status, criteria_snapshot, llm_config_snapshot",
+          "options": {
+            "queryReplacement": "={{ $('Extract Test Run Info').item.json.evaluation_id }}, {{ $('Extract Test Run Info').item.json.test_run_id }}, {{ $json.id }}, {{ JSON.stringify($json.criteria || []) }}, {{ JSON.stringify($json.llm_config || {}) }}"
+          }
+        },
+        "id": "create-evaluation-node",
+        "name": "Create Evaluation",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.4,
+        "position": [
+          240,
+          -320
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "modelName": "={{ $json.llm_config?.judge?.model || 'models/gemini-3-flash-preview' }}",
+          "options": {}
+        },
+        "id": "b96467be-68d9-4863-93d6-91fb2e6d96c7",
+        "name": "Google Gemini Chat Model",
+        "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "typeVersion": 1,
+        "position": [
+          1104,
+          -32
+        ],
+        "credentials": {
+          "googlePalmApi": {
+            "id": "A4H7U8xkqVIIMl1g",
+            "name": "Gemini Sempre Attivo"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "model": "={{ $json.llm_config?.judge?.fallback?.model || 'google/gemini-3-flash-preview' }}",
+          "options": {
+            "maxRetries": 2
+          }
+        },
+        "id": "c5115bd8-c145-4a4e-a720-c741d3779ae3",
+        "name": "OpenRouter Chat Model2",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          1248,
+          0
+        ],
+        "credentials": {
+          "openRouterApi": {
+            "id": "oIAwycFsTzWnjNQo",
+            "name": "OpenRouter Sempre Attivo"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=CONVERSAZIONE DA VALUTARE:\n\n\n\nCONTESTO AGGIUNTIVO:\n- Persona: {{ $json.persona_name }} - {{ $json.persona_category }}\n- Persona Description: {{ $json.persona_description }}\n- Outcome nel DB: {{ $json.outcome }}\n- Turni totali: {{ $json.turns }}\n\nValuta la conversazione secondo i criteri specificati.",
+          "options": {
+            "systemMessage": "=wow"
+          }
+        },
+        "id": "64fa0e0e-fc3b-44d8-a181-6eb370b83afc",
+        "name": "Judge Agent 1",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.6,
+        "position": [
+          1312,
+          432
+        ],
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=CONVERSAZIONE DA VALUTARE:\n\n{{ JSON.stringify($json.transcript) }}\n\nCONTESTO AGGIUNTIVO:\n- Persona: {{ $json.persona_name }} - {{ $json.persona_category }}\n- Persona Description: {{ $json.persona_description }}\n- Outcome nel DB: {{ $json.outcome }}\n- Turni totali: {{ $json.turns }}\n\nValuta la conversazione secondo i criteri specificati.",
+          "needsFallback": true,
+          "messages": {
+            "messageValues": [
+              {
+                "message": "={{ $json.dynamic_system_prompt }}"
+              }
+            ]
+          },
+          "batching": {}
+        },
+        "id": "f21fc34c-a1e0-4e03-9ddb-68a1eeb8ee9d",
+        "name": "Judge Agent",
+        "type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "typeVersion": 1.4,
+        "position": [
+          1216,
+          -240
+        ],
+        "retryOnFail": true,
+        "maxTries": 2,
+        "waitBetweenTries": 5000
+      },
+      {
+        "parameters": {
+          "jsCode": "const firstItem = $input.first().json;\nreturn [{ json: { test_run_id: firstItem.test_run_id, evaluation_id: firstItem.evaluation_id } }];"
+        },
+        "id": "ffd28477-20ac-4918-81df-5d96422b43bd",
+        "name": "Dedup ",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1072,
+          -544
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "169fb6e5-c5fc-4ea2-971e-9232149a2d24",
+                "name": "llm",
+                "value": "google/gemini-3-flash-preview",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "9c083ab8-ab00-4bd3-ba93-1c47d53dd731",
+        "name": "Edit Fields1",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1056,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// REQ-T2.7: Validate criteria names against known list from criteria_definitions.\nconst item = $input.first().json;\nconst criteriaNames = item.criteria_names || [];\nconst knownNames = item.known_criteria_names || null;\nif (knownNames !== null) {\n  const unknown = criteriaNames.filter(n => !knownNames.includes(n));\n  if (unknown.length > 0) throw new Error('[REQ-T2.7] Unknown criteria: ' + unknown.join(', ') + ' for evaluation ' + item.evaluation_id);\n}\nconsole.log('[Validate Criteria Names] ' + criteriaNames.length + ' criteria OK for evaluation ' + item.evaluation_id);\nreturn { json: item };"
+        },
+        "id": "validate-criteria-names-node",
+        "name": "Validate Criteria Names",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1200,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// T3: Track model_used and tokens_used.\nconst item = $input.first().json;\nconst llmConfig = item.llm_config || {};\nconst tokenUsage = item.tokenUsage || item.usage || {};\nconst tokensUsed = tokenUsage.totalTokens || tokenUsage.total_tokens || ((tokenUsage.promptTokens || 0) + (tokenUsage.completionTokens || 0)) || null;\nconst primaryModel = llmConfig.judge?.model || 'models/gemini-3-flash-preview';\nconst fallbackModel = llmConfig.judge?.fallback?.model || 'google/gemini-3-flash-preview';\nconst modelUsed = item._usedFallback ? (fallbackModel + ' (fallback)') : primaryModel;\nconsole.log('[LLM Result Tracker] evaluation_id=' + item.evaluation_id + ' model=' + modelUsed + ' tokens=' + tokensUsed);\nreturn { json: { ...item, model_used: modelUsed, tokens_used: tokensUsed } };"
+        },
+        "id": "llm-result-tracker-node",
+        "name": "LLM Result Tracker",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- T2/REQ-T2.7: Fetch criteria_definitions for validation and enrichment.\nSELECT cd.name, cd.description, cd.scoring_guide, cd.category, cd.domain_type, cd.weight_default\nFROM criteria_definitions cd\nWHERE cd.name = ANY($1::text[])",
+          "options": {
+            "queryReplacement": "={{ JSON.stringify(($input.first().json.criteria_names || [])) }}"
+          }
+        },
+        "id": "fetch-criteria-definitions-node",
+        "name": "Fetch Criteria Definitions",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          1050,
+          400
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// T2/REQ-T2.7: Merge criteria_definitions into items, validate all names exist.\nconst buildItems = $('Build Dynamic System Prompt').all();\nconst definitionsRows = $('Fetch Criteria Definitions').all();\nconst definitionsMap = {};\nfor (const row of definitionsRows) definitionsMap[row.json.name] = row.json;\nconst knownNames = Object.keys(definitionsMap);\nreturn buildItems.map(item => {\n  const criteriaNames = item.json.criteria_names || [];\n  const unknown = criteriaNames.filter(n => !definitionsMap[n]);\n  if (unknown.length > 0) throw new Error('[REQ-T2.7] Unknown criteria: ' + unknown.join(', ') + ' for evaluation ' + item.json.evaluation_id);\n  const enrichedWeights = (item.json.criteria_with_weights || []).map(cw => {\n    const def = definitionsMap[cw.name] || {};\n    return { name: cw.name, weight: cw.weight != null ? cw.weight : (def.weight_default != null ? def.weight_default : 1.0), description: def.description || '', scoring_guide: def.scoring_guide || '', category: def.category || '', domain_type: def.domain_type || '' };\n  });\n  return { json: { ...item.json, criteria_with_weights: enrichedWeights, known_criteria_names: knownNames } };\n});"
+        },
+        "id": "merge-crit-def-node",
+        "name": "Merge Criteria Definitions",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1125,
+          400
+        ]
+      },
+      {
+        "id": "run-analyzer-if-node",
+        "name": "Run Analyzer?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1240,
+          -624
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "run-analyzer-condition",
+                "leftValue": "={{ $('Extract Test Run Info').item.json.run_analyzer }}",
+                "rightValue": false,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "skip-analyzer-node",
+        "name": "Skip Analyzer",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          1408,
+          -480
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=UPDATE evaluations SET has_analysis = false WHERE test_run_id = '{{ $('Extract Test Run Info').item.json.test_run_id }}'",
+          "options": {}
+        },
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "id": "mark-analysis-done-node",
+        "name": "Mark Analysis Done",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          2608,
+          -800
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=UPDATE evaluations SET has_analysis = true WHERE test_run_id = '{{ $json.test_run_id }}'",
+          "options": {}
+        },
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Start Evaluation": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Each Conversation": {
+        "main": [
+          [
+            {
+              "node": "Dedup ",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Judge Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Evaluation": {
+        "main": [
+          [
+            {
+              "node": "Update Battle Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Structured Output Parser": {
+        "ai_outputParser": [
+          []
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Structured Output Parser",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenRouter Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Judge Agent 1",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Test Run Info": {
+        "main": [
+          [
+            {
+              "node": "Set Status Evaluating",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PG Aggregate": {
+        "main": [
+          [
+            {
+              "node": "LLM Analyzer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenRouter Chat Model1": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "LLM Analyzer",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "LLM Analyzer": {
+        "main": [
+          [
+            {
+              "node": "Code Parser",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code Parser": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Save Report",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Log error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Get Pending Evaluations",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Pending Evaluations": {
+        "main": [
+          [
+            {
+              "node": "Fetch Evaluator Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Battle Result": {
+        "main": [
+          [
+            {
+              "node": "Update Evaluation Complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update Evaluation Complete": {
+        "main": [
+          [
+            {
+              "node": "Process Each Conversation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Evaluator Config": {
+        "main": [
+          [
+            {
+              "node": "Create Evaluation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Evaluation": {
+        "main": [
+          [
+            {
+              "node": "Build Dynamic System Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Google Gemini Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Judge Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenRouter Chat Model2": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Judge Agent",
+              "type": "ai_languageModel",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Judge Agent 1": {
+        "main": [
+          []
+        ]
+      },
+      "Edit Fields1": {
+        "main": [
+          [
+            {
+              "node": "Judge Agent 1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Extract Test Run Info",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Status Evaluating": {
+        "main": [
+          [
+            {
+              "node": "Get Pending Evaluations",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Criteria Names": {
+        "main": [
+          [
+            {
+              "node": "Process Each Conversation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Judge Agent": {
+        "main": [
+          [
+            {
+              "node": "LLM Result Tracker",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "LLM Result Tracker": {
+        "main": [
+          [
+            {
+              "node": "Parse Evaluation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Dynamic System Prompt": {
+        "main": [
+          [
+            {
+              "node": "Fetch Criteria Definitions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Criteria Definitions": {
+        "main": [
+          [
+            {
+              "node": "Merge Criteria Definitions",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge Criteria Definitions": {
+        "main": [
+          [
+            {
+              "node": "Validate Criteria Names",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dedup ": {
+        "main": [
+          [
+            {
+              "node": "Run Analyzer?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Save Report": {
+        "main": [
+          [
+            {
+              "node": "Mark Analysis Done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Analyzer?": {
+        "main": [
+          [
+            {
+              "node": "PG Aggregate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Skip Analyzer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Niccolo Franzin",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-02-20T11:37:28.667Z",
+        "id": 592,
+        "workflowId": "202JEX5zm3VlrUT8",
+        "versionId": "9e2addbb-7da1-4237-ba39-4211ea3e3ae1",
+        "event": "deactivated",
+        "userId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      },
+      {
+        "createdAt": "2026-02-20T11:37:28.701Z",
+        "id": 593,
+        "workflowId": "202JEX5zm3VlrUT8",
+        "versionId": "9e2addbb-7da1-4237-ba39-4211ea3e3ae1",
+        "event": "activated",
+        "userId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      }
+    ]
+  }
+}

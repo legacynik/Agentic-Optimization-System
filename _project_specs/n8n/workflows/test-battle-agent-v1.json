@@ -1,0 +1,1701 @@
+{
+  "updatedAt": "2026-02-18T08:58:54.635Z",
+  "createdAt": "2025-08-25T00:06:13.303Z",
+  "id": "Z35cpvwXt7Xy4Mgi",
+  "name": "Test Battle Agent v1.0",
+  "description": "Workflow che automatizza le battle tra la personas e il prompt selezionato",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "personasid"
+            },
+            {
+              "name": "agentPrompt"
+            },
+            {
+              "name": "personasPrompt"
+            },
+            {
+              "name": "TestRunID"
+            },
+            {
+              "name": "max_turns"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        -32
+      ],
+      "id": "1061f347-450b-4c7b-a7a3-bf64ad8b46a9",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Inizia salutando se non hai memoria o continua la conversazione.\nStai facendo una chiamata, porta avanti la conversazione con output solo conversazionali.",
+        "options": {
+          "systemMessage": "={{ $('When Executed by Another Workflow').item.json.agentPrompt }}",
+          "returnIntermediateSteps": false,
+          "enableStreaming": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1328,
+        -16
+      ],
+      "id": "2ef287ce-bde4-4543-99b0-51d7f0bb0a5c",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        176
+      ],
+      "id": "829387de-3765-4c29-a251-4c5fc3ab362f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "xpYZwRyZjASctgwp",
+          "name": "OpenAi def"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        800,
+        -32
+      ],
+      "id": "bcd13fc6-725b-4207-9265-c3928101b34d",
+      "name": "Loop Over Items",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        784
+      ],
+      "id": "3ead9421-3a45-41cd-af3b-0549f19667f2",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "xpYZwRyZjASctgwp",
+          "name": "OpenAi def"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Init Battle').item.json.session_id }}",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1440,
+        176
+      ],
+      "id": "63739408-552c-43f7-8cac-d0c7a7419dd6",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Use max_turns from Init Battle, default to 25 loops (= 50 conversation turns)\nconst maxTurns = Number($('Init Battle').item.json.max_turns) || 50;\n// Each loop iteration = 1 agent turn + 1 persona turn = 2 conversation turns\n// So we need maxTurns / 2 loop iterations (rounded up)\nconst loopCount = Math.ceil(maxTurns / 2);\nreturn Array(loopCount).fill({}).map((_, i) => ({ json: { loop_index: i } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -32
+      ],
+      "id": "c46f46fa-31ae-413a-ac90-1bd73b4b2e22",
+      "name": "Code",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "de5637cf-7005-4288-9971-2ced56c12809",
+              "name": "convID",
+              "value": "={{ $('Init Battle').item.json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "4b48f458-0970-4d93-bd7e-f495158befd8",
+              "name": "turnNumber_Agent",
+              "value": "={{ $('Code').item.json.loop_index * 2 +1 }}",
+              "type": "string"
+            },
+            {
+              "id": "617ddbf4-d135-4573-a8da-e6041fffa3dc",
+              "name": "turnNumber_Persona",
+              "value": "={{ $('Code').item.json.loop_index * 2 +2 }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1072,
+        -16
+      ],
+      "id": "ef19ecb9-cddf-43d5-a338-15dd7c6ce81a",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "4dd2fe09-c365-45c3-b17b-3f4d1348fb71",
+              "leftValue": "={{$('AI Agent').item.json.output.toLowerCase().includes('end_call') || $('AI Agent').item.json.output.toLowerCase().includes('arrivederci') || $('AI Agent').item.json.output.toLowerCase().includes('buona giornata')}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1168,
+        528
+      ],
+      "id": "76b1374e-b99e-4834-8bc2-98c19c32aa79",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('AI Agent').item.json.output }}",
+        "options": {
+          "systemMessage": "={{ $('When Executed by Another Workflow').item.json.personasPrompt }}",
+          "returnIntermediateSteps": false,
+          "enableStreaming": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        608
+      ],
+      "id": "0a60c42a-ec9c-4d4a-abb9-53418fb7bbc3",
+      "name": "AI Persona",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Init Battle').item.json.session_id }}",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1488,
+        784
+      ],
+      "id": "174979b0-a205-4e46-bf8e-72af78b2c39f",
+      "name": "Postgres Chat Memory1",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "a76eda15-5dab-4c92-8cd0-1c29c0751143",
+              "leftValue": "={{ \n  $('AI Persona').item.json.output.includes('CHIAMATA_TERMINATA_PERSONA') ||\n  $('AI Persona').item.json.output.toLowerCase().includes('devo andare') ||\n  $('AI Persona').item.json.output.toLowerCase().includes('la saluto')\n}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2112,
+        752
+      ],
+      "id": "bdb338a1-3b10-4227-ab31-cd5af29bec80",
+      "name": "If1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        1232
+      ],
+      "id": "0a0699c1-eb71-433a-a18c-f8e9c35120d3",
+      "name": "When clicking \u2018Execute workflow\u2019",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a3a2dad-5812-41d1-bd21-cd386d9a9405",
+              "name": "TestRunID",
+              "value": "TEST-1759313111866-qual-sa-audit-v2.1",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        1232
+      ],
+      "id": "ee20fd80-f198-4abf-9c72-d79f0e45366f",
+      "name": "Set testrun to delete"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM evaluationcriteria \nWHERE conversationid IN (SELECT conversationid FROM conversations WHERE testrunid = $1);\n\nDELETE FROM turns \nWHERE conversationid IN (SELECT conversationid FROM conversations WHERE testrunid = $1);\n\nDELETE FROM n8n_chat_histories \nWHERE session_id IN (SELECT conversationid::text FROM conversations WHERE testrunid = $1);\n\nDELETE FROM conversations WHERE testrunid = $1;\n\nDELETE FROM testruns WHERE testrunid = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.TestRunID }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        592,
+        1232
+      ],
+      "id": "5bd84f29-9426-4e86-b398-0fe21f58ad95",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## clean test run",
+        "height": 288,
+        "width": 736
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        96,
+        1104
+      ],
+      "typeVersion": 1,
+      "id": "b7c7ce86-b382-41be-ac6a-e3795a225f2a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "session_id",
+              "value": "={{ $json.TestRunID + '_' + $json.personasid }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "test_run_id",
+              "value": "={{ $json.TestRunID }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "persona_id",
+              "value": "={{ $json.personasid }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "personaprompt",
+              "value": "={{ $json.personasPrompt }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "agentPrompt",
+              "value": "={{ $json.agentPrompt }}",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "start_time",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "7",
+              "name": "max_turns",
+              "value": "={{ $json.max_turns || 50 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "init-battle-001",
+      "name": "Init Battle",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, message FROM n8n_chat_histories WHERE session_id = '{{ $('Init Battle').item.json.session_id }}' ORDER BY id ASC",
+        "options": {}
+      },
+      "id": "get-chat-history-001",
+      "name": "Get Chat History",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2432,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format chat history into transcript JSONB\nconst chatHistory = $input.all();\nconst initData = $('Init Battle').item.json;\n\n// Determine outcome from Set Outcome nodes (only one will have executed)\nlet outcome = 'timeout';\ntry {\n  outcome = $('Set Outcome Timeout').first().json.outcome || 'timeout';\n} catch (e) {\n  try {\n    outcome = $('Set Outcome Success Agent').first().json.outcome || 'success';\n  } catch (e2) {\n    try {\n      outcome = $('Set Outcome Success Persona').first().json.outcome || 'success';\n    } catch (e3) {\n      // Default to timeout if no Set Outcome node found\n      outcome = 'timeout';\n    }\n  }\n}\n\nconst messages = chatHistory.map((row, index) => {\n  const msg = row.json.message;\n  return {\n    role: msg.type === 'ai' ? 'assistant' : 'user',\n    content: msg.content,\n    sequence: index + 1,\n    tool_calls: msg.tool_calls?.length > 0 ? msg.tool_calls : undefined\n  };\n});\n\nconst turnCount = Math.floor(messages.length / 2);\nconst startTime = new Date(initData.start_time);\nconst duration = Math.floor((Date.now() - startTime.getTime()) / 1000);\n\nreturn {\n  json: {\n    test_run_id: initData.test_run_id,\n    persona_id: initData.persona_id,\n    outcome: outcome,\n    turns: turnCount,\n    duration_seconds: duration,\n    transcript: { messages },\n    session_id: initData.session_id\n  }\n};"
+      },
+      "id": "format-transcript-001",
+      "name": "Format Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO battle_results (test_run_id, persona_id, outcome, turns, duration_seconds, transcript, created_at) \nVALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, NOW()) \nRETURNING id, outcome, turns",
+        "options": {
+          "queryReplacement": "={{ [$json.test_run_id, $json.persona_id, $json.outcome, $json.turns, $json.duration_seconds, JSON.stringify($json.transcript)] }}"
+        }
+      },
+      "id": "insert-battle-result-001",
+      "name": "Insert Battle Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2928,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "outcome",
+              "value": "timeout",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-outcome-timeout-001",
+      "name": "Set Outcome Timeout",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2208,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "outcome",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-outcome-success-agent-001",
+      "name": "Set Outcome Success Agent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "outcome",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-outcome-success-persona-001",
+      "name": "Set Outcome Success Persona",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2304,
+        608
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Init Battle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Set Outcome Timeout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Persona",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Set Outcome Success Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Persona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Persona": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Persona",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Set Outcome Success Persona",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking \u2018Execute workflow\u2019": {
+      "main": [
+        [
+          {
+            "node": "Set testrun to delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set testrun to delete": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Chat History": {
+      "main": [
+        [
+          {
+            "node": "Format Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Transcript": {
+      "main": [
+        [
+          {
+            "node": "Insert Battle Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Battle": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Outcome Timeout": {
+      "main": [
+        [
+          {
+            "node": "Get Chat History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Outcome Success Agent": {
+      "main": [
+        [
+          {
+            "node": "Get Chat History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Outcome Success Persona": {
+      "main": [
+        [
+          {
+            "node": "Get Chat History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "personasid": "e220146b-2fd5-42a3-9900-00c2fcf5e965",
+          "agentPrompt": "## 1. IDENTIT\u00c0 E CONTESTO\n\nSei **Gian**, un Consulente di Sempre Attivo.\n\n**Trigger:** Il prospect ha scaricato la guida \"Intelligenza Artificiale per aziende\" dalla landing page.\n\n**Missione:** Contattare imprenditori che potrebbero beneficiare di automazioni AI per recuperare tempo operativo. Qualificare il loro interesse, identificare i problemi concreti e proporre un audit gratuito con un esperto.\n\n**Tono:** Cordiale, professionale, diretto. Sei un consulente che va dritto al punto, non un venditore insistente.\n\n---\n\n## 2. OBIETTIVO E METRICHE\n\n**Obiettivo Principale:** Fissare un audit gratuito con un esperto di automazione per analizzare dove l'azienda sta perdendo margini e tempo.\n\n**Criteri di Successo:**\n\n- Audit prenotato con problema concreto identificato\n- Il prospect comprende il valore dell'audit (analisi su misura, non consulenza generica)\n- Form di preparazione confermato\n\n**Criteri di Disqualifica:**\n\n- Il prospect non identifica problemi dopo 3 tentativi di discovery\n- Il prospect rifiuta esplicitamente dopo 3 tentativi di gestione obiezioni\n- Urgenza < 7 e non si smuove dopo gestione\n\n---\n\n## 3. REGOLE LINGUISTICHE\n\n**Principi Fondamentali:**\n\n- **NO SINTASSI ROBOTICA:** Riformula ogni concetto per renderlo autentico nel contesto business italiano.\n- **ADATTAMENTO CULTURALE:** Usa espressioni che un imprenditore italiano userebbe (\"facciamo il punto\", \"andare dritto al sodo\", \"il nocciolo della questione\").\n- **RITMO NATURALE:** Usa pause strategiche per un dialogo umano.\n\n**Pattern Pause SSML:**\n\n- `(,)` = Pausa breve per flusso naturale. Esempio: \"Perfetto (,) vado dritto al punto.\"\n- `(.)` = Pausa lunga dopo affermazioni chiave. Esempio: \"10-15 ore a settimana in attivit\u00e0 automatizzabili (.)\"\n- `(...)` = Transizione enfatizzata tra argomenti. Esempio: \"Bene... parliamo del vostro caso specifico.\"\n\n---\n\n## 4. FLOW CHIAMATA\n\n**REGOLA CRITICA:** UNA DOMANDA PER TURNO. Aspetta la risposta prima di procedere.\n\n### Fase 1: INTRODUZIONE + CORNICE\n\n\"Buongiorno {{user_name}} (,) sono Gian di Sempre Attivo (.) Ho visto che ha scaricato la nostra guida sull'Intelligenza Artificiale per aziende (.) Ha due minuti?\"\n\n- Se NO \u2192 Chiedi quando richiamare e usa `end_call`\n- Se S\u00cc \u2192 Procedi alla Fase 2\n\n### Fase 2: DOMANDA DI QUALIFICAZIONE\n\nScegli UNA di queste in base al contesto:\n\n- **Focus motivazione:** \"Cosa l'ha spinta a scaricare la guida?\"\n- **Focus situazione attuale:** \"Come state gestendo attualmente le attivit\u00e0 ripetitive in azienda?\"\n- **Focus problema:** \"C'\u00e8 qualche attivit\u00e0 operativa che vi sta rubando troppo tempo?\"\n\n### Fase 3: TRANSIZIONI DINAMICHE POST-QUALIFICAZIONE\n\n**Se menziona TEMPO PERSO / ATTIVIT\u00c0 RIPETITIVE:** \"Capisco (,) \u00e8 una situazione comune (.) La maggior parte degli imprenditori perde 10-15 ore a settimana in attivit\u00e0 automatizzabili (.) Qual \u00e8 l'attivit\u00e0 che oggi vi ruba pi\u00f9 tempo e vi impedisce di concentrarvi sulla crescita?\"\n\n**Se menziona CURIOSIT\u00c0 / VUOLE CAPIRE L'AI:** \"Perfetto (,) ha fatto bene a informarsi (.) L'AI pu\u00f2 automatizzare molte attivit\u00e0 operative (.) Qual \u00e8 l'area della vostra azienda dove sentite pi\u00f9 il peso del lavoro manuale?\"\n\n**Se menziona CLIENTI / VENDITE / FOLLOW-UP:** \"Esatto (,) \u00e8 un'area dove l'automazione fa la differenza (.) Quanti clienti o opportunit\u00e0 stimate di perdere per mancanza di follow-up tempestivo?\"\n\n**Se menziona TEAM / PERSONALE / STRESS:** \"Capisco (.) Spesso il team \u00e8 sovraccarico di task operativi che un'AI potrebbe gestire (.) Qual \u00e8 l'attivit\u00e0 che stressa di pi\u00f9 il vostro team?\"\n\n**Se risposta VAGA / \"Cos\u00ec, per curiosit\u00e0\":** \"Va bene (.) Guardi (,) la maggior parte degli imprenditori che seguiamo perde 10-15 ore a settimana in attivit\u00e0 automatizzabili (.) Qual \u00e8 l'attivit\u00e0 operativa che oggi vi ruba pi\u00f9 tempo?\"\n\n\u2192 Procedi alla Fase 4 (Pain Discovery)\n\n### Fase 4: PAIN DISCOVERY\n\n**REGOLA NON NEGOZIABILE:**\n\n- Fai MAX 3 tentativi di discovery con domande diverse se d\u00e0 risposte vaghe\n- Se dopo 3 tentativi dice \"va tutto bene / non ho problemi / sono soddisfatto\" \u2192 DISQUALIFICA: \"Capisco, mi fa piacere che tutto funzioni bene. Grazie per il tempo, buona continuazione\" + `end_call`\n- SOLO se emerge un problema vero, procedi al Recap (Fase 5)\n\n**Tecniche di Scavo:**\n\n- Ascolta parole chiave (tempo perso, clienti persi, stress operativo)\n- Scava nell'area pi\u00f9 carica emotivamente\n- Quantifica sempre ci\u00f2 che \u00e8 vago: \"Quante ore a settimana?\" / \"Quanti clienti al mese?\"\n\n### Fase 5: RECAP DINAMICO\n\n**Formula:** \"Quindi, se ho capito bene, a causa di [PROBLEMA], state ottenendo [CONSEGUENZA NEGATIVA] (.) Che conseguenze sta avendo su [AREA DI SECONDO LIVELLO]?\"\n\n**Obiettivo:** Capire in modo dettagliato e NATURALE le conseguenze del problema. Itera il recap inserendo i nuovi elementi fino a quando il problema ha evidenti conseguenze su:\n\n- Performance del team\n- Profitto aziendale\n- Stress operativo elevato\n- Guadagni personali\n\n**Massimo 3 iterazioni del recap.** Poi passa alla Fase 6.\n\n### Fase 6: VERIFICA URGENZA + PITCH\n\n**Domanda ponte:** \"Da 1 a 10 quanto \u00e8 importante per te risolvere questa situazione ora?\"\n\n**Se >= 7 \u2192 PITCH:** \"Guarda (,) proprio per aiutare gli imprenditori come te, che vogliono smettere di sentirsi sommersi e tornare a fare strategia, abbiamo creato l'Audit Sempre Attivo (.) Non \u00e8 una semplice consulenza (,) ma il primo passo concreto per capire come potresti recuperare decine di ore ogni mese, senza perdere un solo cliente (.) Lo faremo con un nostro esperto di automazione (.) Per accedere devi solo compilare un questionario riservato (.) \u00c8 tutto chiaro?\"\n\n- Rispondi a eventuali obiezioni\n- Procedi alla Fase 7 (Prenotazione)\n\n**Se < 7 \u2192 GESTIONE POCA URGENZA:** \"Capisco. Sono solo curioso: nonostante [recap problema], cosa ti frena dal voler affrontare la situazione adesso?\"\n\n- Se si smuove \u2192 Torna al pitch\n- Altrimenti \u2192 Ringrazia e usa `end_call`\n\n### Fase 7: PRENOTAZIONE\n\n**Passaggi:**\n\n1. Chiedi conferma email con spelling chiaro: \"Mi confermi la tua mail? {{user_email}}\"\n2. Usa `get_availability` per verificare slot\n3. Proponi data/ora in formato parlato (es. \"luned\u00ec prossimo alle quindici\")\n4. Usa `book_appointments` per confermare\n5. **Ricorda il form:** \"Perfetto. Riceverai subito un breve form via email e WhatsApp. \u00c8 fondamentale che tu lo compili per permettere al nostro esperto di preparare un'analisi su misura per te. \u00c8 rapido e riservato.\"\n6. Saluta e usa `end_call`\n\n---\n\n## 5. GESTIONE OBIEZIONI\n\n**Principio Base: DISINNESCA, INFORMA, SUPERA** Mai discutere o dibattere. Massimo 3 tentativi per tipo di obiezione.\n\n### \"Siamo gi\u00e0 coperti / Abbiamo gi\u00e0 un fornitore\"\n\n- \"\u00c8 un'ottima notizia, significa che siete un'azienda innovativa. Il nostro audit \u00e8 un benchmark gratuito: un'occasione per avere una seconda opinione specialistica sulle ultime novit\u00e0 del settore, senza alcun impegno.\"\n\n### \"Non ho tempo / Sono di fretta\"\n\n- \"La sento di fretta, sar\u00f2 telegrafico. Posso richiamarla quando ha cinque minuti liberi senza distrazioni. Le va bene?\"\n- Se s\u00ec \u2192 Prendi data/ora per ricontatto\n- Se no \u2192 Usa `end_call`\n\n### \"Dov'\u00e8 la fregatura?\" (Scetticismo)\n\n- \"Domanda giustissima. L'audit \u00e8 gratuito perch\u00e9 \u00e8 la prima fase del nostro processo. \u00c8 il nostro modo di mostrarle il valore in anticipo. Se lei, dopo aver visto la proiezione concreta di come possiamo aumentare i suoi margini e la produttivit\u00e0, sar\u00e0 convinto, allora potremo parlare di una collaborazione.\"\n\n### Stato Emotivo Negativo (Stress, Irritazione)\n\n- \"La sento particolarmente impegnata, mi sembra una giornata difficile. Senta, non \u00e8 chiaramente il momento giusto. Vuole che la richiami in un altro momento?\"\n\n### Prospect che Divaga\n\nDopo massimo 4 scambi su un singolo sotto-argomento:\n\n- \"Ottima domanda. Per questioni di tempo non riesco a risponderti in modo completo, ma questo \u00e8 esattamente ci\u00f2 che approfondirai nell'audit. Vogliamo procedere a fissarlo?\"\n\n---\n\n## 6. TOOL DISPONIBILI\n\n- `get_availability`: Verifica giorni e orari disponibili.\n- `book_appointments`: Prenota effettivamente l'appuntamento.\n- `end_call`: Chiudi la chiamata in modo rispettoso.\n\n**Regole Uso Tool:**\n\n- MAI menzionare i nomi dei tool al prospect.\n- SEMPRE aspettare la conferma del tool prima di procedere.\n- Usa `end_call` immediatamente dopo il saluto finale\u2014non rispondere a ulteriori convenevoli.\n\n---\n\n## 7. REGOLE FINALI\n\n- **REGOLA \"SALTA IL PITCH\":** Se il prospect chiede proattivamente di prenotare, vai direttamente alla Fase 7 (Prenotazione).\n- **REGOLA \"FINE CHIAMATA\":** Una volta confermato l'appuntamento e salutato, usa immediatamente `end_call`.\n- **REGOLA \"UNA DOMANDA\":** Fai solo una domanda per turno. Aspetta la risposta, poi fai la successiva in base a ci\u00f2 che ha detto.\n- **REGOLA \"DISQUALIFICA\":** Se dopo 3 tentativi di discovery il prospect non identifica problemi, disqualifica con cortesia.\n- **MAI:** Menzionare funzioni di sistema, spiegare eccessivamente, o chiudere chiamate bruscamente.",
+          "personasPrompt": "Sei Luca, il titolare di una piccola attivit\u00e0 artigianale. Lavori molto \"di pancia\" e non hai mai tracciato dati precisi sulla produttivit\u00e0 o sui costi. Sai che le cose potrebbero andare meglio, ma non sai esattamente come o di quanto.\n\nIl tuo obiettivo \u00e8 esplorare l'argomento, ma non hai risposte pronte.\n\n- Rispondi alle domande dell'assistente in modo onesto ma non specifico.\n- Usa frequentemente frasi come: \"Non saprei dirti\", \"Dipende dai periodi\", \"Pi\u00f9 o meno...\", \"Forse\", \"Boh\".\n- Quando ti viene chiesto di quantificare un problema (tempo perso, costi, errori), la tua prima risposta sar\u00e0 sempre evasiva.\n- Diventa pi\u00f9 specifico solo se l'assistente ti aiuta con domande mirate per fare una stima (es. \"Proviamo a fare una stima approssimativa?\", \"Dipende da cosa principalmente?\").\n- La tua decisione di prenotare l'audit si baser\u00e0 sulla capacit\u00e0 dell'agente di aiutarti a fare chiarezza e a dare un nome ai tuoi problemi.",
+          "TestRunID": "4b75e0af-85c7-43a6-9e34-b9556002283b",
+          "max_turns": "50"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "c399e714-cfbb-4aba-b88c-d7292134fff5",
+  "activeVersionId": "c399e714-cfbb-4aba-b88c-d7292134fff5",
+  "versionCounter": 95,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-08-25T00:06:13.303Z",
+      "createdAt": "2025-08-25T00:06:13.303Z",
+      "role": "workflow:owner",
+      "workflowId": "Z35cpvwXt7Xy4Mgi",
+      "projectId": "dv3kA4Oe2sL1pWid",
+      "project": {
+        "updatedAt": "2025-01-10T11:02:16.487Z",
+        "createdAt": "2025-01-10T11:00:49.307Z",
+        "id": "dv3kA4Oe2sL1pWid",
+        "name": "Niccolo Franzin <franzin.niccolo@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      }
+    }
+  ],
+  "tags": [
+    {
+      "updatedAt": "2025-06-23T14:51:51.523Z",
+      "createdAt": "2025-06-23T14:51:51.523Z",
+      "id": "zfsOop3rTlyj4Me8",
+      "name": "Voice agents"
+    },
+    {
+      "updatedAt": "2025-07-17T11:50:23.320Z",
+      "createdAt": "2025-07-17T11:50:23.320Z",
+      "id": "t4KfBvOmInkqq7qh",
+      "name": "sempre attivo"
+    },
+    {
+      "updatedAt": "2026-01-08T15:17:14.294Z",
+      "createdAt": "2026-01-08T15:17:14.294Z",
+      "id": "YvO2mLjuL3uCwsiO",
+      "name": "Battle Test"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-02-17T18:11:16.435Z",
+    "createdAt": "2026-02-17T18:11:16.435Z",
+    "versionId": "c399e714-cfbb-4aba-b88c-d7292134fff5",
+    "workflowId": "Z35cpvwXt7Xy4Mgi",
+    "nodes": [
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "personasid"
+              },
+              {
+                "name": "agentPrompt"
+              },
+              {
+                "name": "personasPrompt"
+              },
+              {
+                "name": "TestRunID"
+              },
+              {
+                "name": "max_turns"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          64,
+          -32
+        ],
+        "id": "1061f347-450b-4c7b-a7a3-bf64ad8b46a9",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Inizia salutando se non hai memoria o continua la conversazione.\nStai facendo una chiamata, porta avanti la conversazione con output solo conversazionali.",
+          "options": {
+            "systemMessage": "={{ $('When Executed by Another Workflow').item.json.agentPrompt }}",
+            "returnIntermediateSteps": false,
+            "enableStreaming": true
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          1328,
+          -16
+        ],
+        "id": "2ef287ce-bde4-4543-99b0-51d7f0bb0a5c",
+        "name": "AI Agent",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "gpt-5-mini",
+            "mode": "list",
+            "cachedResultName": "gpt-5-mini"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          1296,
+          176
+        ],
+        "id": "829387de-3765-4c29-a251-4c5fc3ab362f",
+        "name": "OpenAI Chat Model",
+        "credentials": {
+          "openAiApi": {
+            "id": "xpYZwRyZjASctgwp",
+            "name": "OpenAi def"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {
+            "reset": false
+          }
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          800,
+          -32
+        ],
+        "id": "bcd13fc6-725b-4207-9265-c3928101b34d",
+        "name": "Loop Over Items",
+        "alwaysOutputData": false
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4.1-mini"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          1344,
+          784
+        ],
+        "id": "3ead9421-3a45-41cd-af3b-0549f19667f2",
+        "name": "OpenAI Chat Model1",
+        "credentials": {
+          "openAiApi": {
+            "id": "xpYZwRyZjASctgwp",
+            "name": "OpenAi def"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "={{ $('Init Battle').item.json.session_id }}",
+          "contextWindowLength": 15
+        },
+        "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+        "typeVersion": 1.3,
+        "position": [
+          1440,
+          176
+        ],
+        "id": "63739408-552c-43f7-8cac-d0c7a7419dd6",
+        "name": "Postgres Chat Memory",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Use max_turns from Init Battle, default to 25 loops (= 50 conversation turns)\nconst maxTurns = Number($('Init Battle').item.json.max_turns) || 50;\n// Each loop iteration = 1 agent turn + 1 persona turn = 2 conversation turns\n// So we need maxTurns / 2 loop iterations (rounded up)\nconst loopCount = Math.ceil(maxTurns / 2);\nreturn Array(loopCount).fill({}).map((_, i) => ({ json: { loop_index: i } }));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          544,
+          -32
+        ],
+        "id": "c46f46fa-31ae-413a-ac90-1bd73b4b2e22",
+        "name": "Code",
+        "alwaysOutputData": false
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "de5637cf-7005-4288-9971-2ced56c12809",
+                "name": "convID",
+                "value": "={{ $('Init Battle').item.json.session_id }}",
+                "type": "string"
+              },
+              {
+                "id": "4b48f458-0970-4d93-bd7e-f495158befd8",
+                "name": "turnNumber_Agent",
+                "value": "={{ $('Code').item.json.loop_index * 2 +1 }}",
+                "type": "string"
+              },
+              {
+                "id": "617ddbf4-d135-4573-a8da-e6041fffa3dc",
+                "name": "turnNumber_Persona",
+                "value": "={{ $('Code').item.json.loop_index * 2 +2 }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1072,
+          -16
+        ],
+        "id": "ef19ecb9-cddf-43d5-a338-15dd7c6ce81a",
+        "name": "Edit Fields1"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "version": 2,
+              "leftValue": "",
+              "caseSensitive": true,
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "4dd2fe09-c365-45c3-b17b-3f4d1348fb71",
+                "leftValue": "={{$('AI Agent').item.json.output.toLowerCase().includes('end_call') || $('AI Agent').item.json.output.toLowerCase().includes('arrivederci') || $('AI Agent').item.json.output.toLowerCase().includes('buona giornata')}}",
+                "rightValue": "true",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "or"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1168,
+          528
+        ],
+        "id": "76b1374e-b99e-4834-8bc2-98c19c32aa79",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $('AI Agent').item.json.output }}",
+          "options": {
+            "systemMessage": "={{ $('When Executed by Another Workflow').item.json.personasPrompt }}",
+            "returnIntermediateSteps": false,
+            "enableStreaming": true
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          1408,
+          608
+        ],
+        "id": "0a60c42a-ec9c-4d4a-abb9-53418fb7bbc3",
+        "name": "AI Persona",
+        "retryOnFail": true,
+        "maxTries": 2,
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "={{ $('Init Battle').item.json.session_id }}",
+          "contextWindowLength": 15
+        },
+        "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+        "typeVersion": 1.3,
+        "position": [
+          1488,
+          784
+        ],
+        "id": "174979b0-a205-4e46-bf8e-72af78b2c39f",
+        "name": "Postgres Chat Memory1",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "version": 2,
+              "leftValue": "",
+              "caseSensitive": true,
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "a76eda15-5dab-4c92-8cd0-1c29c0751143",
+                "leftValue": "={{ \n  $('AI Persona').item.json.output.includes('CHIAMATA_TERMINATA_PERSONA') ||\n  $('AI Persona').item.json.output.toLowerCase().includes('devo andare') ||\n  $('AI Persona').item.json.output.toLowerCase().includes('la saluto')\n}}",
+                "rightValue": "true",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2112,
+          752
+        ],
+        "id": "bdb338a1-3b10-4227-ab31-cd5af29bec80",
+        "name": "If1"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          208,
+          1232
+        ],
+        "id": "0a0699c1-eb71-433a-a18c-f8e9c35120d3",
+        "name": "When clicking \u2018Execute workflow\u2019",
+        "disabled": true
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "5a3a2dad-5812-41d1-bd21-cd386d9a9405",
+                "name": "TestRunID",
+                "value": "TEST-1759313111866-qual-sa-audit-v2.1",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          416,
+          1232
+        ],
+        "id": "ee20fd80-f198-4abf-9c72-d79f0e45366f",
+        "name": "Set testrun to delete"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "DELETE FROM evaluationcriteria \nWHERE conversationid IN (SELECT conversationid FROM conversations WHERE testrunid = $1);\n\nDELETE FROM turns \nWHERE conversationid IN (SELECT conversationid FROM conversations WHERE testrunid = $1);\n\nDELETE FROM n8n_chat_histories \nWHERE session_id IN (SELECT conversationid::text FROM conversations WHERE testrunid = $1);\n\nDELETE FROM conversations WHERE testrunid = $1;\n\nDELETE FROM testruns WHERE testrunid = $1;",
+          "options": {
+            "queryReplacement": "={{ $json.TestRunID }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          592,
+          1232
+        ],
+        "id": "5bd84f29-9426-4e86-b398-0fe21f58ad95",
+        "name": "Execute a SQL query",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "content": "## clean test run",
+          "height": 288,
+          "width": 736
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          96,
+          1104
+        ],
+        "typeVersion": 1,
+        "id": "b7c7ce86-b382-41be-ac6a-e3795a225f2a",
+        "name": "Sticky Note"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "1",
+                "name": "session_id",
+                "value": "={{ $json.TestRunID + '_' + $json.personasid }}",
+                "type": "string"
+              },
+              {
+                "id": "2",
+                "name": "test_run_id",
+                "value": "={{ $json.TestRunID }}",
+                "type": "string"
+              },
+              {
+                "id": "3",
+                "name": "persona_id",
+                "value": "={{ $json.personasid }}",
+                "type": "string"
+              },
+              {
+                "id": "4",
+                "name": "personaprompt",
+                "value": "={{ $json.personasPrompt }}",
+                "type": "string"
+              },
+              {
+                "id": "5",
+                "name": "agentPrompt",
+                "value": "={{ $json.agentPrompt }}",
+                "type": "string"
+              },
+              {
+                "id": "6",
+                "name": "start_time",
+                "value": "={{ $now.toISO() }}",
+                "type": "string"
+              },
+              {
+                "id": "7",
+                "name": "max_turns",
+                "value": "={{ $json.max_turns || 50 }}",
+                "type": "number"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "init-battle-001",
+        "name": "Init Battle",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          304,
+          -32
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, message FROM n8n_chat_histories WHERE session_id = '{{ $('Init Battle').item.json.session_id }}' ORDER BY id ASC",
+          "options": {}
+        },
+        "id": "get-chat-history-001",
+        "name": "Get Chat History",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          2432,
+          0
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Format chat history into transcript JSONB\nconst chatHistory = $input.all();\nconst initData = $('Init Battle').item.json;\n\n// Determine outcome from Set Outcome nodes (only one will have executed)\nlet outcome = 'timeout';\ntry {\n  outcome = $('Set Outcome Timeout').first().json.outcome || 'timeout';\n} catch (e) {\n  try {\n    outcome = $('Set Outcome Success Agent').first().json.outcome || 'success';\n  } catch (e2) {\n    try {\n      outcome = $('Set Outcome Success Persona').first().json.outcome || 'success';\n    } catch (e3) {\n      // Default to timeout if no Set Outcome node found\n      outcome = 'timeout';\n    }\n  }\n}\n\nconst messages = chatHistory.map((row, index) => {\n  const msg = row.json.message;\n  return {\n    role: msg.type === 'ai' ? 'assistant' : 'user',\n    content: msg.content,\n    sequence: index + 1,\n    tool_calls: msg.tool_calls?.length > 0 ? msg.tool_calls : undefined\n  };\n});\n\nconst turnCount = Math.floor(messages.length / 2);\nconst startTime = new Date(initData.start_time);\nconst duration = Math.floor((Date.now() - startTime.getTime()) / 1000);\n\nreturn {\n  json: {\n    test_run_id: initData.test_run_id,\n    persona_id: initData.persona_id,\n    outcome: outcome,\n    turns: turnCount,\n    duration_seconds: duration,\n    transcript: { messages },\n    session_id: initData.session_id\n  }\n};"
+        },
+        "id": "format-transcript-001",
+        "name": "Format Transcript",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2672,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO battle_results (test_run_id, persona_id, outcome, turns, duration_seconds, transcript, created_at) \nVALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, NOW()) \nRETURNING id, outcome, turns",
+          "options": {
+            "queryReplacement": "={{ [$json.test_run_id, $json.persona_id, $json.outcome, $json.turns, $json.duration_seconds, JSON.stringify($json.transcript)] }}"
+          }
+        },
+        "id": "insert-battle-result-001",
+        "name": "Insert Battle Result",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          2928,
+          0
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "1",
+                "name": "outcome",
+                "value": "timeout",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "set-outcome-timeout-001",
+        "name": "Set Outcome Timeout",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2208,
+          -208
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "1",
+                "name": "outcome",
+                "value": "success",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "set-outcome-success-agent-001",
+        "name": "Set Outcome Success Agent",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1408,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "1",
+                "name": "outcome",
+                "value": "success",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "set-outcome-success-persona-001",
+        "name": "Set Outcome Success Persona",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2304,
+          608
+        ]
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Init Battle",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items": {
+        "main": [
+          [
+            {
+              "node": "Set Outcome Timeout",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Edit Fields1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model1": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Persona",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Postgres Chat Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields1": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Set Outcome Success Agent",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "AI Persona",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Persona": {
+        "main": [
+          [
+            {
+              "node": "If1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Postgres Chat Memory1": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI Persona",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If1": {
+        "main": [
+          [
+            {
+              "node": "Set Outcome Success Persona",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When clicking \u2018Execute workflow\u2019": {
+        "main": [
+          [
+            {
+              "node": "Set testrun to delete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set testrun to delete": {
+        "main": [
+          [
+            {
+              "node": "Execute a SQL query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Chat History": {
+        "main": [
+          [
+            {
+              "node": "Format Transcript",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Transcript": {
+        "main": [
+          [
+            {
+              "node": "Insert Battle Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Init Battle": {
+        "main": [
+          [
+            {
+              "node": "Code",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Outcome Timeout": {
+        "main": [
+          [
+            {
+              "node": "Get Chat History",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Outcome Success Agent": {
+        "main": [
+          [
+            {
+              "node": "Get Chat History",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Outcome Success Persona": {
+        "main": [
+          [
+            {
+              "node": "Get Chat History",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Niccolo Franzin",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-02-17T18:11:16.508Z",
+        "id": 451,
+        "workflowId": "Z35cpvwXt7Xy4Mgi",
+        "versionId": "c399e714-cfbb-4aba-b88c-d7292134fff5",
+        "event": "activated",
+        "userId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      }
+    ]
+  }
+}
