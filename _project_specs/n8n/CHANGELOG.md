@@ -4,6 +4,27 @@ Log di tutte le modifiche applicate ai workflow n8n.
 
 ---
 
+## [2026-02-25] — Workflow JSON Sync + P0/P1/P2 Pipeline Changes
+
+All 6 workflow JSONs re-exported from live n8n. Previous exports were from Jan 19-25.
+
+### Changes since last export
+- **P0**: Criteria taxonomy with core+domain weighting, LLM rotation (primary+fallback), criteria snapshot persistence
+- **P1**: Analyzer conditional flag (`run_analyzer`), parse resilience for malformed JSON, callback retry/reconciliation
+- **P2**: Optimizer dual mode (surgical/full rewrite), latency metrics in `transcript_structured`, quote verification with 3-tier evidence
+
+### Workflow Updates
+| Workflow | Key Changes |
+|----------|------------|
+| Evaluator (36 nodes) | Dynamic criteria from `evaluator_configs`, Gemini 3 Flash judge, conditional analyzer, criteria snapshot |
+| Optimizer (11 nodes) | Claude Sonnet 4.5, receives analysis + human feedback, surgical mode support |
+| Personas Validator (12 nodes) | New workflow — Gemini 2.5 Flash, naturalness/coherence/testability scoring |
+| Battle Agent (23 nodes) | GPT-5-mini agent, GPT-4.1-mini persona, structured transcript with latency |
+| Personas Generator (14 nodes) | Claude Sonnet 4.5 + GPT-4.1-mini structured output parser |
+| Test RUNNER (20 nodes) | Orchestration — no LLM changes, passes config through chain |
+
+---
+
 ### [2026-02-19] is_promoted Fix
 - **Evaluator workflow** "Fetch Evaluator Config" node now filters `WHERE is_promoted = true`
 - Previously: picked latest by `created_at`, ignoring promoted flag
