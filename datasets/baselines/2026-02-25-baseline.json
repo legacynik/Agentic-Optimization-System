@@ -1,0 +1,129 @@
+{
+  "exported_at": "2026-02-25T00:00:00Z",
+  "source": "supabase:dlozxirsmrbriuklgcxq",
+  "description": "Baseline test data exported from production Supabase. Contains completed test runs with battle results for regression testing.",
+  "test_runs": [
+    {
+      "id": "4b75e0af-85c7-43a6-9e34-b9556002283b",
+      "test_run_code": "RUN-20260218010550-J90",
+      "overall_score": null,
+      "status": "completed",
+      "started_at": "2026-02-18T01:05:50.606535Z",
+      "prompt_name": "qual-audit-sa",
+      "prompt_version": "v3.0",
+      "eval_score": null,
+      "model_used": null,
+      "battle_count": 10,
+      "battles": [
+        { "id": "1caa1604-302b-4953-8795-a169d27e234b", "persona_id": "e220146b-2fd5-42a3-9900-00c2fcf5e965", "persona_name": "Luca Vago", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": null, "turns": 31, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "95a21275-349a-4952-a664-50d31faa5cb8", "persona_id": "12508746-ad23-420d-970a-f19674feb243", "persona_name": "Elena Esploratrice", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": null, "turns": 13, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "a3086f2a-79a2-4cb7-9273-d8a806442335", "persona_id": "c3a75f65-6697-431e-8b98-561546e84c25", "persona_name": "Marco Indaffarato", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 19, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "213e5842-9243-4cef-9bc9-72388fc32afb", "persona_id": "f1fa79f2-eb0a-426d-928f-a056b4eef887", "persona_name": "Sofia Scettica", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 13, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "b7af718c-1614-4c2f-967b-054871340de2", "persona_id": "31b37788-826e-440b-8207-77bd3985f62d", "persona_name": "Roberto Rifornito", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 9, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "adafc90f-806f-4360-b0d9-1bbdb2aa660f", "persona_id": "cb81f174-e478-4042-906b-4da95a9d6c1b", "persona_name": "Giorgio Gregario", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 43, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "ddd555cb-215a-44a2-b131-17f67a4f754a", "persona_id": "a37011e5-51ad-4b0d-9e5d-311f1d10e784", "persona_name": "Antonio Chiaccerone", "category": "Caso Limite", "difficulty": "medium", "outcome": "success", "score": null, "turns": 21, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "f3a57d7d-80d9-4fa0-9147-379aada9f859", "persona_id": "36253aec-fb76-4db0-9f70-ab1f44f0bc01", "persona_name": "Paolo Positivo", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": null, "turns": 15, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "5db0e457-1a15-409c-a1cc-6c5688e09536", "persona_id": "eb69dab0-1138-436d-b81b-2eb3ccae2878", "persona_name": "Francesca Frustata", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": null, "turns": 27, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "e5bdba3a-8ee0-4ec5-830d-6f39a17e3750", "persona_id": "5d46f567-da84-4c2e-9c27-348f2c9f51b9", "persona_name": "Michele Minimale", "category": "Fuori Target", "difficulty": "medium", "outcome": "success", "score": null, "turns": 13, "avg_agent_latency_ms": null, "max_agent_latency_ms": null }
+      ]
+    },
+    {
+      "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+      "test_run_code": "RUN-20260217171519-H9C",
+      "overall_score": null,
+      "status": "completed",
+      "started_at": "2026-02-17T17:15:19.946371Z",
+      "prompt_name": "qual-audit-sa",
+      "prompt_version": "v3.0",
+      "eval_score": null,
+      "model_used": null,
+      "battle_count": 10,
+      "battles": [
+        { "id": "4d1be31f-0e39-410c-a49a-390a8f186bb4", "persona_id": "e220146b-2fd5-42a3-9900-00c2fcf5e965", "persona_name": "Luca Vago", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": null, "turns": 27, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "7ef1dc4c-dfea-454b-aa31-2e5116c8bc92", "persona_id": "12508746-ad23-420d-970a-f19674feb243", "persona_name": "Elena Esploratrice", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": null, "turns": 15, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "26ae792f-8917-47e1-a78b-3ff52a916534", "persona_id": "c3a75f65-6697-431e-8b98-561546e84c25", "persona_name": "Marco Indaffarato", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 13, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "fe441676-5f86-4737-9849-dc1fd181b581", "persona_id": "f1fa79f2-eb0a-426d-928f-a056b4eef887", "persona_name": "Sofia Scettica", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 11, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "48755e6a-9b1b-4e05-8beb-273d21ae69a0", "persona_id": "31b37788-826e-440b-8207-77bd3985f62d", "persona_name": "Roberto Rifornito", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 13, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "155f8b46-551a-455a-93cf-dc83d5dc9345", "persona_id": "cb81f174-e478-4042-906b-4da95a9d6c1b", "persona_name": "Giorgio Gregario", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 19, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "f28dc857-ef5b-4fdf-808f-b1a0e0570ac5", "persona_id": "a37011e5-51ad-4b0d-9e5d-311f1d10e784", "persona_name": "Antonio Chiaccerone", "category": "Caso Limite", "difficulty": "medium", "outcome": "timeout", "score": null, "turns": 1800, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "fab05e18-da82-4170-abbd-5cf44a659eb9", "persona_id": "36253aec-fb76-4db0-9f70-ab1f44f0bc01", "persona_name": "Paolo Positivo", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": null, "turns": 19, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "77ffbd01-8f70-4ca6-8867-8ff0f8fdc43f", "persona_id": "eb69dab0-1138-436d-b81b-2eb3ccae2878", "persona_name": "Francesca Frustata", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": null, "turns": 29, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "def24c03-28fc-4113-96cc-528f3537ee19", "persona_id": "5d46f567-da84-4c2e-9c27-348f2c9f51b9", "persona_name": "Michele Minimale", "category": "Fuori Target", "difficulty": "medium", "outcome": "success", "score": null, "turns": 47, "avg_agent_latency_ms": null, "max_agent_latency_ms": null }
+      ]
+    },
+    {
+      "id": "e1117e74-11b5-4576-875d-0123a3cad8c3",
+      "test_run_code": "RUN-20260216123046-02J",
+      "overall_score": null,
+      "status": "completed",
+      "started_at": "2026-02-16T12:30:46.464838Z",
+      "prompt_name": "qual-audit-sa",
+      "prompt_version": "v3.0",
+      "eval_score": null,
+      "model_used": null,
+      "battle_count": 12,
+      "battles": [
+        { "id": "b876e8fa-a9a7-4d65-837c-1c1e7bf15417", "persona_id": "e220146b-2fd5-42a3-9900-00c2fcf5e965", "persona_name": "Luca Vago", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": null, "turns": 27, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "c54eee0a-5143-44bb-adcf-3643a6a0c653", "persona_id": "12508746-ad23-420d-970a-f19674feb243", "persona_name": "Elena Esploratrice", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": null, "turns": 9, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "e0e521f4-caf1-4fdf-b955-243dd8b3033e", "persona_id": "c3a75f65-6697-431e-8b98-561546e84c25", "persona_name": "Marco Indaffarato", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 15, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "cece4a1d-0436-433a-a537-0a56190950df", "persona_id": "f1fa79f2-eb0a-426d-928f-a056b4eef887", "persona_name": "Sofia Scettica", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 19, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "7383b6ff-a9f7-46b2-914c-36609033d0de", "persona_id": "31b37788-826e-440b-8207-77bd3985f62d", "persona_name": "Roberto Rifornito", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 23, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "1c30de14-40fb-4f95-8bda-5a7dd256f434", "persona_id": "cb81f174-e478-4042-906b-4da95a9d6c1b", "persona_name": "Giorgio Gregario", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": null, "turns": 33, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "6a3a51cd-2d52-4d05-b991-cbf74f8c00be", "persona_id": "a37011e5-51ad-4b0d-9e5d-311f1d10e784", "persona_name": "Antonio Chiaccerone", "category": "Caso Limite", "difficulty": "medium", "outcome": "success", "score": null, "turns": 23, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "b40aac1f-8a9f-4827-8146-e6d1da7ec730", "persona_id": "36253aec-fb76-4db0-9f70-ab1f44f0bc01", "persona_name": "Paolo Positivo", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": null, "turns": 19, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "eff949da-0332-438f-be23-218fb2b5d539", "persona_id": "eb69dab0-1138-436d-b81b-2eb3ccae2878", "persona_name": "Francesca Frustata", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": null, "turns": 19, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "09810e5a-7e65-4776-a030-77e13e5f131c", "persona_id": "5d46f567-da84-4c2e-9c27-348f2c9f51b9", "persona_name": "Michele Minimale", "category": "Fuori Target", "difficulty": "medium", "outcome": "success", "score": null, "turns": 47, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "61a123af-1642-45cb-8553-a5043f7f1647", "persona_id": "e220146b-2fd5-42a3-9900-00c2fcf5e965", "persona_name": "Luca Vago", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": null, "turns": 28, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "d8cc1d01-90a8-49d2-b7f3-d8cc0aa8d91d", "persona_id": "12508746-ad23-420d-970a-f19674feb243", "persona_name": "Elena Esploratrice", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": null, "turns": 16, "avg_agent_latency_ms": null, "max_agent_latency_ms": null }
+      ]
+    },
+    {
+      "id": "f06e500c-cbd8-466f-8395-b95816db2221",
+      "test_run_code": "qual-audit-short-v2.5-TEST-1759339146775",
+      "overall_score": 7.4,
+      "status": "completed",
+      "started_at": "2025-10-01T17:19:06.819972Z",
+      "prompt_name": "qual-audit-sa",
+      "prompt_version": "v2.5",
+      "eval_score": 7.39,
+      "model_used": null,
+      "battle_count": 10,
+      "battles": [
+        { "id": "64930f0a-79a9-436a-b42d-19180366c950", "persona_id": "36253aec-fb76-4db0-9f70-ab1f44f0bc01", "persona_name": "Paolo Positivo", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": 8.3, "turns": 33, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "2fe5251f-d3cd-45ed-8276-ee28e5709bae", "persona_id": "12508746-ad23-420d-970a-f19674feb243", "persona_name": "Elena Esploratrice", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": 7.1, "turns": 15, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "9bc8ecb7-c13d-4fa0-8a07-4c5dad4bd99a", "persona_id": "c3a75f65-6697-431e-8b98-561546e84c25", "persona_name": "Marco Indaffarato", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 8.4, "turns": 11, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "02cdcb69-5466-4725-86ed-f1db55d021d1", "persona_id": "f1fa79f2-eb0a-426d-928f-a056b4eef887", "persona_name": "Sofia Scettica", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 7.0, "turns": 11, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "96018cfa-cbe1-44e5-948f-069ea55647c8", "persona_id": "31b37788-826e-440b-8207-77bd3985f62d", "persona_name": "Roberto Rifornito", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 6.0, "turns": 5, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "94389bce-fd90-452c-b9f2-b41b008ea742", "persona_id": "cb81f174-e478-4042-906b-4da95a9d6c1b", "persona_name": "Giorgio Gregario", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 9.0, "turns": 21, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "e26b6f9b-e3a0-4289-8148-ea47202d490e", "persona_id": "e220146b-2fd5-42a3-9900-00c2fcf5e965", "persona_name": "Luca Vago", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": 8.9, "turns": 25, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "43ee7735-3268-4e4b-936e-7b237288bde0", "persona_id": "eb69dab0-1138-436d-b81b-2eb3ccae2878", "persona_name": "Francesca Frustata", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": 7.2, "turns": 9, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "2154bd97-ca27-43dc-8a62-cf0431a4cb0d", "persona_id": "a37011e5-51ad-4b0d-9e5d-311f1d10e784", "persona_name": "Antonio Chiaccerone", "category": "Caso Limite", "difficulty": "medium", "outcome": "success", "score": 6.0, "turns": 23, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "50dd480e-8efd-45fa-a2ac-8e9d10d7a2c2", "persona_id": "5d46f567-da84-4c2e-9c27-348f2c9f51b9", "persona_name": "Michele Minimale", "category": "Fuori Target", "difficulty": "medium", "outcome": "success", "score": 6.0, "turns": 7, "avg_agent_latency_ms": null, "max_agent_latency_ms": null }
+      ]
+    },
+    {
+      "id": "12366f10-b06c-4133-ad78-28743bd4b73a",
+      "test_run_code": "qual-sa-audit-short-v2.3-TEST-1759327593883",
+      "overall_score": 8.0,
+      "status": "completed",
+      "started_at": "2025-10-01T14:06:33.928787Z",
+      "prompt_name": "qual-audit-sa",
+      "prompt_version": "v2.3",
+      "eval_score": 8.0,
+      "model_used": null,
+      "battle_count": 10,
+      "battles": [
+        { "id": "9e933f77-2add-4fc9-bd80-bb4c345f57da", "persona_id": "36253aec-fb76-4db0-9f70-ab1f44f0bc01", "persona_name": "Paolo Positivo", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": 9.2, "turns": 21, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "8b3722d5-3790-435f-8d5a-0ccdd9a4712a", "persona_id": "12508746-ad23-420d-970a-f19674feb243", "persona_name": "Elena Esploratrice", "category": "Personas base", "difficulty": "medium", "outcome": "success", "score": 8.0, "turns": 35, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "9423b8d9-dbf4-40a7-a83a-19c7bdb56897", "persona_id": "c3a75f65-6697-431e-8b98-561546e84c25", "persona_name": "Marco Indaffarato", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 8.3, "turns": 11, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "53c7e7e3-cae3-4b36-8acd-1dea1559f7ae", "persona_id": "f1fa79f2-eb0a-426d-928f-a056b4eef887", "persona_name": "Sofia Scettica", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 9.0, "turns": 17, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "e071e283-a304-489c-8fe3-e0bc7b01244c", "persona_id": "31b37788-826e-440b-8207-77bd3985f62d", "persona_name": "Roberto Rifornito", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 7.3, "turns": 11, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "ec233665-0597-4bfa-a405-c683fb2c0952", "persona_id": "cb81f174-e478-4042-906b-4da95a9d6c1b", "persona_name": "Giorgio Gregario", "category": "Obiezioni", "difficulty": "medium", "outcome": "success", "score": 8.5, "turns": 17, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "0d41cc02-9aca-4b56-b440-c9c1d2f34015", "persona_id": "e220146b-2fd5-42a3-9900-00c2fcf5e965", "persona_name": "Luca Vago", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": 9.5, "turns": 31, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "e569bb72-ef17-44b9-b01f-a3abc9128e09", "persona_id": "eb69dab0-1138-436d-b81b-2eb3ccae2878", "persona_name": "Francesca Frustata", "category": "Comportamentali", "difficulty": "medium", "outcome": "success", "score": 8.1, "turns": 15, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "e319a507-19a3-40f3-9f23-0aac643525d2", "persona_id": "a37011e5-51ad-4b0d-9e5d-311f1d10e784", "persona_name": "Antonio Chiaccerone", "category": "Caso Limite", "difficulty": "medium", "outcome": "success", "score": 9.1, "turns": 25, "avg_agent_latency_ms": null, "max_agent_latency_ms": null },
+        { "id": "4eb45392-17c0-4b6c-9324-225ba263b7c1", "persona_id": "5d46f567-da84-4c2e-9c27-348f2c9f51b9", "persona_name": "Michele Minimale", "category": "Fuori Target", "difficulty": "medium", "outcome": "success", "score": 3.0, "turns": 13, "avg_agent_latency_ms": null, "max_agent_latency_ms": null }
+      ]
+    }
+  ]
+}
