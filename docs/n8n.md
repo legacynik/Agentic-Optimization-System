@@ -2,12 +2,14 @@
 
 ## Workflows
 
-| Workflow | ID | Status | Purpose |
-|----------|-----|--------|---------|
-| Test RUNNER | `XmpBhcUxsRpxAYPN` | Active | Orchestrates test runs — triggers Battle Agent per persona, manages iterations |
-| Battle Agent | `Z35cpvwXt7Xy4Mgi` | Partial | Agent-persona conversations — chat memory, tool mocking |
-| Evaluator | `202JEX5zm3VlrUT8` | Active | Judges conversation quality — scores against criteria |
-| Personas Generator | `HltftwB9Bm8LNQsO` | Active | Generates test personas from prompt analysis |
+| Workflow | ID | Status | Nodes | LLM Models | Purpose |
+|----------|-----|--------|-------|------------|---------|
+| Test RUNNER | `XmpBhcUxsRpxAYPN` | Active | 20 | — | Orchestrates test runs — triggers Battle Agent per persona, manages iterations |
+| Battle Agent | `Z35cpvwXt7Xy4Mgi` | Active | 23 | GPT-5-mini (agent), GPT-4.1-mini (persona) | Agent-persona conversations — chat memory, tool mocking |
+| Evaluator | `202JEX5zm3VlrUT8` | Active | 36 | Gemini 3 Flash (judge), Claude Sonnet 4.5 (analyzer) | Judges conversation quality + post-loop analysis |
+| Optimizer | `honcSigslEtpoVqy` | Active | 11 | Claude Sonnet 4.5 | Generates prompt improvements (surgical/full rewrite) |
+| Personas Generator | `HltftwB9Bm8LNQsO` | Active | 14 | Claude Sonnet 4.5 + GPT-4.1-mini (parser) | Generates test personas from prompt analysis |
+| Personas Validator | `aGlmWu7SPHw17eYQ` | Active | 12 | Gemini 2.5 Flash | Validates persona quality (naturalness/coherence/testability) |
 
 ## Architecture
 
@@ -71,4 +73,5 @@ For implementation details, modification requirements, and changelog:
 
 - **Changelog**: [`_project_specs/n8n/CHANGELOG.md`](./../_project_specs/n8n/CHANGELOG.md) (v2.0 → v2.4 Lean → Feb 2026 fixes)
 - **Modification requirements (archived)**: [`_project_specs/archive/n8n-MODIFICATIONS-REQUIRED-v2.4.md`](./../_project_specs/archive/n8n-MODIFICATIONS-REQUIRED-v2.4.md) — historical reference
-- **Workflow JSON exports**: `_project_specs/n8n/workflows/` (3 workflow snapshots)
+- **Workflow JSON exports**: `_project_specs/n8n/workflows/` (6 workflow snapshots, synced 2026-02-25)
+- **LLM Prompts Reference**: [`docs/prompts-reference.md`](./prompts-reference.md) — full text of all LLM prompts extracted from workflows

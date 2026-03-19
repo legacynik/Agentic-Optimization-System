@@ -1,0 +1,99 @@
+{
+  "created_at": "2026-02-25T00:00:00Z",
+  "source": "supabase:dlozxirsmrbriuklgcxq",
+  "description": "Baseline test data for regression testing. Exported from production Supabase.",
+  "total_completed_test_runs_in_db": 15,
+  "exported_test_runs": 5,
+  "exported_battles": 52,
+  "prompt_name": "qual-audit-sa",
+  "prompt_versions_covered": ["v3.0", "v2.5", "v2.3"],
+  "date_range": {
+    "earliest": "2025-10-01T14:06:33Z",
+    "latest": "2026-02-18T01:05:50Z"
+  },
+  "test_runs_summary": [
+    {
+      "id": "4b75e0af-85c7-43a6-9e34-b9556002283b",
+      "code": "RUN-20260218010550-J90",
+      "version": "v3.0",
+      "overall_score": null,
+      "eval_score": null,
+      "battle_count": 10,
+      "outcomes": { "success": 10, "timeout": 0, "failure": 0 },
+      "avg_turns": 20.4,
+      "note": "Most recent v3.0 run, no eval scores yet"
+    },
+    {
+      "id": "26259dce-4998-485a-bff2-a640cd68e4ce",
+      "code": "RUN-20260217171519-H9C",
+      "version": "v3.0",
+      "overall_score": null,
+      "eval_score": null,
+      "battle_count": 10,
+      "outcomes": { "success": 9, "timeout": 1, "failure": 0 },
+      "avg_turns": 19.3,
+      "note": "v3.0 run with 1 timeout (Antonio Chiaccerone, 1800 turns)"
+    },
+    {
+      "id": "e1117e74-11b5-4576-875d-0123a3cad8c3",
+      "code": "RUN-20260216123046-02J",
+      "version": "v3.0",
+      "overall_score": null,
+      "eval_score": null,
+      "battle_count": 12,
+      "outcomes": { "success": 12, "timeout": 0, "failure": 0 },
+      "avg_turns": 23.3,
+      "note": "v3.0 run with 12 battles (includes duplicates for some personas)"
+    },
+    {
+      "id": "f06e500c-cbd8-466f-8395-b95816db2221",
+      "code": "qual-audit-short-v2.5-TEST-1759339146775",
+      "version": "v2.5",
+      "overall_score": 7.4,
+      "eval_score": 7.39,
+      "battle_count": 10,
+      "outcomes": { "success": 10, "timeout": 0, "failure": 0 },
+      "avg_turns": 16.0,
+      "avg_battle_score": 7.39,
+      "score_range": { "min": 6.0, "max": 9.0 },
+      "note": "Best v2.5 run with full eval scores - good regression baseline"
+    },
+    {
+      "id": "12366f10-b06c-4133-ad78-28743bd4b73a",
+      "code": "qual-sa-audit-short-v2.3-TEST-1759327593883",
+      "version": "v2.3",
+      "overall_score": 8.0,
+      "eval_score": 8.0,
+      "battle_count": 10,
+      "outcomes": { "success": 10, "timeout": 0, "failure": 0 },
+      "avg_turns": 19.6,
+      "avg_battle_score": 8.0,
+      "score_range": { "min": 3.0, "max": 9.5 },
+      "note": "Highest scored run (v2.3) - golden baseline for quality targets"
+    }
+  ],
+  "personas_in_baseline": [
+    { "id": "36253aec-fb76-4db0-9f70-ab1f44f0bc01", "name": "Paolo Positivo", "category": "Personas base" },
+    { "id": "12508746-ad23-420d-970a-f19674feb243", "name": "Elena Esploratrice", "category": "Personas base" },
+    { "id": "c3a75f65-6697-431e-8b98-561546e84c25", "name": "Marco Indaffarato", "category": "Obiezioni" },
+    { "id": "f1fa79f2-eb0a-426d-928f-a056b4eef887", "name": "Sofia Scettica", "category": "Obiezioni" },
+    { "id": "31b37788-826e-440b-8207-77bd3985f62d", "name": "Roberto Rifornito", "category": "Obiezioni" },
+    { "id": "cb81f174-e478-4042-906b-4da95a9d6c1b", "name": "Giorgio Gregario", "category": "Obiezioni" },
+    { "id": "e220146b-2fd5-42a3-9900-00c2fcf5e965", "name": "Luca Vago", "category": "Comportamentali" },
+    { "id": "eb69dab0-1138-436d-b81b-2eb3ccae2878", "name": "Francesca Frustata", "category": "Comportamentali" },
+    { "id": "a37011e5-51ad-4b0d-9e5d-311f1d10e784", "name": "Antonio Chiaccerone", "category": "Caso Limite" },
+    { "id": "5d46f567-da84-4c2e-9c27-348f2c9f51b9", "name": "Michele Minimale", "category": "Fuori Target" }
+  ],
+  "data_quality_notes": [
+    "v3.0 runs have no eval_score or battle-level scores (evaluator not yet run on these)",
+    "v2.5 and v2.3 runs have full battle-level scores from evaluator",
+    "avg_agent_latency_ms and max_agent_latency_ms are null for all battles (latency tracking added later)",
+    "One timeout case in RUN-H9C: Antonio Chiaccerone hit 1800 turns",
+    "RUN-02J has 12 battles (2 duplicated personas: Luca Vago, Elena Esploratrice)",
+    "No transcripts included - only scores, outcomes, persona info, and turn counts"
+  ],
+  "files": {
+    "baseline": "2026-02-25-baseline.json",
+    "metadata": "metadata.json"
+  }
+}

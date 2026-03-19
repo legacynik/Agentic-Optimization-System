@@ -1,0 +1,1720 @@
+{
+  "updatedAt": "2026-02-19T20:10:59.718Z",
+  "createdAt": "2025-08-24T23:01:04.393Z",
+  "id": "XmpBhcUxsRpxAYPN",
+  "name": "Test RUNNER Battle",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -256
+      ],
+      "id": "87dd7257-8203-4e0c-b491-9d1d1f9399eb",
+      "name": "When clicking \u2018Execute workflow\u2019"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1520,
+        0
+      ],
+      "id": "63c3a1eb-a9b8-4ba4-a7c3-78406bde8d69",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Z35cpvwXt7Xy4Mgi",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Z35cpvwXt7Xy4Mgi",
+          "cachedResultName": "Test Battle Agent v1.0"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "personasPrompt": "={{ $('Get Validated Personas').item.json.personaprompt }}",
+            "agentPrompt": "={{ $('Set Test Run').item.json.agentPrompt }}",
+            "personasid": "={{ $('Get Validated Personas').item.json.id }}",
+            "TestRunID": "={{ $('Set Test Run').item.json.test_run_id }}",
+            "max_turns": "={{ $('Set Test Run').item.json.max_turns.toString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "personasid",
+              "displayName": "personasid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "agentPrompt",
+              "displayName": "agentPrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "personasPrompt",
+              "displayName": "personasPrompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "TestRunID",
+              "displayName": "TestRunID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "max_turns",
+              "displayName": "max_turns",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2128,
+        32
+      ],
+      "id": "f243d86f-a707-4cea-bd74-62a4df4474c9",
+      "name": "Execute Workflow"
+    },
+    {
+      "parameters": {
+        "content": "Nel nodo **Get Prompt** \nInserisci nel filtro la PromptVersion che vuoi testare\n",
+        "height": 80,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1120,
+        -464
+      ],
+      "typeVersion": 1,
+      "id": "095eac69-6810-4fef-bc1e-85cb7a233488",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Su Execute Workflow seleziona il Test Agent con la versione che vuoi testare",
+        "height": 80,
+        "width": 208,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1984,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "4608ec4c-dcfe-4f77-bafb-e6d69608cf41",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "test_run_code",
+              "value": "={{ 'RUN-' + $now.format('yyyyMMdd-HHmmss') }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "agentPrompt",
+              "value": "={{ $('Get Prompt Testing').item.json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "prompt_version_id",
+              "value": "={{ $('Get Prompt Testing').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "prompt_name",
+              "value": "={{ $('Get Prompt Testing').item.json.prompt_name }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "mode",
+              "value": "={{ $('Validate Input').item.json.mode }}",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "tool_scenario_id",
+              "value": "={{ $('Validate Input').item.json.tool_scenario_id || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "7",
+              "name": "max_iterations",
+              "value": "={{ $('Validate Input').item.json.max_iterations }}",
+              "type": "number"
+            },
+            {
+              "id": "674e8d12-63d5-4aed-bf64-cd83cfbaab6e",
+              "name": "test_run_id",
+              "value": "={{ $('Webhook').item.json.body.test_run_id }}",
+              "type": "string"
+            },
+            {
+              "id": "8",
+              "name": "max_turns",
+              "value": "={{ $('Validate Input').item.json.max_turns }}",
+              "type": "number"
+            },
+            {
+              "id": "9",
+              "name": "evaluator_config_id",
+              "value": "={{ $('Validate Input').item.json.evaluator_config_id || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        -256
+      ],
+      "id": "60eb4a03-8078-426b-9336-30795c8d33db",
+      "name": "Set Test Run"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO test_runs (test_run_code, prompt_version_id, mode, max_iterations, current_iteration, tool_scenario_id, test_config, llm_config, status) VALUES ('{{ $json.test_run_code }}', '{{ $json.prompt_version_id }}'::uuid, '{{ $json.mode }}', {{ $json.max_iterations }}, 1, NULLIF('{{ $json.tool_scenario_id }}', ''), '{}'::jsonb, '{\"battleLlm\": \"gpt-4.1-mini\", \"evaluatorLlm\": \"claude-sonnet-4\"}'::jsonb, 'running') RETURNING id, test_run_code",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        848,
+        -240
+      ],
+      "id": "485dd86a-b6a3-4fba-b728-a52e0555997d",
+      "name": "Create Test Run",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, prompt_name, version, content, status FROM prompt_versions WHERE id = '{{ $('Validate Input').item.json.prompt_version_id }}'::uuid",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        -432
+      ],
+      "id": "f27993ef-af24-4df1-aa24-5446cd88cbad",
+      "name": "Get Prompt Testing",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT p.id, p.personaid, p.name, p.personaprompt, p.category, pp.priority\nFROM personas p\nJOIN prompt_personas pp ON p.id = pp.persona_id\nJOIN prompts pr ON pp.prompt_id = pr.id\nJOIN prompt_versions pv ON pv.prompt_id = pr.id\nWHERE pv.id = $1::uuid\n  AND pp.is_active = true\n  AND p.validation_status = 'validated'\nORDER BY pp.priority, p.category",
+        "options": {
+          "queryReplacement": "={{ $(\"Get Prompt Testing\").item.json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "9de72b67-fac6-4205-8269-ae59fcd9202a",
+      "name": "Get Validated Personas",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "5877058c-19fd-4f26-add4-66b3526c4a96",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        400,
+        -432
+      ],
+      "id": "320852a0-5aae-4738-8ba2-26d3f006f489",
+      "name": "Webhook",
+      "webhookId": "5877058c-19fd-4f26-add4-66b3526c4a96"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "202JEX5zm3VlrUT8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/202JEX5zm3VlrUT8",
+          "cachedResultName": "Battles Evaluator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "evaluation_id": "={{ $('Create Evaluation Row').item.json.id }}",
+            "test_run_id": "={{ $('Set Test Run').item.json.test_run_id }}",
+            "evaluator_config_id": "={{ $('Set Test Run').item.json.evaluator_config_id }}",
+            "triggered_by": "auto"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "evaluation_id",
+              "displayName": "evaluation_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "test_run_id",
+              "displayName": "test_run_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "evaluator_config_id",
+              "displayName": "evaluator_config_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "triggered_by",
+              "displayName": "triggered_by",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2500,
+        -440
+      ],
+      "id": "4a9af6b9-c76e-4ee4-955c-466b0689deb1",
+      "name": "Run Evaluator"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate webhook input for v2.5 - T1 Hybrid Webhook\nconst input = $input.first().json;\n\n// Extract data from webhook body structure\nconst webhookBody = input.body || input;\nconst actualInput = webhookBody.prompt_version_id ? webhookBody : input;\n\n// Required fields validation\nif (!actualInput.prompt_version_id) {\n  throw new Error('Missing required field: prompt_version_id. Received: ' + JSON.stringify(input));\n}\n\n// Validate UUID format\nconst uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRegex.test(actualInput.prompt_version_id)) {\n  throw new Error('Invalid prompt_version_id format: must be UUID');\n}\n\n// evaluator_config_id is optional - if provided, auto-evaluation will run after battles\nconst evaluatorConfigId = actualInput.evaluator_config_id || null;\nif (evaluatorConfigId && !uuidRegex.test(evaluatorConfigId)) {\n  throw new Error('Invalid evaluator_config_id format: must be UUID');\n}\n\n// Validate mode (optional, defaults to 'single')\nconst validModes = ['single', 'full_cycle_with_review'];\nconst mode = actualInput.mode || 'single';\nif (!validModes.includes(mode)) {\n  throw new Error(`Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`);\n}\n\n// Validate max_iterations (optional, defaults to 1 for single, 3 for full_cycle)\nlet maxIterations = actualInput.max_iterations;\nif (maxIterations === undefined) {\n  maxIterations = mode === 'single' ? 1 : 3;\n}\nif (typeof maxIterations !== 'number' || maxIterations < 1 || maxIterations > 10) {\n  throw new Error('max_iterations must be a number between 1 and 10');\n}\n\n// Validate max_turns (optional, defaults to 50)\nlet maxTurns = actualInput.max_turns;\nif (maxTurns === undefined) {\n  maxTurns = 50;\n}\nmaxTurns = Number(maxTurns);\nif (isNaN(maxTurns) || maxTurns < 5 || maxTurns > 100) {\n  maxTurns = 50;\n}\n\n// tool_scenario_id is VARCHAR (optional)\nconst toolScenarioId = actualInput.tool_scenario_id || null;\n\nreturn {\n  json: {\n    prompt_version_id: actualInput.prompt_version_id,\n    evaluator_config_id: evaluatorConfigId,\n    mode: mode,\n    max_iterations: maxIterations,\n    max_turns: maxTurns,\n    tool_scenario_id: toolScenarioId,\n    validated_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "validate-input-001",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "426ff4c2-a80b-48bf-a3f2-c728a7d88888",
+              "name": "prompt_version_id",
+              "value": "0717f50d-4761-42f8-8199-0e1f3dfb9141",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        -256
+      ],
+      "id": "53c64144-75e5-4e65-ae12-7aed5d6a250a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "prompt_versions",
+          "mode": "list",
+          "cachedResultName": "prompt_versions"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "id",
+              "value": "={{ $json.prompt_version_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        560,
+        -256
+      ],
+      "id": "c6ec4178-e37d-44ce-b465-b050e051afee",
+      "name": "get prompt from id",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT status FROM test_runs WHERE test_run_code = '{{ $('Set Test Run').item.json.test_run_code }}' LIMIT 1",
+        "options": {}
+      },
+      "id": "check-abort-pg",
+      "name": "Check Abort Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1712,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "aborted",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "is-aborted-if",
+      "name": "Is Aborted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1872,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE test_runs SET status = 'battles_completed', last_heartbeat_at = NOW() WHERE id = '{{ $('Set Test Run').item.json.test_run_id }}'::uuid RETURNING id, status",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1680,
+        -240
+      ],
+      "id": "4d81ddc4-0566-4994-8f39-b17d9dac8ab1",
+      "name": "Update testrun status",
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "id": "get-eval-config-001",
+      "name": "Get Evaluator Config",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2060,
+        -440
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, criteria, llm_config FROM evaluator_configs WHERE id = '{{ $('Set Test Run').item.json.evaluator_config_id }}'::uuid",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "id": "create-eval-row-001",
+      "name": "Create Evaluation Row",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2280,
+        -440
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO evaluations (test_run_id, evaluator_config_id, status, triggered_by, criteria_snapshot, llm_config_snapshot) VALUES ($1::uuid, $2::uuid, 'pending', 'auto', $3::jsonb, $4::jsonb) RETURNING id",
+        "options": {
+          "queryReplacement": "={{ $('Set Test Run').item.json.test_run_id }},{{ $('Set Test Run').item.json.evaluator_config_id }},{{ JSON.stringify($('Get Evaluator Config').item.json.criteria) }},{{ JSON.stringify($('Get Evaluator Config').item.json.llm_config) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "H9sQ1L8LqNecZirw",
+          "name": "Voice AI Test"
+        }
+      }
+    },
+    {
+      "id": "has-eval-config-if",
+      "name": "Has Evaluator Config?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1840,
+        -340
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $('Set Test Run').item.json.evaluator_config_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "When clicking \u2018Execute workflow\u2019": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Update testrun status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Abort Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Test Run": {
+      "main": [
+        [
+          {
+            "node": "Get Validated Personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Test Run": {
+      "main": [
+        [
+          {
+            "node": "Set Test Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prompt Testing": {
+      "main": [
+        [
+          {
+            "node": "Set Test Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Validated Personas": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Get Prompt Testing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "get prompt from id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get prompt from id": {
+      "main": [
+        [
+          {
+            "node": "Create Test Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Abort Status": {
+      "main": [
+        [
+          {
+            "node": "Is Aborted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Aborted?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Execute Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Evaluator Config": {
+      "main": [
+        [
+          {
+            "node": "Create Evaluation Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Evaluation Row": {
+      "main": [
+        [
+          {
+            "node": "Run Evaluator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update testrun status": {
+      "main": [
+        [
+          {
+            "node": "Has Evaluator Config?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Evaluator Config?": {
+      "main": [
+        [
+          {
+            "node": "Get Evaluator Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "errorWorkflow": "EgAdQyNFrL5OS1J4"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "primary-production-1d87.up.railway.app",
+            "user-agent": "node",
+            "content-length": "255",
+            "accept": "*/*",
+            "accept-encoding": "br, gzip, deflate",
+            "accept-language": "*",
+            "content-type": "application/json",
+            "sec-fetch-mode": "cors",
+            "x-forwarded-for": "91.250.137.163",
+            "x-forwarded-host": "primary-production-1d87.up.railway.app",
+            "x-forwarded-proto": "https",
+            "x-n8n-secret": "WEXBZScdMthRf0yytrfXh89XVtpacn9V",
+            "x-railway-edge": "railway/europe-west4-drams3a",
+            "x-railway-request-id": "GLoAwQDcRLivPtTrN8N_Fg",
+            "x-real-ip": "91.250.137.163",
+            "x-request-start": "1771376750947"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "test_run_id": "4b75e0af-85c7-43a6-9e34-b9556002283b",
+            "prompt_version_id": "e0d5fe2f-1c1e-4ebf-ae1c-3d365014a46d",
+            "mode": "single",
+            "tool_scenario_id": "happy_path",
+            "max_iterations": 1,
+            "max_turns": 40,
+            "callback_url": "/api/n8n/webhook",
+            "timestamp": 1771376750748
+          },
+          "webhookUrl": "https://primary-production-1d87.up.railway.app/webhook/5877058c-19fd-4f26-add4-66b3526c4a96",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "38236975-5b0c-402e-b4d1-53cb49e5d548",
+  "activeVersionId": "38236975-5b0c-402e-b4d1-53cb49e5d548",
+  "versionCounter": 220,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2025-08-24T23:01:04.393Z",
+      "createdAt": "2025-08-24T23:01:04.393Z",
+      "role": "workflow:owner",
+      "workflowId": "XmpBhcUxsRpxAYPN",
+      "projectId": "dv3kA4Oe2sL1pWid",
+      "project": {
+        "updatedAt": "2025-01-10T11:02:16.487Z",
+        "createdAt": "2025-01-10T11:00:49.307Z",
+        "id": "dv3kA4Oe2sL1pWid",
+        "name": "Niccolo Franzin <franzin.niccolo@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      }
+    }
+  ],
+  "tags": [
+    {
+      "updatedAt": "2025-06-23T14:51:51.523Z",
+      "createdAt": "2025-06-23T14:51:51.523Z",
+      "id": "zfsOop3rTlyj4Me8",
+      "name": "Voice agents"
+    },
+    {
+      "updatedAt": "2025-07-17T11:50:23.320Z",
+      "createdAt": "2025-07-17T11:50:23.320Z",
+      "id": "t4KfBvOmInkqq7qh",
+      "name": "sempre attivo"
+    },
+    {
+      "updatedAt": "2026-01-08T15:17:14.294Z",
+      "createdAt": "2026-01-08T15:17:14.294Z",
+      "id": "YvO2mLjuL3uCwsiO",
+      "name": "Battle Test"
+    }
+  ],
+  "activeVersion": {
+    "updatedAt": "2026-02-19T20:10:59.721Z",
+    "createdAt": "2026-02-19T20:10:59.721Z",
+    "versionId": "38236975-5b0c-402e-b4d1-53cb49e5d548",
+    "workflowId": "XmpBhcUxsRpxAYPN",
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -48,
+          -256
+        ],
+        "id": "87dd7257-8203-4e0c-b491-9d1d1f9399eb",
+        "name": "When clicking \u2018Execute workflow\u2019"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          1520,
+          0
+        ],
+        "id": "63c3a1eb-a9b8-4ba4-a7c3-78406bde8d69",
+        "name": "Loop Over Items"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "Z35cpvwXt7Xy4Mgi",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/Z35cpvwXt7Xy4Mgi",
+            "cachedResultName": "Test Battle Agent v1.0"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "personasPrompt": "={{ $('Get Validated Personas').item.json.personaprompt }}",
+              "agentPrompt": "={{ $('Set Test Run').item.json.agentPrompt }}",
+              "personasid": "={{ $('Get Validated Personas').item.json.id }}",
+              "TestRunID": "={{ $('Set Test Run').item.json.test_run_id }}",
+              "max_turns": "={{ $('Set Test Run').item.json.max_turns.toString() }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "personasid",
+                "displayName": "personasid",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "agentPrompt",
+                "displayName": "agentPrompt",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "personasPrompt",
+                "displayName": "personasPrompt",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "TestRunID",
+                "displayName": "TestRunID",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "max_turns",
+                "displayName": "max_turns",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          2128,
+          32
+        ],
+        "id": "f243d86f-a707-4cea-bd74-62a4df4474c9",
+        "name": "Execute Workflow"
+      },
+      {
+        "parameters": {
+          "content": "Nel nodo **Get Prompt** \nInserisci nel filtro la PromptVersion che vuoi testare\n",
+          "height": 80,
+          "color": 4
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          1120,
+          -464
+        ],
+        "typeVersion": 1,
+        "id": "095eac69-6810-4fef-bc1e-85cb7a233488",
+        "name": "Sticky Note1"
+      },
+      {
+        "parameters": {
+          "content": "Su Execute Workflow seleziona il Test Agent con la versione che vuoi testare",
+          "height": 80,
+          "width": 208,
+          "color": 6
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          1984,
+          -128
+        ],
+        "typeVersion": 1,
+        "id": "4608ec4c-dcfe-4f77-bafb-e6d69608cf41",
+        "name": "Sticky Note2"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "1",
+                "name": "test_run_code",
+                "value": "={{ 'RUN-' + $now.format('yyyyMMdd-HHmmss') }}",
+                "type": "string"
+              },
+              {
+                "id": "2",
+                "name": "agentPrompt",
+                "value": "={{ $('Get Prompt Testing').item.json.content }}",
+                "type": "string"
+              },
+              {
+                "id": "3",
+                "name": "prompt_version_id",
+                "value": "={{ $('Get Prompt Testing').item.json.id }}",
+                "type": "string"
+              },
+              {
+                "id": "4",
+                "name": "prompt_name",
+                "value": "={{ $('Get Prompt Testing').item.json.prompt_name }}",
+                "type": "string"
+              },
+              {
+                "id": "5",
+                "name": "mode",
+                "value": "={{ $('Validate Input').item.json.mode }}",
+                "type": "string"
+              },
+              {
+                "id": "6",
+                "name": "tool_scenario_id",
+                "value": "={{ $('Validate Input').item.json.tool_scenario_id || '' }}",
+                "type": "string"
+              },
+              {
+                "id": "7",
+                "name": "max_iterations",
+                "value": "={{ $('Validate Input').item.json.max_iterations }}",
+                "type": "number"
+              },
+              {
+                "id": "674e8d12-63d5-4aed-bf64-cd83cfbaab6e",
+                "name": "test_run_id",
+                "value": "={{ $('Webhook').item.json.body.test_run_id }}",
+                "type": "string"
+              },
+              {
+                "id": "8",
+                "name": "max_turns",
+                "value": "={{ $('Validate Input').item.json.max_turns }}",
+                "type": "number"
+              },
+              {
+                "id": "9",
+                "name": "evaluator_config_id",
+                "value": "={{ $('Validate Input').item.json.evaluator_config_id || '' }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1312,
+          -256
+        ],
+        "id": "60eb4a03-8078-426b-9336-30795c8d33db",
+        "name": "Set Test Run"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO test_runs (test_run_code, prompt_version_id, mode, max_iterations, current_iteration, tool_scenario_id, test_config, llm_config, status) VALUES ('{{ $json.test_run_code }}', '{{ $json.prompt_version_id }}'::uuid, '{{ $json.mode }}', {{ $json.max_iterations }}, 1, NULLIF('{{ $json.tool_scenario_id }}', ''), '{}'::jsonb, '{\"battleLlm\": \"gpt-4.1-mini\", \"evaluatorLlm\": \"claude-sonnet-4\"}'::jsonb, 'running') RETURNING id, test_run_code",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          848,
+          -240
+        ],
+        "id": "485dd86a-b6a3-4fba-b728-a52e0555997d",
+        "name": "Create Test Run",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, prompt_name, version, content, status FROM prompt_versions WHERE id = '{{ $('Validate Input').item.json.prompt_version_id }}'::uuid",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          880,
+          -432
+        ],
+        "id": "f27993ef-af24-4df1-aa24-5446cd88cbad",
+        "name": "Get Prompt Testing",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT p.id, p.personaid, p.name, p.personaprompt, p.category, pp.priority\nFROM personas p\nJOIN prompt_personas pp ON p.id = pp.persona_id\nJOIN prompts pr ON pp.prompt_id = pr.id\nJOIN prompt_versions pv ON pv.prompt_id = pr.id\nWHERE pv.id = $1::uuid\n  AND pp.is_active = true\n  AND p.validation_status = 'validated'\nORDER BY pp.priority, p.category",
+          "options": {
+            "queryReplacement": "={{ $(\"Get Prompt Testing\").item.json.id }}"
+          }
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          1024,
+          0
+        ],
+        "id": "9de72b67-fac6-4205-8269-ae59fcd9202a",
+        "name": "Get Validated Personas",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "5877058c-19fd-4f26-add4-66b3526c4a96",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          400,
+          -432
+        ],
+        "id": "320852a0-5aae-4738-8ba2-26d3f006f489",
+        "name": "Webhook",
+        "webhookId": "5877058c-19fd-4f26-add4-66b3526c4a96"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "202JEX5zm3VlrUT8",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/202JEX5zm3VlrUT8",
+            "cachedResultName": "Battles Evaluator"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "evaluation_id": "={{ $('Create Evaluation Row').item.json.id }}",
+              "test_run_id": "={{ $('Set Test Run').item.json.test_run_id }}",
+              "evaluator_config_id": "={{ $('Set Test Run').item.json.evaluator_config_id }}",
+              "triggered_by": "auto"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "evaluation_id",
+                "displayName": "evaluation_id",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "test_run_id",
+                "displayName": "test_run_id",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "evaluator_config_id",
+                "displayName": "evaluator_config_id",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "triggered_by",
+                "displayName": "triggered_by",
+                "required": true,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2500,
+          -440
+        ],
+        "id": "4a9af6b9-c76e-4ee4-955c-466b0689deb1",
+        "name": "Run Evaluator"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Validate webhook input for v2.5 - T1 Hybrid Webhook\nconst input = $input.first().json;\n\n// Extract data from webhook body structure\nconst webhookBody = input.body || input;\nconst actualInput = webhookBody.prompt_version_id ? webhookBody : input;\n\n// Required fields validation\nif (!actualInput.prompt_version_id) {\n  throw new Error('Missing required field: prompt_version_id. Received: ' + JSON.stringify(input));\n}\n\n// Validate UUID format\nconst uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nif (!uuidRegex.test(actualInput.prompt_version_id)) {\n  throw new Error('Invalid prompt_version_id format: must be UUID');\n}\n\n// evaluator_config_id is optional - if provided, auto-evaluation will run after battles\nconst evaluatorConfigId = actualInput.evaluator_config_id || null;\nif (evaluatorConfigId && !uuidRegex.test(evaluatorConfigId)) {\n  throw new Error('Invalid evaluator_config_id format: must be UUID');\n}\n\n// Validate mode (optional, defaults to 'single')\nconst validModes = ['single', 'full_cycle_with_review'];\nconst mode = actualInput.mode || 'single';\nif (!validModes.includes(mode)) {\n  throw new Error(`Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`);\n}\n\n// Validate max_iterations (optional, defaults to 1 for single, 3 for full_cycle)\nlet maxIterations = actualInput.max_iterations;\nif (maxIterations === undefined) {\n  maxIterations = mode === 'single' ? 1 : 3;\n}\nif (typeof maxIterations !== 'number' || maxIterations < 1 || maxIterations > 10) {\n  throw new Error('max_iterations must be a number between 1 and 10');\n}\n\n// Validate max_turns (optional, defaults to 50)\nlet maxTurns = actualInput.max_turns;\nif (maxTurns === undefined) {\n  maxTurns = 50;\n}\nmaxTurns = Number(maxTurns);\nif (isNaN(maxTurns) || maxTurns < 5 || maxTurns > 100) {\n  maxTurns = 50;\n}\n\n// tool_scenario_id is VARCHAR (optional)\nconst toolScenarioId = actualInput.tool_scenario_id || null;\n\nreturn {\n  json: {\n    prompt_version_id: actualInput.prompt_version_id,\n    evaluator_config_id: evaluatorConfigId,\n    mode: mode,\n    max_iterations: maxIterations,\n    max_turns: maxTurns,\n    tool_scenario_id: toolScenarioId,\n    validated_at: new Date().toISOString()\n  }\n};"
+        },
+        "id": "validate-input-001",
+        "name": "Validate Input",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          -432
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "426ff4c2-a80b-48bf-a3f2-c728a7d88888",
+                "name": "prompt_version_id",
+                "value": "0717f50d-4761-42f8-8199-0e1f3dfb9141",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          256,
+          -256
+        ],
+        "id": "53c64144-75e5-4e65-ae12-7aed5d6a250a",
+        "name": "Edit Fields"
+      },
+      {
+        "parameters": {
+          "operation": "select",
+          "schema": {
+            "__rl": true,
+            "value": "public",
+            "mode": "list",
+            "cachedResultName": "public"
+          },
+          "table": {
+            "__rl": true,
+            "value": "prompt_versions",
+            "mode": "list",
+            "cachedResultName": "prompt_versions"
+          },
+          "where": {
+            "values": [
+              {
+                "column": "id",
+                "value": "={{ $json.prompt_version_id }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          560,
+          -256
+        ],
+        "id": "c6ec4178-e37d-44ce-b465-b050e051afee",
+        "name": "get prompt from id",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT status FROM test_runs WHERE test_run_code = '{{ $('Set Test Run').item.json.test_run_code }}' LIMIT 1",
+          "options": {}
+        },
+        "id": "check-abort-pg",
+        "name": "Check Abort Status",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          1712,
+          0
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "version": 2,
+              "leftValue": "",
+              "caseSensitive": true,
+              "typeValidation": "strict"
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "1",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "aborted",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "is-aborted-if",
+        "name": "Is Aborted?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1872,
+          -16
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE test_runs SET status = 'battles_completed', last_heartbeat_at = NOW() WHERE id = '{{ $('Set Test Run').item.json.test_run_id }}'::uuid RETURNING id, status",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          1680,
+          -240
+        ],
+        "id": "4d81ddc4-0566-4994-8f39-b17d9dac8ab1",
+        "name": "Update testrun status",
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "id": "get-eval-config-001",
+        "name": "Get Evaluator Config",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          2060,
+          -440
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, criteria, llm_config FROM evaluator_configs WHERE id = '{{ $('Set Test Run').item.json.evaluator_config_id }}'::uuid",
+          "options": {}
+        },
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "id": "create-eval-row-001",
+        "name": "Create Evaluation Row",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          2280,
+          -440
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO evaluations (test_run_id, evaluator_config_id, status, triggered_by, criteria_snapshot, llm_config_snapshot) VALUES ($1::uuid, $2::uuid, 'pending', 'auto', $3::jsonb, $4::jsonb) RETURNING id",
+          "options": {
+            "queryReplacement": "={{ $('Set Test Run').item.json.test_run_id }},{{ $('Set Test Run').item.json.evaluator_config_id }},{{ JSON.stringify($('Get Evaluator Config').item.json.criteria) }},{{ JSON.stringify($('Get Evaluator Config').item.json.llm_config) }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "H9sQ1L8LqNecZirw",
+            "name": "Voice AI Test"
+          }
+        }
+      },
+      {
+        "id": "has-eval-config-if",
+        "name": "Has Evaluator Config?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          1840,
+          -340
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "version": 2,
+              "leftValue": "",
+              "caseSensitive": true,
+              "typeValidation": "strict"
+            },
+            "combinator": "and",
+            "conditions": [
+              {
+                "id": "1",
+                "leftValue": "={{ $('Set Test Run').item.json.evaluator_config_id }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ]
+          },
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "When clicking \u2018Execute workflow\u2019": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items": {
+        "main": [
+          [
+            {
+              "node": "Update testrun status",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Check Abort Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute Workflow": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Test Run": {
+        "main": [
+          [
+            {
+              "node": "Get Validated Personas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Test Run": {
+        "main": [
+          [
+            {
+              "node": "Set Test Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Prompt Testing": {
+        "main": [
+          [
+            {
+              "node": "Set Test Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Validated Personas": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Validate Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Input": {
+        "main": [
+          [
+            {
+              "node": "Get Prompt Testing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "get prompt from id",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "get prompt from id": {
+        "main": [
+          [
+            {
+              "node": "Create Test Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Abort Status": {
+        "main": [
+          [
+            {
+              "node": "Is Aborted?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Aborted?": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Execute Workflow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Evaluator Config": {
+        "main": [
+          [
+            {
+              "node": "Create Evaluation Row",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Evaluation Row": {
+        "main": [
+          [
+            {
+              "node": "Run Evaluator",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update testrun status": {
+        "main": [
+          [
+            {
+              "node": "Has Evaluator Config?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Evaluator Config?": {
+        "main": [
+          [
+            {
+              "node": "Get Evaluator Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Niccolo Franzin",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-02-19T20:10:59.802Z",
+        "id": 522,
+        "workflowId": "XmpBhcUxsRpxAYPN",
+        "versionId": "38236975-5b0c-402e-b4d1-53cb49e5d548",
+        "event": "deactivated",
+        "userId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      },
+      {
+        "createdAt": "2026-02-19T20:10:59.839Z",
+        "id": 523,
+        "workflowId": "XmpBhcUxsRpxAYPN",
+        "versionId": "38236975-5b0c-402e-b4d1-53cb49e5d548",
+        "event": "activated",
+        "userId": "05899498-7d15-4204-80d5-960dcaa0d732"
+      }
+    ]
+  }
+}
