@@ -37,43 +37,33 @@ export async function fetchPersonasFromAPI(promptName: string): Promise<Persona[
 }
 
 /**
- * Triggers persona generation via n8n workflow
+ * Triggers persona generation via /api/generate-personas endpoint.
+ * The API handles webhook URL lookup, auth headers, and validation.
  */
 export async function triggerPersonaGeneration(
   promptName: string,
-  promptVersion: string
+  promptVersion: string,
+  promptVersionId?: string
 ): Promise<boolean> {
-  const settingsRes = await fetch('/api/settings')
-  const settings = await settingsRes.json()
-
-  const generatorConfig = settings.data?.find(
-    (c: any) => c.workflow_type === 'personas_generator'
-  )
-
-  if (!generatorConfig?.webhook_url || !generatorConfig?.is_active) {
-    toast.info(
-      'Persona Generator workflow not configured. Configure it in Settings.',
-      { duration: 5000 }
-    )
+  if (!promptVersionId) {
+    toast.error('Select a prompt version before generating personas.')
     return false
   }
 
-  const response = await fetch(generatorConfig.webhook_url, {
+  const response = await fetch('/api/generate-personas', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      prompt_version_id: promptVersionId,
       prompt_name: promptName,
-      prompt_version: promptVersion,
-      count: 5,
-      criteria: {
-        difficulty_mix: { easy: 0.3, medium: 0.4, hard: 0.2, extreme: 0.1 },
-        categories: ['decision_maker', 'skeptical', 'busy', 'collaborative']
-      }
+      count: 5
     })
   })
 
   if (!response.ok) {
-    throw new Error('Failed to trigger persona generation')
+    const result = await response.json().catch(() => ({}))
+    const message = result.error?.message || 'Failed to trigger persona generation'
+    throw new Error(message)
   }
 
   return true

@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       .eq('workflow_type', 'personas_generator')
       .single()
 
-    const webhookUrl = config?.webhook_url || process.env.N8N_PERSONAS_GENERATOR_WEBHOOK
+    const webhookUrl = config?.webhook_url || process.env.N8N_PERSONA_GENERATOR_WEBHOOK
 
     if (!webhookUrl) {
       return apiError(

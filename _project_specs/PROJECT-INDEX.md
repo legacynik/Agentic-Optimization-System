@@ -95,6 +95,21 @@ Eval A/B enhancement, optimizer dual mode (surgical/full), latency metrics, quot
 
 ---
 
+## Active Specs (Next Priority)
+
+### 4. Retell Auto Research Integration
+
+**File**: [retell-auto-research.md](specs/retell-auto-research.md)
+**Status**: PENDING
+**Effort**: ~6 settimane (5 tracks paralleli)
+**Plan**: FastAPI service + Retell API sync + Auto evaluation + Slack reporting + White-label client dashboard
+
+Integrazione Retell AI + paradigma Auto Research (Karpathy) per self-improving voice agents.
+Loop giornaliero: pull chiamate → valutazione → metriche → Slack report → ottimizzazione.
+Dashboard white-label per clienti con branding custom.
+
+---
+
 ## Planned Specs
 
 Non ancora prioritizzate, da fare dopo le Active:

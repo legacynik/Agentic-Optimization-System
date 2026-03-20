@@ -37,6 +37,7 @@ export interface FeedbackNote {
 export interface PersonaWorkshopProps {
   promptName: string
   promptVersion: string
+  promptVersionId?: string
   onPersonasSaved?: (personas: Persona[]) => void
 }
 

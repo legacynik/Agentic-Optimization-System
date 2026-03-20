@@ -39,6 +39,7 @@ import { PersonaFeedbackDialog } from './persona/persona-feedback-dialog'
 export function PersonaWorkshop({
   promptName,
   promptVersion,
+  promptVersionId,
   onPersonasSaved
 }: PersonaWorkshopProps) {
   const {
@@ -68,7 +69,7 @@ export function PersonaWorkshop({
     submitFeedback,
     llmValidatePersona,
     approveOverride
-  } = usePersonaWorkshop({ promptName, promptVersion })
+  } = usePersonaWorkshop({ promptName, promptVersion, promptVersionId })
 
   /**
    * Saves all validated personas and triggers callback

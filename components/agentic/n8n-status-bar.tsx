@@ -77,7 +77,7 @@ export function N8NStatusBar({ className, onViewLogs }: N8NStatusBarProps) {
 
       // Find test_runner workflow config
       // API returns { data: [...] } not { workflow_configs: [...] }
-      const configs = data.data || data.workflow_configs || []
+      const configs = data.data?.configs || data.workflow_configs || []
       const testRunnerConfig = configs.find(
         (c: WorkflowConfig) => c.workflow_type === 'test_runner'
       )

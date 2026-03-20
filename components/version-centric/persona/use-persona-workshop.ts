@@ -14,13 +14,14 @@ import {
 interface UsePersonaWorkshopProps {
   promptName: string
   promptVersion: string
+  promptVersionId?: string
 }
 
 /**
  * Custom hook containing all business logic for PersonaWorkshop
  * Handles state management and coordinates API calls
  */
-export function usePersonaWorkshop({ promptName, promptVersion }: UsePersonaWorkshopProps) {
+export function usePersonaWorkshop({ promptName, promptVersion, promptVersionId }: UsePersonaWorkshopProps) {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -53,7 +54,7 @@ export function usePersonaWorkshop({ promptName, promptVersion }: UsePersonaWork
   const generatePersonas = async () => {
     setIsGenerating(true)
     try {
-      const success = await triggerPersonaGeneration(promptName, promptVersion)
+      const success = await triggerPersonaGeneration(promptName, promptVersion, promptVersionId)
       if (success) {
         toast.success('Persona generation started! Refresh in a few moments.')
         setTimeout(() => fetchPersonas(), 5000)
